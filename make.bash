@@ -1,7 +1,9 @@
 mkdir -p obj_glop
 mkdir -p lib
+cp GlopView.h obj_glop/GlopView.h
 gcc -c -o obj_glop/glop_m.o glop.m
-libtool -o lib/libglop.a obj_glop/glop_m.o
+#gcc -c -o obj_glop/glop_view_m.o GlopView.m
+libtool -o lib/libglop.a obj_glop/glop_m.o #obj_glop/glop_view_m.h
 
 
 # Need to sudo for this line

@@ -14,3 +14,7 @@ func Run() {
 func ShutDown() {
   C.ShutDown()
 }
+
+func CreateWindow() {
+  C.CreateWindow()
+}

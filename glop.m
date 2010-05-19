@@ -26,6 +26,25 @@ void* CreateWindow() {
   styleMask:( NSResizableWindowMask | NSClosableWindowMask | NSTitledWindowMask) 
   backing:NSBackingStoreBuffered defer:NO];
   [window makeKeyAndOrderFront:nil];
+
+  // Create and bind an OpenGL context
+  NSOpenGLPixelFormatAttribute attributes[] = {
+    NSOpenGLPFADoubleBuffer,
+    NSOpenGLPFAAccelerated,
+    NSOpenGLPFAColorSize, 32,
+    NSOpenGLPFADepthSize, 32,
+    //    NSOpenGLPFAFullScreen,
+    0,
+  };
+  NSOpenGLPixelFormat* pixel_format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
+  if (pixel_format == nil) {
+    // TODO: How do we signal this properly?
+    return;
+  }
+
+  NSOpenGLContext* context = [[NSOpenGLContext alloc] initWithFormat:pixel_format shareContext:NO];
+  [context setView:[window contentView]];
+
   return (void*)window;
 }
 
