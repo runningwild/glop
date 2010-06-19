@@ -1,13 +1,26 @@
 #import <Cocoa/Cocoa.h>
+#import <OpenGL/gl.h>
+#import <glop.h>
 
 NSAutoreleasePool *pool;
 
 void startEventListener() {
   [NSEvent
+    addLocalMonitorForEventsMatchingMask:NSApplicationDefinedMask
+    handler:^(NSEvent *incomingEvent) {
+      if ([incomingEvent subtype] == 0) {
+        [NSApp stop:incomingEvent];
+      }
+      incomingEvent = nil;
+      return incomingEvent;
+    }
+  ];
+  [NSEvent
     addLocalMonitorForEventsMatchingMask:NSKeyDownMask
     handler:^(NSEvent *incomingEvent) {
       [NSApp stop:incomingEvent];
       incomingEvent = nil;
+      exit(0);
       return incomingEvent;
     }
   ];
@@ -20,9 +33,11 @@ void Init() {
   startEventListener();
 }
 
-void* CreateWindow() {
-  NSRect windowRect = NSMakeRect(10.0f, 10.0f, 800.0f, 600.0f);
-  NSWindow *window = [[NSWindow alloc] initWithContentRect:windowRect 
+void CreateWindow(void** _window, void** _context) {
+  NSRect windowRect = NSMakeRect(10.0f, 10.0f, 512.0f, 512.0f);
+  NSWindow* window = [NSWindow alloc];
+  *((NSWindow**)(_window)) = window;
+  [window initWithContentRect:windowRect 
   styleMask:( NSResizableWindowMask | NSClosableWindowMask | NSTitledWindowMask) 
   backing:NSBackingStoreBuffered defer:NO];
   [window makeKeyAndOrderFront:nil];
@@ -39,13 +54,21 @@ void* CreateWindow() {
   NSOpenGLPixelFormat* pixel_format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
   if (pixel_format == nil) {
     // TODO: How do we signal this properly?
+    exit(0);
     return;
   }
-
-  NSOpenGLContext* context = [[NSOpenGLContext alloc] initWithFormat:pixel_format shareContext:NO];
+  NSOpenGLContext* context = [NSOpenGLContext alloc];
+  *((NSOpenGLContext**)(_context)) = context;
+  [context initWithFormat:pixel_format shareContext:NO];
   [context setView:[window contentView]];
+  [context makeCurrentContext];
+  glClear(GL_COLOR_BUFFER_BIT);
+  [context flushBuffer];
+}
 
-  return (void*)window;
+void SwapBuffers(void* _context) {
+  NSOpenGLContext* context = (NSOpenGLContext*)(_context);
+  [context flushBuffer];
 }
 
 void ShutDown() {
@@ -56,3 +79,17 @@ void Run() {
   [NSApp run];
 }
 
+void Think() {
+  NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:0 context:0 subtype:0 data1:0 data2:0];
+  [NSApp postEvent:event atStart:FALSE];
+  [NSApp run];
+}
+
+void CurrentMousePos(void* _window, void* _x, void* _y) {
+  NSWindow* window = (NSWindow*)_window;
+  int* x = (int*)_x;
+  int* y = (int*)_y;
+  NSPoint point = [window mouseLocationOutsideOfEventStream];
+  *x = (int)point.x;
+  *y = (int)point.y;
+}
