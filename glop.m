@@ -33,8 +33,8 @@ void Init() {
   startEventListener();
 }
 
-void CreateWindow(void** _window, void** _context) {
-  NSRect windowRect = NSMakeRect(10.0f, 10.0f, 512.0f, 512.0f);
+void CreateWindow(void** _window, void** _context, int x, int y, int width, int height) {
+  NSRect windowRect = NSMakeRect(x, y, width, height);
   NSWindow* window = [NSWindow alloc];
   *((NSWindow**)(_window)) = window;
   [window initWithContentRect:windowRect 

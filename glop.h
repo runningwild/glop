@@ -2,7 +2,7 @@
 #define __GLOP_H__
 
 void Init();
-void CreateWindow(void**, void**);
+void CreateWindow(void**, void**, int, int, int, int);
 void Run();
 void SwapBuffers(void*);
 void Think();

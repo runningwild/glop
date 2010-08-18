@@ -24,11 +24,11 @@ func Run() {
 //  C.ShutDown()
 //}
 
-func CreateWindow() *Window {
+func CreateWindow(x,y,width,height int) *Window {
   var window Window
-  x := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
-  y := (*unsafe.Pointer)(unsafe.Pointer(&window.context))
-  C.CreateWindow(x, y)
+  w := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
+  c := (*unsafe.Pointer)(unsafe.Pointer(&window.context))
+  C.CreateWindow(w, c, C.int(x), C.int(y), C.int(width), C.int(height))
   return &window
 }
 
