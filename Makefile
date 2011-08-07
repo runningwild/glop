@@ -3,7 +3,7 @@ include $(GOROOT)/src/Make.inc
 TARG=glop
 
 CGOFILES=glop.go
-CGO_LDFLAGS=-lglop -framework Cocoa -framework OpenGL -mmacosx-version-min=10.4
+CGO_LDFLAGS=-lglop -L lib -framework Cocoa -framework OpenGL -mmacosx-version-min=10.4
 
 include $(GOROOT)/src/Make.pkg
 
