@@ -14,7 +14,7 @@ func main() {
     gl.Clear(0x00004000)
     glop.SwapBuffers(window)
     println(r)
-    glop.Think()
+    glop.Think(window)
     r += 0.0101
   }
 }

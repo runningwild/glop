@@ -20,3 +20,11 @@ func CreateWindow(x,y,dx,dy int) *Window {
   return &window
 }
 
+func SwapBuffers(window *Window) {
+  C.SwapBuffers(unsafe.Pointer(window))
+}
+
+func Think(window *Window) {
+  C.Think(unsafe.Pointer(window))
+}
+

@@ -25,9 +25,9 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <IOKit/hid/IOHIDLib.h>
 //
-//const int kEventClassGlop = 'Glop';
-//const int kEventGlopBreak = 0;
-//const int kEventGlopToggleFullScreen = 'Flsc';
+const int kEventClassGlop = 'Glop';
+const int kEventGlopBreak = 0;
+const int kEventGlopToggleFullScreen = 'Flsc';
 //
 //static set<OsWindowData*> all_windows;
 //static HIPoint mouse_location;
@@ -104,9 +104,9 @@
 //
 //void GlopToggleFullScreen();
 //
-//// HACK!
-//static bool ok_to_exit;
-//// END HACK!
+// HACK!
+static bool ok_to_exit;
+// END HACK!
 //
 //static double last_time;
 //static bool lost_focus;
@@ -653,7 +653,7 @@ OSStatus GlopWindowHandler(EventHandlerCallRef next_handler, EventRef the_event,
 //void Os::ShutDown() {
 //  // Booya! :-)
 //}
-//
+
 //void Os::Think() {
 //  // Static since we don't want to create and free this event every time we think
 //  EventRef terminator;
@@ -767,10 +767,6 @@ OSStatus GlopWindowHandler(EventHandlerCallRef next_handler, EventRef the_event,
 //  }
 //}
 //
-//void Os::WindowThink(OsWindowData* data) {
-//  Os::SetCurrentContext(data);
-////  aglUpdateContext(data->agl_context);
-//}
 //
 //OSStatus aglReportError(void) {
 //	GLenum err = aglGetError();
@@ -807,6 +803,23 @@ void setCurrentContext(windowData* data) {
     //aglReportError();
     //printf("Error!\n");
   }
+}
+
+void windowThink(windowData* data) {
+  setCurrentContext(data);
+}
+
+void Think(windowData* window) {
+  EventRef terminator;
+  CreateEvent(NULL, kEventClassGlop, kEventGlopBreak, 0, kEventAttributeNone, &terminator);
+  PostEventToQueue(GetMainEventQueue(), terminator, kEventPriorityLow);
+  ok_to_exit = true;
+  RunApplicationEventLoop();
+  ReleaseEvent(terminator);
+  // The application event loop does not get modifier keys for the keyboard, or joysticks, both of
+  // those have to be done separately.
+
+  windowThink(window);
 }
 
 bool createAGLContext(windowData* data) {
@@ -1170,9 +1183,9 @@ void CreateWindow(windowData** data, int full_screen, int x, int y, int dx, int 
 //  return (((unsigned long long)current_time.hi << 32 | current_time.lo) - start_time) / 1000.0;
 //}
 //
-//void Os::SwapBuffers(OsWindowData* data) {
-//  aglSwapBuffers(data->agl_context);
-//}
+void SwapBuffers(void* data) {
+  aglSwapBuffers(((windowData*)(data))->agl);
+}
 //
 //int Os::GetRefreshRate() {
 //  CFDictionaryRef mode_info;
