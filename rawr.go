@@ -1,8 +1,11 @@
 package main
 
-import "glop"
-import "mingle"
-import "runtime"
+import(
+  "glop"
+  "mingle"
+  "runtime"
+  "time"
+)
 
 func main() {
   runtime.LockOSThread()
@@ -16,5 +19,6 @@ func main() {
     println(r)
     glop.Think(window)
     r += 0.0101
+    time.Sleep(1000*1000*100)
   }
 }

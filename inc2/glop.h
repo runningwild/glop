@@ -10,7 +10,8 @@ void SwapBuffers(void*);
 void Think(void*);
 // windowData*
 
-//void Init();
+void Init();
+
 //void CreateWindow(void**, void**, int, int, int, int);
 //void Run();
 

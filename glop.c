@@ -20,7 +20,7 @@
 //#include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
 #include <AGL/agl.h>
-
+#include <stdio.h>
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <IOKit/hid/IOHIDLib.h>
@@ -108,10 +108,10 @@ const int kEventGlopToggleFullScreen = 'Flsc';
 static bool ok_to_exit;
 // END HACK!
 //
-//static double last_time;
-//static bool lost_focus;
-//static bool caps_lock;
-//static bool num_lock;
+static double last_time;
+static bool lost_focus;
+static bool caps_lock;
+static bool num_lock;
 //
 //struct GlopOSXEvent {
 //  double timestamp;
@@ -141,17 +141,18 @@ static bool ok_to_exit;
 //
 //vector<GlopOSXEvent> raw_events;
 //
-//OSStatus GlopEventHandler(EventHandlerCallRef next_handler, EventRef the_event, void* user_data) {
-//  OSStatus result = eventNotHandledErr;
-//  int event_class = GetEventClass(the_event);
-//  int event_kind = GetEventKind(the_event);
-//  printf("EventTime: %f\n", GetEventTime(the_event));
-//  if (event_class == kEventClassGlop && event_kind == kEventGlopBreak) {
-//    ok_to_exit = false;
-//    QuitApplicationEventLoop();
-//    last_time = GetEventTime(the_event);
-//    result = noErr;
-//  }
+
+OSStatus glopEventHandler(EventHandlerCallRef next_handler, EventRef the_event, void* user_data) {
+  OSStatus result = eventNotHandledErr;
+  int event_class = GetEventClass(the_event);
+  int event_kind = GetEventKind(the_event);
+printf("--> %d %d\n", event_class, event_kind);
+  if (event_class == kEventClassGlop && event_kind == kEventGlopBreak) {
+    ok_to_exit = false;
+    QuitApplicationEventLoop();
+    last_time = GetEventTime(the_event);
+    result = noErr;
+  }
 //  if (event_class == kEventClassApplication && event_kind == kEventAppQuit) {
 //    if (ok_to_exit) {
 //      exit(0);
@@ -339,10 +340,10 @@ static bool ok_to_exit;
 //      }
 //    }
 //  }
-//  return result;
-//}
-//
-OSStatus GlopWindowHandler(EventHandlerCallRef next_handler, EventRef the_event, void* user_data) {
+  return result;
+}
+
+OSStatus glopWindowHandler(EventHandlerCallRef next_handler, EventRef the_event, void* user_data) {
   OSStatus result = eventNotHandledErr;
   return result;
 }
@@ -581,61 +582,51 @@ OSStatus GlopWindowHandler(EventHandlerCallRef next_handler, EventRef the_event,
 //  GlopHandleNewJoysticks();
 //}
 //
-//static UnsignedWide glop_start_time;
-//void Os::Init() {
-//  Microseconds(&glop_start_time);
-//
-//  string path = GetExecutablePath();
-//  // Perhaps it is more appropriate to assert on this condition?
-//  if (path.find("/MacOS") != string::npos) {
-//    path = path.substr(0, path.find("/MacOS")) + "/Resources";
-//    chdir(path.c_str());
-//  }
-//
-//  EventHandlerUPP handler_upp = NewEventHandlerUPP(GlopEventHandler);
-//  EventTypeSpec event_types[11];
-//  event_types[0].eventClass = kEventClassGlop;
-//  event_types[0].eventKind  = kEventGlopBreak;
-//  event_types[1].eventClass = kEventClassApplication;
-//  event_types[1].eventKind  = kEventAppQuit;
-//  event_types[2].eventClass = kEventClassCommand;
-//  event_types[2].eventKind  = kEventProcessCommand;
-//  event_types[3].eventClass = kEventClassKeyboard;
-//  event_types[3].eventKind  = kEventRawKeyDown;
-//  event_types[4].eventClass = kEventClassKeyboard;
-//  event_types[4].eventKind  = kEventRawKeyUp;
-//  event_types[5].eventClass = kEventClassMouse;
-//  event_types[5].eventKind  = kEventMouseMoved;
-//  event_types[6].eventClass = kEventClassMouse;
-//  event_types[6].eventKind  = kEventMouseDragged;
-//  event_types[7].eventClass = kEventClassMouse;
-//  event_types[7].eventKind  = kEventMouseDown;
-//  event_types[8].eventClass = kEventClassMouse;
-//  event_types[8].eventKind  = kEventMouseUp;
-//  event_types[9].eventClass = kEventClassMouse;
-//  event_types[9].eventKind  = kEventMouseWheelMoved;
-//  event_types[10].eventClass = kEventClassWindow;
-//  event_types[10].eventKind  = kEventWindowFocusRelinquish;
-//  InstallApplicationEventHandler(handler_upp, 11, event_types, NULL, NULL);
-//
+static UnsignedWide glop_start_time;
+void Init() {
+  Microseconds(&glop_start_time);
+
+  EventHandlerUPP handler_upp = NewEventHandlerUPP(glopEventHandler);
+  EventTypeSpec event_types[11];
+  event_types[0].eventClass = kEventClassGlop;
+  event_types[0].eventKind  = kEventGlopBreak;
+  event_types[1].eventClass = kEventClassApplication;
+  event_types[1].eventKind  = kEventAppQuit;
+  event_types[2].eventClass = kEventClassCommand;
+  event_types[2].eventKind  = kEventProcessCommand;
+  event_types[3].eventClass = kEventClassKeyboard;
+  event_types[3].eventKind  = kEventRawKeyDown;
+  event_types[4].eventClass = kEventClassKeyboard;
+  event_types[4].eventKind  = kEventRawKeyUp;
+  event_types[5].eventClass = kEventClassMouse;
+  event_types[5].eventKind  = kEventMouseMoved;
+  event_types[6].eventClass = kEventClassMouse;
+  event_types[6].eventKind  = kEventMouseDragged;
+  event_types[7].eventClass = kEventClassMouse;
+  event_types[7].eventKind  = kEventMouseDown;
+  event_types[8].eventClass = kEventClassMouse;
+  event_types[8].eventKind  = kEventMouseUp;
+  event_types[9].eventClass = kEventClassMouse;
+  event_types[9].eventKind  = kEventMouseWheelMoved;
+  event_types[10].eventClass = kEventClassWindow;
+  event_types[10].eventKind  = kEventWindowFocusRelinquish;
+  InstallApplicationEventHandler(handler_upp, 11, event_types, NULL, NULL);
+
 //  // Handle HIDs
 //  glop_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
 //  if (glop_manager == NULL) {
 //    printf("couldn't make a manager\n");
 //  }
-//	IOHIDManagerSetDeviceMatching(glop_manager, NULL);  // This will match all HIDs, but that's fine
-//	IOReturn result = IOHIDManagerOpen(glop_manager, kIOHIDOptionsTypeNone);
-//	if (kIOReturnSuccess != result) {
+//  IOHIDManagerSetDeviceMatching(glop_manager, NULL);  // This will match all HIDs, but that's fine
+//  IOReturn result = IOHIDManagerOpen(glop_manager, kIOHIDOptionsTypeNone);
+//  if (kIOReturnSuccess != result) {
 //    printf("Couldn't open IOHIDManager: %x\n", result);
-//	}
+//  }
 //  IOHIDManagerRegisterDeviceMatchingCallback(glop_manager, GlopUpdateDevices, (void*)1);
 //  IOHIDManagerRegisterDeviceRemovalCallback(glop_manager, GlopUpdateDevices, (void*)0);
 //  CFRunLoopRef run_loop_ref = (CFRunLoopRef)GetCFRunLoopFromEventLoop(GetMainEventLoop());
 //  IOHIDManagerScheduleWithRunLoop(glop_manager, run_loop_ref, kCFRunLoopDefaultMode);
 //  GlopUpdateDevices(NULL, NULL, NULL, NULL);
-//
-//
-//
 //
 //  OSStatus err;
 //  IBNibRef nib_ref = NULL;
@@ -648,8 +639,8 @@ OSStatus GlopWindowHandler(EventHandlerCallRef next_handler, EventRef the_event,
 //    err = SetMenuBarFromNib(nib_ref, CFSTR("MainMenu"));
 //    DisposeNibReference(nib_ref);
 //  }
-//}
-//
+}
+
 //void Os::ShutDown() {
 //  // Booya! :-)
 //}
@@ -801,7 +792,7 @@ void setCurrentContext(windowData* data) {
   }
   if (!aglUpdateContext(data->agl)) {
     //aglReportError();
-    //printf("Error!\n");
+    printf("Error!\n");
   }
 }
 
@@ -871,6 +862,8 @@ bool createAGLContext(windowData* data) {
 //    aglSetDrawable(data->agl_context, GetWindowPort(data->window));
   } else {
     aglSetDrawable(data->agl, GetWindowPort(data->window));
+    GLenum err = aglGetError();
+    printf("aglerr: %s\n", aglErrorString(err));
   }
   return true;
 }
@@ -893,7 +886,7 @@ void openWindow(windowData* data) {
   event_types[1].eventKind  = kEventWindowClosed;
   event_types[2].eventClass = kEventClassWindow;
   event_types[2].eventKind  = kEventWindowBoundsChanged;
-  EventHandlerUPP handler_upp = NewEventHandlerUPP(GlopWindowHandler);
+  EventHandlerUPP handler_upp = NewEventHandlerUPP(glopWindowHandler);
   InstallWindowEventHandler(data->window, handler_upp, 3, event_types, data, NULL);
   createAGLContext(data);
 

@@ -11,12 +11,13 @@ type Window struct {
 
 
 func init() {
+  C.Init()
 }
 
 func CreateWindow(x,y,dx,dy int) *Window {
   var window Window
   w := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
-  C.CreateWindow(w, 0, 0, C.int(y), C.int(dx), C.int(dy))
+  C.CreateWindow(w, 0, C.int(x), C.int(y), C.int(dx), C.int(dy))
   return &window
 }
 

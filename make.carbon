@@ -1,7 +1,8 @@
 mkdir -p obj_glop
 mkdir -p lib
 gcc -arch i386 -fPIC -c -o obj_glop/glop_c.o glop.c
-gcc -arch i386 -install_name @executable_path/../lib/libglop.so -shared -W1 -o lib/libglop.so obj_glop/glop_c.o -framework Carbon -framework OpenGL -framework AGL -framework ApplicationServices -framework IOKit
+#gcc -arch i386 -install_name @executable_path/../lib/libglop.so -shared -W1 -o lib/libglop.so obj_glop/glop_c.o -framework Carbon -framework OpenGL -framework AGL -framework ApplicationServices -framework IOKit
+gcc -arch i386 -shared -W1 -o lib/libglop.so obj_glop/glop_c.o -framework Carbon -framework OpenGL -framework AGL -framework ApplicationServices -framework IOKit
 
 make clean
 make
