@@ -11,4 +11,6 @@ make install
 6l -o rawr rawr.6
 mkdir -p rawr.app/Contents/MacOS
 cp rawr rawr.app/Contents/MacOS/rawr
+mkdir -p rawr.app/Contents/lib
+cp lib/libglop.so rawr.app/Contents/lib/libglop.so
 

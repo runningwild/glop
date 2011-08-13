@@ -2,17 +2,37 @@
 #import <OpenGL/gl.h>
 #import <glop.h>
 #import <mach/mach_time.h>
+#import <stdio.h>
 
-NSAutoreleasePool *pool;
+NSAutoreleasePool* pool;
+NSApplication* glop_app;
 
-void startEventListener() {
+@interface GlopApplication : NSApplication {
 }
+- (void)sendEvent:(NSEvent*)event;
+@end
+
+@implementation GlopApplication
+- (void)sendEvent:(NSEvent*)event {
+  [glop_app stop:self];
+  [super sendEvent: event];
+}
+@end
 
 void Init() {
+  glop_app = [GlopApplication sharedApplication];
   pool = [[NSAutoreleasePool alloc] init];
-  [NSApplication sharedApplication];
+}
 
-  startEventListener();
+void Think() {
+  uint64_t uptime = mach_absolute_time();
+printf("uptime: %ull\n", uptime);
+  NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:(NSTimeInterval)uptime windowNumber:0 context:0 subtype:0 data1:0 data2:0];
+printf("made event\n");
+  [glop_app postEvent:event atStart:FALSE];
+printf("posted event\n");
+  [glop_app run];
+printf("ran\n");
 }
 
 void CreateWindow(void** _window, void** _context, int x, int y, int width, int height) {
@@ -58,13 +78,6 @@ void ShutDown() {
 }
 
 void Run() {
-  [NSApp run];
-}
-
-void Think() {
-  uint64_t uptime = mach_absolute_time();
-  NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:(NSTimeInterval)uptime windowNumber:0 context:0 subtype:0 data1:0 data2:0];
-  [NSApp postEvent:event atStart:FALSE];
   [NSApp run];
 }
 
