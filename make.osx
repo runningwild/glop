@@ -1,7 +1,7 @@
 mkdir -p obj_glop
 mkdir -p lib
 gcc -mmacosx-version-min=10.5 -arch x86_64 -m64 -fPIC -c -I include -o obj_glop/glop_m.o glop.m
-gcc -mmacosx-version-min=10.5 -weak_library /usr/lib/libSystem.B.dylib -install_name @executable_path/../lib/libglop.so -shared -W1 -o lib/libglop.so obj_glop/glop_m.o  -framework Cocoa -framework OpenGL
+gcc -mmacosx-version-min=10.5 -arch x86_64 -m64 -weak_library /usr/lib/libSystem.B.dylib -install_name @executable_path/../lib/libglop.so -shared -dynamiclib -W1 -o lib/libglop.so obj_glop/glop_m.o  -framework Cocoa -framework OpenGL
 
 make clean
 make

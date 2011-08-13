@@ -1,29 +1,11 @@
 #import <Cocoa/Cocoa.h>
 #import <OpenGL/gl.h>
 #import <glop.h>
+#import <mach/mach_time.h>
 
 NSAutoreleasePool *pool;
 
 void startEventListener() {
-  [NSEvent
-    addLocalMonitorForEventsMatchingMask:NSApplicationDefinedMask
-    handler:^(NSEvent *incomingEvent) {
-      if ([incomingEvent subtype] == 0) {
-        [NSApp stop:incomingEvent];
-      }
-      incomingEvent = nil;
-      return incomingEvent;
-    }
-  ];
-  [NSEvent
-    addLocalMonitorForEventsMatchingMask:NSKeyDownMask
-    handler:^(NSEvent *incomingEvent) {
-      [NSApp stop:incomingEvent];
-      incomingEvent = nil;
-      exit(0);
-      return incomingEvent;
-    }
-  ];
 }
 
 void Init() {
@@ -80,7 +62,8 @@ void Run() {
 }
 
 void Think() {
-  NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:[[NSProcessInfo processInfo] systemUptime] windowNumber:0 context:0 subtype:0 data1:0 data2:0];
+  uint64_t uptime = mach_absolute_time();
+  NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:(NSTimeInterval)uptime windowNumber:0 context:0 subtype:0 data1:0 data2:0];
   [NSApp postEvent:event atStart:FALSE];
   [NSApp run];
 }
