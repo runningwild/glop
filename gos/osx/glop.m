@@ -26,13 +26,9 @@ void Init() {
 
 void Think() {
   uint64_t uptime = mach_absolute_time();
-printf("uptime: %ull\n", uptime);
   NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:(NSTimeInterval)uptime windowNumber:0 context:0 subtype:0 data1:0 data2:0];
-printf("made event\n");
   [glop_app postEvent:event atStart:FALSE];
-printf("posted event\n");
   [glop_app run];
-printf("ran\n");
 }
 
 void CreateWindow(void** _window, void** _context, int x, int y, int width, int height) {

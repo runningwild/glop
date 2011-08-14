@@ -1,4 +1,4 @@
-package glop
+package gos
 
 // #include <glop.h>
 import "C"
