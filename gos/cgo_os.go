@@ -1,3 +1,4 @@
+//target:glop/gos
 package gos
 
 // #include <glop.h>
@@ -19,11 +20,6 @@ func Run() {
   C.Run()
 }
 
-// TODO: Can we just ignore this?
-//func ShutDown() {
-//  C.ShutDown()
-//}
-
 func CreateWindow(x,y,width,height int) *Window {
   var window Window
   w := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
@@ -38,6 +34,15 @@ func SwapBuffers(window *Window) {
 
 func Think() {
   C.Think()
+}
+
+type KeyEvent struct {}
+func GetInputEvents() []KeyEvent {
+  var dummy_event C.KeyEvent
+  cp := (*unsafe.Pointer)(unsafe.Pointer(&dummy_event))
+  var length C.int
+  C.GetInputEvents(cp, &length)
+  return make([]KeyEvent, length)
 }
 
 func CursorPos(window *Window) (int,int) {
