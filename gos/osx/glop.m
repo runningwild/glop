@@ -142,18 +142,18 @@ const int key_map[] = {
 };
 
 // Modifier flags
-const int kOsxCapsLock =     10000;
-const int kOsxFunction =     800000;
-const int kOsxLeftControl =  40001;
+const int kOsxCapsLock =      0x10000;
+const int kOsxFunction =     0x800000;
+const int kOsxLeftControl =   0x40001;
 // TODO: Use a keyboard with a Right Control button so we can make sure we get this value right!!
 //       Num lock too!!!
-const int kOsxRightControl = 40000;
-const int kOsxLeftShift =    20002;
-const int kOsxRightShift =   20004;
-const int kOsxLeftAlt =      80020;
-const int kOsxRightAlt =     80040;
-const int kOsxLeftGui =      100008;
-const int kOsxRightGui =     100010;
+const int kOsxRightControl =  0x40000;
+const int kOsxLeftShift =     0x20002;
+const int kOsxRightShift =    0x20004;
+const int kOsxLeftAlt =       0x80020;
+const int kOsxRightAlt =      0x80040;
+const int kOsxLeftGui =      0x100008;
+const int kOsxRightGui =     0x100010;
 
 int* getInputStateVal(int flag) {
   if (flag == kOsxCapsLock)     return &inputState.caps_lock;
@@ -218,9 +218,13 @@ int* getInputStateVal(int flag) {
       if ((*val != 0) != ((flag[i] & flags) == flag[i])) {
         KeyEvent key_event;
         ClearEvent(&key_event);
+        key_event.index = glopKeyCode[i];
         if (*val == 0) {
-          key_event.index = glopKeyCode[i];
+          *val = 1;
+        } else {
+          *val = 0;
         }
+        AddEvent(&key_event);
       }
     }
   } else if ([event type] == NSMouseMoved) {
