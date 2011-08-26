@@ -6,6 +6,9 @@
 #define glopDeviceDerived  -2
 #define glopMinDevice  -2
 
+#define kAnyKey -1
+#define kNoKey -2
+
 #define kKeyBackspace  8
 #define kKeyTab  9
 #define kKeyEnter  13
@@ -107,6 +110,7 @@ void GetInputEvents(void**, int*);
 void Run();
 void SwapBuffers(void*);
 void Think();
+void Quit();
 
 void CurrentMousePos(void*,void*,void*);
 

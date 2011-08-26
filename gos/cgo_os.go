@@ -5,8 +5,6 @@ import "C"
 
 import (
   "unsafe"
-  "fmt"
-  "os"
 )
 
 type Window struct {
@@ -16,13 +14,15 @@ type Window struct {
 
 
 func init() {
-fmt.Fprintf(os.Stderr, "Glop init start\n")
   C.Init()
-fmt.Fprintf(os.Stderr, "Glop init end\n")
 }
 
 func Run() {
   C.Run()
+}
+
+func Quit() {
+  C.Quit()
 }
 
 func CreateWindow(x,y,width,height int) *Window {

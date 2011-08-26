@@ -3,6 +3,8 @@ package main
 import (
   "glop/gos"
   "runtime"
+  "time"
+  "fmt"
   "io/ioutil"
   "image"
   "image/draw"
@@ -11,7 +13,7 @@ import (
   "gl"
   "gl/glu"
   "os"
-  "time"
+  "path"
 )
 
 func loadFont(filename string) (*truetype.Font, os.Error) {
@@ -60,14 +62,105 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, textur
 func main() {
   runtime.LockOSThread()
   window := gos.CreateWindow(10, 10, 500, 500)
+  go func() {
+    for {
+      time.Sleep(1000*1000*10)
+      gos.SwapBuffers(window)
+      events := gos.GetInputEvents()
+      for _,event := range events {
+        if event.Index == 113 {
+          gos.Quit()
+          return
+        }
+      }
+    }
+  } ()
+  gos.Run()
+  return
   for {
-    time.Sleep(4*16666667)
+    time.Sleep(1000)
+    gos.SwapBuffers(window)
+    //v := gos.GetInputEvents()
+  }
+  texture := gl.GenTexture()
+  texture.Bind(gl.TEXTURE_2D)
+  fontpath := os.Args[0] + "/../../fonts/sketchvetica.ttf"
+  fontpath = path.Clean(fontpath)
+  font,err := loadFont(fontpath)
+  if err != nil {
+    fmt.Printf("Failed to load font: %s\n", err.String())
+    return
+  }
+  context,err := makeContext()
+  if err != nil {
+    fmt.Printf("Failed to make font context: %s\n", err.String())
+    return
+  }
+  rgba := image.NewRGBA(512, 512)
+  for i := 0; i < 00; i++ {
+    drawText(font, context, rgba, texture, []string{"Rawr!!!"})
+  }
+  //return
+  fmt.Printf("")
+  //texture_size := 512
+  //factor := 5.0
+  //gl.Flush()
+  //gl.Viewport(0, 0, 500, 500)
+
+  r := 0.0
+  err = drawText(font, context, rgba, texture, []string{"Rawr!!! :-D"})
+  if err != nil {
+    fmt.Printf("Couldn't render texture: %s\n", err.String())
+    return
+  }
+  text := []string{}
+  //ticker := time.Tick(4*16666667)
+  for {
+    time.Sleep(1)
     //<-ticker
+    err = drawText(font, context, rgba, texture, text)
+    if err != nil {
+      fmt.Printf("Couldn't draw text: %s\n", err.String())
+      return
+    }
+    gl.MatrixMode(gl.PROJECTION)
+    gl.LoadIdentity();
+    gl.Ortho(-1,1, -1,1, -1,1)
+    gl.MatrixMode(gl.MODELVIEW)
+//    gl.Translated(r/100,0,0)
+    //gl.Ortho(0, float64(texture_size)/factor, float64(texture_size)/factor, 0, 0, 1)
+    gl.ClearColor((gl.GLclampf)(r), 0.0, 1.0, 1.0)
+    gl.Clear(0x00004000)
+    gl.Color3d(0, 1, 0)
+    gl.Color4d(1.0, 1.0, 1.0, 0.7)
+    gl.Enable(gl.TEXTURE_2D)
+    gl.Enable(gl.BLEND)
+    texture.Bind(gl.TEXTURE_2D)
+    gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+    gl.Begin(gl.QUADS)
+      gl.TexCoord2d(0,1)
+      gl.Vertex2d(0,0)
+      gl.TexCoord2d(0,0)
+      gl.Vertex2d(0,1)
+      gl.TexCoord2d(1,0)
+      gl.Vertex2d(1,1)
+      gl.TexCoord2d(1,1)
+      gl.Vertex2d(1,0)
+    gl.End()
+    gl.Disable(gl.TEXTURE_2D)
 
 
 
     gos.SwapBuffers(window)
     gos.Think()
-    gos.GetInputEvents()
+    v := gos.GetInputEvents()
+    text = make([]string, len(v))
+    for i := range v {
+      text[i] = fmt.Sprintf("(%d %d)  d(%d %d)", v[i].Mouse.Dx, v[i].Mouse.Dy, v[i].Mouse.X, v[i].Mouse.Y)
+      if v[i].Index == 113 {
+        return
+      }
+    }
+    r += 0.0101
   }
 }
