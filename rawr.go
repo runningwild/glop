@@ -60,7 +60,6 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, textur
 }
 
 func gameLoop() {
-  runtime.LockOSThread()
   defer gos.Quit()
   window := gos.CreateWindow(10, 10, 700, 700)
   texture := gl.GenTexture()
@@ -120,6 +119,7 @@ func gameLoop() {
       gl.Vertex2d( 1,-1)
     gl.End()
     gl.Disable(gl.TEXTURE_2D)
+    gos.Think()
     events := gos.GetInputEvents()
     for _,event := range events {
       if event.Index == 113 {
@@ -136,6 +136,8 @@ func gameLoop() {
 func main() {
   runtime.LockOSThread()
   go gameLoop()
+ select {}
+  return
   gos.Run()
   return
 //return

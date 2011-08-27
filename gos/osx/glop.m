@@ -44,6 +44,7 @@ NSEvent* terminator;
 
 // These structures provide a way to allow threads to write events to a buffer
 // and then grab the events as a batch in a synchronously.
+// TODO: Would be nice to have an auto-expanding array here
 typedef struct {
   KeyEvent events[1000];
   int length;
@@ -284,8 +285,7 @@ void Quit() {
 
 void Think() {
   uint64_t uptime = mach_absolute_time();
-  NSEvent* event = [NSEvent otherEventWithType:NSApplicationDefined location:NSZeroPoint modifierFlags:0 timestamp:(NSTimeInterval)uptime windowNumber:0 context:0 subtype:0 data1:0 data2:0];
-  [glop_app postEvent:event atStart:FALSE];
+  [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
 }
 
