@@ -1,6 +1,6 @@
 package gos
 
-// #include <glop.h>
+// #include "include/glop.h"
 import "C"
 
 import (
