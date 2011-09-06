@@ -4,6 +4,7 @@ package gos
 import "C"
 
 import (
+  "glop/system"
   "unsafe"
 )
 
@@ -21,32 +22,32 @@ func init() {
   C.Init()
 }
 
-func GetSystemObject() System {
+func GetSystemObject() system.System {
   return &osx_system_object
 }
 
-func (system *osxSystemObject) Run() {
+func (osx *osxSystemObject) Run() {
   C.Run()
 }
 
-func (system *osxSystemObject) Quit() {
+func (osx *osxSystemObject) Quit() {
   C.Quit()
 }
 
-func (system *osxSystemObject) CreateWindow(x,y,width,height int) Window {
+func (osx *osxSystemObject) CreateWindow(x,y,width,height int) system.Window {
   var window osxWindow
   w := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
   c := (*unsafe.Pointer)(unsafe.Pointer(&window.context))
   C.CreateWindow(w, c, C.int(x), C.int(y), C.int(width), C.int(height))
-  return Window(unsafe.Pointer(&window))
+  return system.Window(unsafe.Pointer(&window))
 }
 
-func (system *osxSystemObject) SwapBuffers(window Window) {
+func (osx *osxSystemObject) SwapBuffers(window system.Window) {
   osx_window := (*osxWindow)(unsafe.Pointer(window))
   C.SwapBuffers(unsafe.Pointer(osx_window.context))
 }
 
-func (system *osxSystemObject) Think() {
+func (osx *osxSystemObject) Think() {
   C.Think()
 }
 
@@ -54,19 +55,19 @@ func (system *osxSystemObject) Think() {
 // TODO: Adjust timestamp on events so that the oldest timestamp is newer than the
 //       newest timestemp from the events from the previous call to GetInputEvents
 //       Actually that should be in system
-func (system *osxSystemObject) GetInputEvents() []KeyEvent {
+func (osx *osxSystemObject) GetInputEvents() []system.KeyEvent {
   var first_event *C.KeyEvent
   cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
   var length C.int
   C.GetInputEvents(cp, &length)
   c_events := (*[1000]C.KeyEvent)(unsafe.Pointer(first_event))[:length]
-  events := make([]KeyEvent, length)
+  events := make([]system.KeyEvent, length)
   for i := range c_events {
-    events[i] = KeyEvent{
+    events[i] = system.KeyEvent{
       Index     : int(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
       Timestamp : int64(c_events[i].timestamp),
-      Mouse : Mouse{
+      Mouse : system.Mouse{
         Dx : int(c_events[i].mouse_dx),
         Dy : int(c_events[i].mouse_dy),
         X : int(c_events[i].cursor_x),
@@ -77,7 +78,7 @@ func (system *osxSystemObject) GetInputEvents() []KeyEvent {
   return events
 }
 
-func (system *osxSystemObject) CursorPos(window Window) (int,int) {
+func (osx *osxSystemObject) CursorPos(window system.Window) (int,int) {
   osx_window := (*osxWindow)(unsafe.Pointer(window))
   var x,y int
   C.CurrentMousePos(unsafe.Pointer(osx_window.window), unsafe.Pointer(&x), unsafe.Pointer(&y));
@@ -85,7 +86,7 @@ func (system *osxSystemObject) CursorPos(window Window) (int,int) {
 }
 
 // TODO: Duh
-func (system *osxSystemObject) WindowPos(window Window) (int,int) {
+func (osx *osxSystemObject) WindowPos(window system.Window) (int,int) {
 //  osx_window := (*osxWindow)(unsafe.Pointer(window))
   return 0,0
 }

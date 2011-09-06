@@ -1,4 +1,4 @@
-package gos
+package system
 
 type Window uintptr
 

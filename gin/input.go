@@ -2,11 +2,11 @@ package gin
 
 import (
   "fmt"
-  "glop/gos"
+  "glop/system"
 )
 
 var (
-  system gos.System
+  sys system.System
   // Used for handling all os-level stuff, can be replaced with a mock System object for testing
 
   all_keys []Key
@@ -33,12 +33,10 @@ func init() {
   all_keys = make([]Key, 16)[0:0]
   key_map = make(map[KeyId]Key, 128)
   dep_map = make(map[KeyId][]Key, 16)
-
-  system = gos.GetSystemObject()
 }
 
-func TEST_SetSystemObject(test_system gos.System) {
-  system = test_system
+func SetSystemObject(new_sys system.System) {
+  sys = new_sys
 }
 
 func registerKey(key Key, id KeyId) {
@@ -74,7 +72,7 @@ func pressKey(k Key, amt float64, t int64, events []*Event) {
 }
 
 func Think(t int64, lost_focus bool) {
-  os_events := system.GetInputEvents()
+  os_events := sys.GetInputEvents()
   if len(os_events) == 0 {
     panic("Expected at least one event from a call to gos.GetInputEvents()")
   }
