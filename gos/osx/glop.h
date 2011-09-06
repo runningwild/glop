@@ -98,7 +98,7 @@ typedef struct {
   float press_amt;
   int mouse_dx;
   int mouse_dy;
-  int timestamp;
+  long long timestamp;
   int cursor_x;
   int cursor_y;
   int num_lock;

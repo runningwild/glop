@@ -27,8 +27,8 @@ struct inputState {
   int function;
 } inputState;
 
-void ClearEvent(KeyEvent* event) {
-  event->device = glopDeviceKeyboard;
+void ClearEvent(KeyEvent* event, NSEvent* ns_event) {
+  event->timestamp = (long long)((double)([ns_event timestamp]) / 1000.0 + 0.5);
   event->mouse_dx = 0;
   event->mouse_dy = 0;
   event->press_amt = 0;
@@ -218,7 +218,7 @@ int* getInputStateVal(int flag) {
       int* val = getInputStateVal(flag[i]);
       if ((*val != 0) != ((flag[i] & flags) == flag[i])) {
         KeyEvent key_event;
-        ClearEvent(&key_event);
+        ClearEvent(&key_event, event);
         key_event.index = glopKeyCode[i];
         if (*val == 0) {
           *val = 1;
@@ -236,7 +236,7 @@ int* getInputStateVal(int flag) {
       cursor = [window convertBaseToScreen:window_cursor];
     }
     KeyEvent key_event;
-    ClearEvent(&key_event);
+    ClearEvent(&key_event, event);
     key_event.index = kNoKey;
     key_event.mouse_dx = (int)(cursor.x - inputState.mouse_x);
     key_event.mouse_dy = (int)(cursor.y - inputState.mouse_y);
@@ -248,7 +248,7 @@ int* getInputStateVal(int flag) {
   } else if ([event type] == NSKeyDown ||
              [event type] == NSKeyUp) {
     KeyEvent key_event;
-    ClearEvent(&key_event);
+    ClearEvent(&key_event, event);
     key_event.index = key_map[[event keyCode]];
     key_event.press_amt = 0;
     if ([event type] == NSKeyDown) {
@@ -260,7 +260,7 @@ int* getInputStateVal(int flag) {
              [event type] == NSRightMouseDown ||
              [event type] == NSRightMouseUp) {
     KeyEvent key_event;
-    ClearEvent(&key_event);
+    ClearEvent(&key_event, event);
     key_event.index = -1;
     if ([event type] == NSLeftMouseDown || [event type] == NSLeftMouseUp) {
       key_event.index = kMouseLButton;

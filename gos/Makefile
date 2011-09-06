@@ -5,6 +5,7 @@ include $(GOROOT)/src/Make.inc
 
 TARG=glop/gos
 CGOFILES=cgo_os.go
+GOFILES=system.go
 CGO_LDFLAGS=-Llib -lglop -framework Cocoa -framework OpenGL -mmacosx-version-min=10.5
 
 # gb: this is the local install
