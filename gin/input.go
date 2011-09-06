@@ -6,6 +6,9 @@ import (
 )
 
 var (
+  system gos.System
+  // Used for handling all os-level stuff, can be replaced with a mock System object for testing
+
   all_keys []Key
   key_map map[KeyId]Key
 
@@ -30,6 +33,12 @@ func init() {
   all_keys = make([]Key, 16)[0:0]
   key_map = make(map[KeyId]Key, 128)
   dep_map = make(map[KeyId][]Key, 16)
+
+  system = gos.GetSystemObject()
+}
+
+func TEST_SetSystemObject(test_system gos.System) {
+  system = test_system
 }
 
 func registerKey(key Key, id KeyId) {
@@ -65,7 +74,7 @@ func pressKey(k Key, amt float64, t int64, events []*Event) {
 }
 
 func Think(t int64, lost_focus bool) {
-  os_events := gos.GetInputEvents()
+  os_events := system.GetInputEvents()
   if len(os_events) == 0 {
     panic("Expected at least one event from a call to gos.GetInputEvents()")
   }

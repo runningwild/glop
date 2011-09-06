@@ -13,19 +13,27 @@ type osxWindow struct {
 }
 
 
+type osxSystemObject struct {}
+var (
+  osx_system_object osxSystemObject
+)
 func init() {
   C.Init()
 }
 
-func Run() {
+func GetSystemObject() System {
+  return &osx_system_object
+}
+
+func (system *osxSystemObject) Run() {
   C.Run()
 }
 
-func Quit() {
+func (system *osxSystemObject) Quit() {
   C.Quit()
 }
 
-func CreateWindow(x,y,width,height int) Window {
+func (system *osxSystemObject) CreateWindow(x,y,width,height int) Window {
   var window osxWindow
   w := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
   c := (*unsafe.Pointer)(unsafe.Pointer(&window.context))
@@ -33,12 +41,12 @@ func CreateWindow(x,y,width,height int) Window {
   return Window(unsafe.Pointer(&window))
 }
 
-func SwapBuffers(window Window) {
+func (system *osxSystemObject) SwapBuffers(window Window) {
   osx_window := (*osxWindow)(unsafe.Pointer(window))
   C.SwapBuffers(unsafe.Pointer(osx_window.context))
 }
 
-func Think() {
+func (system *osxSystemObject) Think() {
   C.Think()
 }
 
@@ -46,7 +54,7 @@ func Think() {
 // TODO: Adjust timestamp on events so that the oldest timestamp is newer than the
 //       newest timestemp from the events from the previous call to GetInputEvents
 //       Actually that should be in system
-func GetInputEvents() []KeyEvent {
+func (system *osxSystemObject) GetInputEvents() []KeyEvent {
   var first_event *C.KeyEvent
   cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
   var length C.int
@@ -69,7 +77,7 @@ func GetInputEvents() []KeyEvent {
   return events
 }
 
-func CursorPos(window Window) (int,int) {
+func (system *osxSystemObject) CursorPos(window Window) (int,int) {
   osx_window := (*osxWindow)(unsafe.Pointer(window))
   var x,y int
   C.CurrentMousePos(unsafe.Pointer(osx_window.window), unsafe.Pointer(&x), unsafe.Pointer(&y));
@@ -77,7 +85,7 @@ func CursorPos(window Window) (int,int) {
 }
 
 // TODO: Duh
-func WindowPos(window Window) (int,int) {
+func (system *osxSystemObject) WindowPos(window Window) (int,int) {
 //  osx_window := (*osxWindow)(unsafe.Pointer(window))
   return 0,0
 }
