@@ -54,6 +54,9 @@ type KeyEvent struct {
   Caps_lock int
 }
 
+// TODO: Make sure that events are given in sorted order (by timestamp)
+// TODO: Adjust timestamp on events so that the oldest timestamp is newer than the
+//       newest timestemp from the events from the previous call to GetInputEvents
 func GetInputEvents() []KeyEvent {
   var first_event *C.KeyEvent
   cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
@@ -81,4 +84,9 @@ func CursorPos(window *Window) (int,int) {
   var x,y int
   C.CurrentMousePos(unsafe.Pointer(window.window), unsafe.Pointer(&x), unsafe.Pointer(&y));
   return x,y
+}
+
+// TODO: Duh
+func WindowPos(window *Window) (int,int) {
+  return 0,0
 }

@@ -135,8 +135,7 @@ func gameLoop() {
 
 func main() {
   runtime.LockOSThread()
-  go gameLoop()
- select {}
+  gameLoop()
   return
   gos.Run()
   return
