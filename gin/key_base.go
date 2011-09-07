@@ -97,7 +97,9 @@ func (ks *keyState) Think(t int64) {
   ks.this.press_avg += ks.this.press_amt * float64(t - ks.last_press)
   ks.this.press_avg /= float64(t - ks.last_think)
   ks.prev = ks.this
-  ks.this = keyStats{}
+  ks.this = keyStats{
+    press_amt : ks.prev.press_amt,
+  }
   ks.last_think = t
   ks.last_press = t
 }

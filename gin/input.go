@@ -33,6 +33,10 @@ func init() {
   all_keys = make([]Key, 16)[0:0]
   key_map = make(map[KeyId]Key, 128)
   dep_map = make(map[KeyId][]Key, 16)
+
+  for c := 'a'; c <= 'z'; c++ {
+    registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
+  }
 }
 
 func SetSystemObject(new_sys system.System) {
@@ -47,12 +51,17 @@ func registerKey(key Key, id KeyId) {
   all_keys = append(all_keys, key)
 }
 
-const (
-  // Key repeat-rate constants
-  repeatDelay = 500  // Ms between key down event #1 and #2 while a key is down
-  repeatRate  = 60   // Ms between later key down events while a key is down
-)
+func registerNaturalKey(id KeyId, name string) {
+  registerKey(&keyState{id : id, name : name}, id)
+}
 
+func GetKey(id KeyId) Key {
+  key,ok := key_map[id]
+  if !ok {
+    return nil
+  }
+  return key
+}
 
 func pressKey(k Key, amt float64, t int64, events []*Event) {
   event := k.SetPressAmt(amt, t)
