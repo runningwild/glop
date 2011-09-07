@@ -31,10 +31,10 @@ func (ms *mockSystem) WindowPos(window system.Window) (int,int) {
 
 func BasicInputSpec(c gospec.Context) {
   ms := &mockSystem{}
+  input := gin.MakeInput(ms)
   c.Specify("Single key press or release per frame sets basic keyState values properly.", func() {
-    gin.SetSystemObject(ms)
-    keya := gin.GetKey('a')
-    keyb := gin.GetKey('b')
+    keya := input.GetKey('a')
+    keyb := input.GetKey('b')
 
     ms.next_events = []system.KeyEvent{
       system.KeyEvent{
@@ -43,7 +43,7 @@ func BasicInputSpec(c gospec.Context) {
         Timestamp :  5,
       },
     }
-    gin.Think(10, false)
+    input.Think(10, false)
     c.Expect(keya.FramePressCount(),   Equals, 1)
     c.Expect(keya.FrameReleaseCount(), Equals, 0)
     c.Expect(keyb.FramePressCount(),   Equals, 0)
@@ -56,7 +56,7 @@ func BasicInputSpec(c gospec.Context) {
         Timestamp : 15,
       },
     }
-    gin.Think(20, false)
+    input.Think(20, false)
     c.Expect(keya.FramePressCount(),   Equals, 0)
     c.Expect(keya.FrameReleaseCount(), Equals, 0)
     c.Expect(keyb.FramePressCount(),   Equals, 1)
@@ -69,7 +69,7 @@ func BasicInputSpec(c gospec.Context) {
         Timestamp : 25,
       },
     }
-    gin.Think(30, false)
+    input.Think(30, false)
     c.Expect(keya.FramePressCount(),   Equals, 0)
     c.Expect(keya.FrameReleaseCount(), Equals, 1)
     c.Expect(keyb.FramePressCount(),   Equals, 0)

@@ -5,7 +5,9 @@ import (
   "glop/system"
 )
 
-var (
+// Everything 'global' is put inside a struct so that tests can be run without stepping
+// on each other
+type Input struct {
   sys system.System
   // Used for handling all os-level stuff, can be replaced with a mock System object for testing
 
@@ -14,7 +16,20 @@ var (
 
   dep_map map[KeyId][]Key
   // map from keyId to list of (derived) Keys that depend on it in some way
-)
+}
+
+func MakeInput(sys system.System) *Input {
+  input := new(Input)
+  input.sys = sys
+  input.all_keys = make([]Key, 16)[0:0]
+  input.key_map = make(map[KeyId]Key, 128)
+  input.dep_map = make(map[KeyId][]Key, 16)
+
+  for c := 'a'; c <= 'z'; c++ {
+    input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
+  }
+  return input
+}
 
 type EventType int
 const (
@@ -30,42 +45,31 @@ type Event struct {
 }
 
 func init() {
-  all_keys = make([]Key, 16)[0:0]
-  key_map = make(map[KeyId]Key, 128)
-  dep_map = make(map[KeyId][]Key, 16)
-
-  for c := 'a'; c <= 'z'; c++ {
-    registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
-  }
 }
 
-func SetSystemObject(new_sys system.System) {
-  sys = new_sys
-}
-
-func registerKey(key Key, id KeyId) {
-  if prev,ok := key_map[id]; ok {
+func (input *Input) registerKey(key Key, id KeyId) {
+  if prev,ok := input.key_map[id]; ok {
     panic(fmt.Sprintf("Cannot register key '%v' with id %d, '%v' is already registered with that id.", key, id, prev))
   }
-  key_map[id] = key
-  all_keys = append(all_keys, key)
+  input.key_map[id] = key
+  input.all_keys = append(input.all_keys, key)
 }
 
-func registerNaturalKey(id KeyId, name string) {
-  registerKey(&keyState{id : id, name : name}, id)
+func (input *Input) registerNaturalKey(id KeyId, name string) {
+  input.registerKey(&keyState{id : id, name : name}, id)
 }
 
-func GetKey(id KeyId) Key {
-  key,ok := key_map[id]
+func (input *Input) GetKey(id KeyId) Key {
+  key,ok := input.key_map[id]
   if !ok {
     return nil
   }
   return key
 }
 
-func pressKey(k Key, amt float64, t int64, events []*Event) {
+func (input *Input) pressKey(k Key, amt float64, t int64, events []*Event) {
   event := k.SetPressAmt(amt, t)
-  deps,ok := dep_map[k.Id()]
+  deps,ok := input.dep_map[k.Id()]
   if !ok {
     if event != nil {
       events = append(events, event)
@@ -73,15 +77,15 @@ func pressKey(k Key, amt float64, t int64, events []*Event) {
   }
   length := len(events)
   for _,dep := range deps {
-    pressKey(dep, dep.CurPressAmt(), t, events)
+    input.pressKey(dep, dep.CurPressAmt(), t, events)
   }
   if len(events) == length {
     events = append(events, event)
   }
 }
 
-func Think(t int64, lost_focus bool) {
-  os_events := sys.GetInputEvents()
+func (input *Input) Think(t int64, lost_focus bool) {
+  os_events := input.sys.GetInputEvents()
   if len(os_events) == 0 {
     panic("Expected at least one event from a call to gos.GetInputEvents()")
   }
@@ -97,10 +101,14 @@ func Think(t int64, lost_focus bool) {
   // sorted order.
   events := make([]*Event, 10)[0:0]
   for _,os_event := range os_events {
-    pressKey(key_map[KeyId(os_event.Index)], os_event.Press_amt, os_event.Timestamp, events)
+    input.pressKey(
+        input.key_map[KeyId(os_event.Index)],
+        os_event.Press_amt,
+        os_event.Timestamp,
+        events)
   }
 
-  for _,key := range all_keys {
+  for _,key := range input.all_keys {
     key.Think(t)
   }
 }

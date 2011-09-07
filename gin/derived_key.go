@@ -8,37 +8,37 @@ func init() {
   next_derived_key_id = KeyId(10000)
 }
 
-func getDerivedKeyId() (id KeyId) {
+func genDerivedKeyId() (id KeyId) {
   id = next_derived_key_id
   next_derived_key_id++
   return
 }
 
 // TODO: Handle removal of dependencies
-func registerDependence(derived Key, dep KeyId) {
-  list,ok := dep_map[dep]
+func (input *Input) registerDependence(derived Key, dep KeyId) {
+  list,ok := input.dep_map[dep]
   if !ok {
     list = make([]Key, 0)
   }
   list = append(list, derived)
-  dep_map[dep] = list
+  input.dep_map[dep] = list
 }
 
 
-func BindDerivedKey(name string, bindings []binding) KeyId {
+func (input *Input) BindDerivedKey(name string, bindings []binding) KeyId {
   dk := &derivedKey {
     keyState : keyState {
-      id : getDerivedKeyId(),
+      id : genDerivedKeyId(),
       name : name,
     },
     Bindings : bindings,
   }
-  registerKey(dk, dk.id)
+  input.registerKey(dk, dk.id)
 
   for _,binding := range bindings {
-    registerDependence(dk, binding.PrimaryKey)
+    input.registerDependence(dk, binding.PrimaryKey)
     for _,modifier := range binding.Modifiers {
-      registerDependence(dk, modifier)
+      input.registerDependence(dk, modifier)
     }
   }
   return dk.id
@@ -64,14 +64,15 @@ type binding struct {
   PrimaryKey KeyId
   Modifiers  []KeyId
   Down       []bool
+  input      *Input
 }
 
 func (b *binding) CurPressAmt() float64 {
   for i := range b.Modifiers {
-    if (key_map[b.Modifiers[i]].CurPressAmt() != 0) != b.Down[i] {
+    if (b.input.key_map[b.Modifiers[i]].CurPressAmt() != 0) != b.Down[i] {
       return 0
     }
   }
-  return key_map[b.PrimaryKey].CurPressAmt()
+  return b.input.key_map[b.PrimaryKey].CurPressAmt()
 }
 
