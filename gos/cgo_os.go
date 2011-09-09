@@ -18,11 +18,13 @@ type osxSystemObject struct {}
 var (
   osx_system_object osxSystemObject
 )
-func init() {
+
+// Call after runtime.LockOSThread(), *NOT* in an init function
+func (osx *osxSystemObject) Startup() {
   C.Init()
 }
 
-func GetSystemObject() system.System {
+func GetSystemInterface() system.Os {
   return &osx_system_object
 }
 
@@ -78,15 +80,14 @@ func (osx *osxSystemObject) GetInputEvents() []system.KeyEvent {
   return events
 }
 
-func (osx *osxSystemObject) CursorPos(window system.Window) (int,int) {
-  osx_window := (*osxWindow)(unsafe.Pointer(window))
-  var x,y int
-  C.CurrentMousePos(unsafe.Pointer(osx_window.window), unsafe.Pointer(&x), unsafe.Pointer(&y));
-  return x,y
+// TODO: Duh
+func (osx *osxSystemObject) GetWindowPosition(window system.Window) (int,int) {
+//  osx_window := (*osxWindow)(unsafe.Pointer(window))
+  return 0,0
 }
 
 // TODO: Duh
-func (osx *osxSystemObject) WindowPos(window system.Window) (int,int) {
+func (osx *osxSystemObject) GetWindowSize(window system.Window) (int,int) {
 //  osx_window := (*osxWindow)(unsafe.Pointer(window))
   return 0,0
 }

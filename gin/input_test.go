@@ -13,6 +13,8 @@ type mockSystem struct {
 }
 func (ms *mockSystem) Think() {
 }
+func (ms *mockSystem) Startup() {
+}
 func (ms *mockSystem) CreateWindow(x,y,width,height int) system.Window {
   return 0
 }
@@ -26,7 +28,10 @@ func (ms *mockSystem) GetInputEvents() []system.KeyEvent {
 func (ms *mockSystem) CursorPos(window system.Window) (int,int) {
   return 0,0
 }
-func (ms *mockSystem) WindowPos(window system.Window) (int,int) {
+func (ms *mockSystem) GetWindowPosition(window system.Window) (int,int) {
+  return 0,0
+}
+func (ms *mockSystem) GetWindowSize(window system.Window) (int,int) {
   return 0,0
 }
 func (ms *mockSystem) injectEvent(index gin.KeyId, amt float64, timestamp int64) {
@@ -190,7 +195,6 @@ func DerivedKeySpec(c gospec.Context) {
     ms.injectEvent('a', 1, 51)
     ms.injectEvent('b', 1, 51)
     input.Think(60, false)
-    c.Expect(ABc_Ef.FramePressAmt(), Equals, 1.0)
     c.Expect(ABc_Ef.IsDown(), Equals, false)
     c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
   })
@@ -204,45 +208,7 @@ func NestedDerivedKeySpec(c gospec.Context) {
   AB_C_binding := input.MakeBinding('c', []gin.KeyId{AB.Id()}, []bool{true})
   AB_C := input.BindDerivedKey("AB_C", AB_C_binding)
 
-  c.Specify("Nested derived keys work like normal derived keys.", func() {
-    order := ""
-    c.Specify("Testing order bac.", func() {
-      ms.injectEvent('b', 1, 1)
-      ms.injectEvent('a', 1, 1)
-      ms.injectEvent('c', 1, 1)
-      order = "bac"
-    })
-    c.Specify("Testing order abc.", func() {
-      ms.injectEvent('a', 1, 1)
-      ms.injectEvent('b', 1, 1)
-      ms.injectEvent('c', 1, 1)
-      order = "abc"
-    })
-    c.Specify("Testing order acb.", func() {
-      ms.injectEvent('a', 1, 1)
-      ms.injectEvent('c', 1, 1)
-      ms.injectEvent('b', 1, 1)
-      order = "acb"
-    })
-    c.Specify("Testing order bca.", func() {
-      ms.injectEvent('b', 1, 1)
-      ms.injectEvent('c', 1, 1)
-      ms.injectEvent('a', 1, 1)
-      order = "bca"
-    })
-    c.Specify("Testing order cab.", func() {
-      ms.injectEvent('c', 1, 1)
-      ms.injectEvent('a', 1, 1)
-      ms.injectEvent('b', 1, 1)
-      order = "cab"
-    })
-    c.Specify("Testing order cba.", func() {
-      ms.injectEvent('c', 1, 1)
-      ms.injectEvent('b', 1, 1)
-      ms.injectEvent('a', 1, 1)
-      order = "cba"
-    })
-
+  check := func(order string) {
     input.Think(10, false)
     if strings.Index(order, "b") < strings.Index(order, "a") {
       c.Expect(AB.IsDown(), Equals, true)
@@ -258,6 +224,45 @@ func NestedDerivedKeySpec(c gospec.Context) {
       c.Expect(AB_C.IsDown(), Equals, false)
       c.Expect(AB_C.FramePressCount(), Equals, 0)
     }
+  }
+
+  c.Specify("Nested derived keys work like normal derived keys.", func() {
+    c.Specify("Testing order 'bac'.", func() {
+      ms.injectEvent('b', 1, 1)
+      ms.injectEvent('a', 1, 1)
+      ms.injectEvent('c', 1, 1)
+      check("bac")
+    })
+    c.Specify("Testing order 'abc'.", func() {
+      ms.injectEvent('a', 1, 1)
+      ms.injectEvent('b', 1, 1)
+      ms.injectEvent('c', 1, 1)
+      check("abc")
+    })
+    c.Specify("Testing order 'acb'.", func() {
+      ms.injectEvent('a', 1, 1)
+      ms.injectEvent('c', 1, 1)
+      ms.injectEvent('b', 1, 1)
+      check("acb")
+    })
+    c.Specify("Testing order 'bca'.", func() {
+      ms.injectEvent('b', 1, 1)
+      ms.injectEvent('c', 1, 1)
+      ms.injectEvent('a', 1, 1)
+      check("bca")
+    })
+    c.Specify("Testing order 'cab'.", func() {
+      ms.injectEvent('c', 1, 1)
+      ms.injectEvent('a', 1, 1)
+      ms.injectEvent('b', 1, 1)
+      check("cab")
+    })
+    c.Specify("Testing order 'cba'.", func() {
+      ms.injectEvent('c', 1, 1)
+      ms.injectEvent('b', 1, 1)
+      ms.injectEvent('a', 1, 1)
+      check("cba")
+    })
   })
 }
 

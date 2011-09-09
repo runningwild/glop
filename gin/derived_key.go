@@ -36,9 +36,9 @@ func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
 
   for _,binding := range bindings {
     input.registerDependence(dk, binding.PrimaryKey)
-//    for _,modifier := range binding.Modifiers {
-//      input.registerDependence(dk, modifier)
-//    }
+    for _,modifier := range binding.Modifiers {
+      input.registerDependence(dk, modifier)
+    }
   }
   return dk
 }
