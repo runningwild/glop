@@ -36,7 +36,16 @@ const (
   Press   EventType = iota
   Release
 )
-
+func (event EventType) String() string {
+  switch event {
+    case Press:
+      return "press"
+    case Release:
+      return "release"
+  }
+  panic(fmt.Sprintf("%d is not a valid EventType", event))
+  return ""
+}
 // TODO: Consider making a Timestamp type (int64)
 type Event struct {
   Key       Key
@@ -67,17 +76,18 @@ func (input *Input) GetKey(id KeyId) Key {
   return key
 }
 
-func (input *Input) pressKey(k Key, amt float64, t int64, events []*Event) {
-  event := k.SetPressAmt(amt, t)
+func (input *Input) pressKey(k Key, amt float64, t int64, events []*Event, cause *Event) {
+  event := k.SetPressAmt(amt, t, cause)
   deps,ok := input.dep_map[k.Id()]
   if !ok {
     if event != nil {
       events = append(events, event)
     }
   }
+
   length := len(events)
   for _,dep := range deps {
-    input.pressKey(dep, dep.CurPressAmt(), t, events)
+    input.pressKey(dep, dep.CurPressAmt(), t, events, event)
   }
   if len(events) == length {
     events = append(events, event)
@@ -105,7 +115,8 @@ func (input *Input) Think(t int64, lost_focus bool) {
         input.key_map[KeyId(os_event.Index)],
         os_event.Press_amt,
         os_event.Timestamp,
-        events)
+        events,
+        nil)
   }
 
   for _,key := range input.all_keys {
