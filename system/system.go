@@ -24,6 +24,8 @@ type System interface {
   SwapBuffers(window Window)
   GetInputEvents() []gin.EventGroup
 
+  Input() *gin.Input
+
   // These probably shouldn't be here, probably always want to do the Think() approach
 //  Run()
 //  Quit()
@@ -85,6 +87,9 @@ func (sys *sysObj) Think() {
   sys.os.Think()
   events,_ := sys.os.GetInputEvents()
   sys.events = sys.input.Think(-1, false, events)
+}
+func (sys *sysObj) Input() *gin.Input {
+  return sys.input
 }
 func (sys *sysObj) CreateWindow(x,y,width,height int) Window {
   return sys.os.CreateWindow(x, y, width, height)

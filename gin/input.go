@@ -5,7 +5,7 @@ import (
 )
 
 type Mouse struct {
-  X,Y int
+  X,Y float64
 }
 
 type OsEvent struct {
@@ -166,7 +166,7 @@ func (input *Input) registerKey(key Key, id KeyId) {
 }
 
 func (input *Input) registerNaturalKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name}, id)
+  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id)
 }
 
 func (input *Input) GetKey(id KeyId) Key {

@@ -75,8 +75,8 @@ func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
       Press_amt : float64(c_events[i].press_amt),
       Timestamp : int64(c_events[i].timestamp),
       Mouse : gin.Mouse{
-        X : int(c_events[i].cursor_x),
-        Y : int(c_events[i].cursor_y),
+        X : float64(c_events[i].cursor_x),
+        Y : float64(c_events[i].cursor_y),
       },
     }
   }

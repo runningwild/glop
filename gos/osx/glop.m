@@ -10,8 +10,8 @@
 @end
 
 struct inputState {
-  int mouse_x;
-  int mouse_y;
+  float mouse_x;
+  float mouse_y;
 
 // modifiers
   int num_lock;
@@ -232,28 +232,23 @@ int* getInputStateVal(int flag) {
       }
     }
   } else if ([event type] == NSMouseMoved) {
-    NSPoint window_cursor = [event locationInWindow];
-    NSWindow* window = [event window];
-    NSPoint cursor = window_cursor;
-    if (window != nil) {
-      cursor = [window convertBaseToScreen:window_cursor];
-    }
-
     KeyEvent key_x_event;
     ClearEvent(&key_x_event, event);
     key_x_event.index = kMouseXAxis;
-    key_x_event.press_amt = ((int)cursor.x - inputState.mouse_x);
-    inputState.mouse_x = (int)(cursor.x);
+    key_x_event.press_amt = [event deltaX];
     key_x_event.cursor_x = inputState.mouse_x;
-    AddEvent(&key_x_event);
+    if (key_x_event.press_amt != 0) {
+      AddEvent(&key_x_event);
+    }
 
     KeyEvent key_y_event;
     ClearEvent(&key_y_event, event);
     key_y_event.index = kMouseYAxis;
-    key_y_event.press_amt = ((int)cursor.y - inputState.mouse_y);
-    inputState.mouse_y = (int)(cursor.y);
+    key_x_event.press_amt = [event deltaY];
     key_y_event.cursor_y = inputState.mouse_y;
-    AddEvent(&key_y_event);
+    if (key_y_event.press_amt != 0) {
+      AddEvent(&key_y_event);
+    }
   } else if ([event type] == NSKeyDown ||
              [event type] == NSKeyUp) {
     KeyEvent key_event;

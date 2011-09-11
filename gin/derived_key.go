@@ -29,6 +29,7 @@ func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
     keyState : keyState {
       id : genDerivedKeyId(),
       name : name,
+      aggregator : &standardAggregator{},
     },
     Bindings : bindings,
   }
@@ -84,23 +85,19 @@ func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Eve
   can_release := is_primary && dk.is_down
 
   event.Type = NoEvent
-  if (dk.keyState.this.press_amt == 0) != (amt == 0) {
+  if (dk.keyState.CurPressAmt() == 0) != (amt == 0) {
     event.Key = &dk.keyState
     if amt == 0 && can_release {
       event.Type = Release
-      dk.keyState.this.release_count++
       dk.is_down = false
     } else if amt != 0 && can_press {
       event.Type = Press
-      dk.keyState.this.press_count++
       dk.is_down = true
     } else {
       event.Type = NoEvent
     }
   }
-  dk.keyState.this.press_sum += dk.keyState.this.press_amt * float64(ms - dk.keyState.last_press)
-  dk.keyState.this.press_amt = amt
-  dk.keyState.last_press = ms
+  dk.keyState.aggregator.SetPressAmt(amt, ms, event.Type)
   return
 }
 
