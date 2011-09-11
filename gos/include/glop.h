@@ -104,8 +104,8 @@ typedef struct {
   int num_lock;
   int caps_lock;
 } KeyEvent;
-void GetInputEvents(void**, int*);
-// GetInputEvents(KeyEvent**, length*);
+void GetInputEvents(void**, int*, long long*);
+// GetInputEvents(KeyEvent**, length*, horizon*);
 
 void Run();
 void SwapBuffers(void*);

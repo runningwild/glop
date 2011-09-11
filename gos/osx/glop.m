@@ -68,7 +68,7 @@ void AddEvent(KeyEvent* event) {
 // Returns a pointer to all of the current events as well as the number of events in the buffer
 // Swaps the current buffer so that new events go into the other buffer, the events returned
 // by this function should be used before the next time this function is called.
-void GetEvents(KeyEvent** events, int* length) {
+void GetEvents(KeyEvent** events, int* length, long long* horizon) {
   pthread_mutex_lock(&event_group_mutex);
 
   *events = current_event_buffer->events;
@@ -80,6 +80,10 @@ void GetEvents(KeyEvent** events, int* length) {
     current_event_buffer = &event_buffer_1;
   }
   current_event_buffer->length = 0;
+
+  *horizon = (long long)mach_absolute_time();
+
+  uint64_t uptime = mach_absolute_time();
 
   pthread_mutex_unlock(&event_group_mutex);
 }
@@ -284,13 +288,12 @@ void Quit() {
 }
 
 void Think() {
-  uint64_t uptime = mach_absolute_time();
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
 }
 
-void GetInputEvents(void** _key_events, int* length) {
-  GetEvents((KeyEvent**)_key_events, length);
+void GetInputEvents(void** _key_events, int* length, long long* horizon) {
+  GetEvents((KeyEvent**)_key_events, length, horizon);
 }
 
 void CreateWindow(void** _window, void** _context, int x, int y, int width, int height) {

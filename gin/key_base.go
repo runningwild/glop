@@ -12,7 +12,7 @@ type Key interface {
   Id() KeyId
   // Unique Id
 
-  SetPressAmt(amt float64, ms int64, cause *Event) *Event
+  SetPressAmt(amt float64, ms int64, cause Event) Event
   // Sets the instantaneous press amount for this key at a specific time and returns the
   // event generated, if any
 
@@ -65,14 +65,10 @@ func (ks *keyState) Id() KeyId {
 // monotonically increasing.
 // If this press was caused by another event (as is the case with derived keys), then
 // cause is the event that made this happen.
-func (ks *keyState) SetPressAmt(amt float64, ms int64, cause *Event) (event *Event) {
-  if (ks.this.press_amt == 0) == (amt == 0) {
-    event = nil
-  } else {
-    event = &Event {
-      Key : ks,
-      Timestamp : ms,
-    }
+func (ks *keyState) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
+  event.Type = NoEvent
+  if (ks.this.press_amt == 0) != (amt == 0) {
+    event.Key = ks
     if amt == 0 {
       event.Type = Release
       ks.this.release_count++

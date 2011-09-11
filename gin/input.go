@@ -2,15 +2,25 @@ package gin
 
 import (
   "fmt"
-  "glop/system"
 )
+
+type Mouse struct {
+  X,Y,Dx,Dy int
+}
+
+type OsEvent struct {
+  // TODO: rename index to KeyId or something more appropriate
+  KeyId     KeyId
+  Press_amt float64
+  Mouse     Mouse
+  Timestamp int64
+  Num_lock  int
+  Caps_lock int
+}
 
 // Everything 'global' is put inside a struct so that tests can be run without stepping
 // on each other
 type Input struct {
-  sys system.System
-  // Used for handling all os-level stuff, can be replaced with a mock System object for testing
-
   all_keys []Key
   key_map map[KeyId]Key
 
@@ -18,13 +28,11 @@ type Input struct {
   // map from keyId to list of (derived) Keys that depend on it in some way
 }
 
-func MakeInput(sys system.System) *Input {
+func Make() *Input {
   input := new(Input)
-  input.sys = sys
   input.all_keys = make([]Key, 16)[0:0]
   input.key_map = make(map[KeyId]Key, 128)
   input.dep_map = make(map[KeyId][]Key, 16)
-
   for c := 'a'; c <= 'z'; c++ {
     input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
   }
@@ -35,6 +43,7 @@ type EventType int
 const (
   Press   EventType = iota
   Release
+  NoEvent
 )
 func (event EventType) String() string {
   switch event {
@@ -50,6 +59,17 @@ func (event EventType) String() string {
 type Event struct {
   Key       Key
   Type      EventType
+}
+func (e Event) String() string {
+  if e.Key == nil || e.Type == NoEvent {
+    return fmt.Sprintf("NoEvent")
+  }
+  return fmt.Sprintf("'%v %v'", e.Type, e.Key)
+}
+
+// An EventGroup is a series of events that were all created by a single OsEvent.
+type EventGroup struct {
+  Events    []Event
   Timestamp int64
 }
 
@@ -76,30 +96,19 @@ func (input *Input) GetKey(id KeyId) Key {
   return key
 }
 
-func (input *Input) pressKey(k Key, amt float64, t int64, events []*Event, cause *Event) {
+func (input *Input) pressKey(k Key, amt float64, t int64, cause Event, group *EventGroup) {
   event := k.SetPressAmt(amt, t, cause)
-  deps,ok := input.dep_map[k.Id()]
-  if !ok {
-    if event != nil {
-      events = append(events, event)
-    }
-  }
+  deps := input.dep_map[k.Id()]
 
-  length := len(events)
   for _,dep := range deps {
-    input.pressKey(dep, dep.CurPressAmt(), t, events, event)
+    input.pressKey(dep, dep.CurPressAmt(), t, event, group)
   }
-  if len(events) == length {
-    events = append(events, event)
+  if event.Type != NoEvent {
+    group.Events = append(group.Events, event)
   }
 }
 
-func (input *Input) Think(t int64, lost_focus bool) {
-  os_events := input.sys.GetInputEvents()
-  if len(os_events) == 0 {
-    panic("Expected at least one event from a call to gos.GetInputEvents()")
-  }
-
+func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]EventGroup) {
   // If we have lost focus, clear all key state. Note that down_keys_frame_ is rebuilt every frame
   // regardless, so we do not need to worry about it here.
   if lost_focus {
@@ -109,17 +118,24 @@ func (input *Input) Think(t int64, lost_focus bool) {
   // Generate all key events here.  Derived keys are handled through pressKey and all
   // events are aggregated into one array.  Events in this array will necessarily be in
   // sorted order.
-  events := make([]*Event, 10)[0:0]
+  groups := make([]EventGroup, 10)[0:0]
   for _,os_event := range os_events {
+    group := EventGroup{
+      Events : make([]Event, 1)[0:0],
+      Timestamp : os_event.Timestamp,
+    }
     input.pressKey(
-        input.key_map[KeyId(os_event.Index)],
+        input.key_map[os_event.KeyId],
         os_event.Press_amt,
         os_event.Timestamp,
-        events,
-        nil)
+        Event{},
+        &group)
+    groups = append(groups, group)
   }
 
   for _,key := range input.all_keys {
     key.Think(t)
   }
+
+  return groups
 }

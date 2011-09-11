@@ -5,6 +5,7 @@ import "C"
 
 import (
   "glop/system"
+  "glop/gin"
   "unsafe"
 )
 
@@ -14,7 +15,9 @@ type osxWindow struct {
 }
 
 
-type osxSystemObject struct {}
+type osxSystemObject struct {
+  horizon int64
+}
 var (
   osx_system_object osxSystemObject
 )
@@ -57,19 +60,21 @@ func (osx *osxSystemObject) Think() {
 // TODO: Adjust timestamp on events so that the oldest timestamp is newer than the
 //       newest timestemp from the events from the previous call to GetInputEvents
 //       Actually that should be in system
-func (osx *osxSystemObject) GetInputEvents() []system.KeyEvent {
+func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   var first_event *C.KeyEvent
   cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
   var length C.int
-  C.GetInputEvents(cp, &length)
+  var horizon C.longlong
+  C.GetInputEvents(cp, &length, &horizon)
+  osx.horizon = int64(horizon)
   c_events := (*[1000]C.KeyEvent)(unsafe.Pointer(first_event))[:length]
-  events := make([]system.KeyEvent, length)
+  events := make([]gin.OsEvent, length)
   for i := range c_events {
-    events[i] = system.KeyEvent{
-      Index     : int(c_events[i].index),
+    events[i] = gin.OsEvent{
+      KeyId     : gin.KeyId(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
       Timestamp : int64(c_events[i].timestamp),
-      Mouse : system.Mouse{
+      Mouse : gin.Mouse{
         Dx : int(c_events[i].mouse_dx),
         Dy : int(c_events[i].mouse_dy),
         X : int(c_events[i].cursor_x),
@@ -77,7 +82,7 @@ func (osx *osxSystemObject) GetInputEvents() []system.KeyEvent {
       },
     }
   }
-  return events
+  return events, osx.horizon
 }
 
 // TODO: Duh

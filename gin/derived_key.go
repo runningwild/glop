@@ -71,23 +71,21 @@ func (dk *derivedKey) IsDown() bool {
   return dk.is_down
 }
 
-func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause *Event) (event *Event) {
-  can_press := false
-  if cause != nil && cause.Type == Press {
+func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
+  is_primary := false
+  if cause.Type != NoEvent {
     for _,binding := range dk.Bindings {
       if cause.Key.Id() == binding.PrimaryKey {
-        can_press = true
+        is_primary = true
       }
     }
   }
-  can_release := dk.is_down
-  if (dk.keyState.this.press_amt == 0) == (amt == 0) {
-    event = nil
-  } else {
-    event = &Event {
-      Key : &dk.keyState,
-      Timestamp : ms,
-    }
+  can_press := is_primary && cause.Type == Press
+  can_release := is_primary && dk.is_down
+
+  event.Type = NoEvent
+  if (dk.keyState.this.press_amt == 0) != (amt == 0) {
+    event.Key = &dk.keyState
     if amt == 0 && can_release {
       event.Type = Release
       dk.keyState.this.release_count++
@@ -97,7 +95,7 @@ func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause *Event) (event *E
       dk.keyState.this.press_count++
       dk.is_down = true
     } else {
-      event = nil
+      event.Type = NoEvent
     }
   }
   dk.keyState.this.press_sum += dk.keyState.this.press_amt * float64(ms - dk.keyState.last_press)
@@ -116,15 +114,6 @@ type Binding struct {
 }
 
 func (b *Binding) CurPressAmt() float64 {
-/*
-  fmt.Printf("Binding Primary: %v\n", b.PrimaryKey)
-  pk := b.Input.GetKey(b.PrimaryKey)
-  fmt.Printf("%v: %f\n", pk, pk.CurPressAmt())
-  for i := range b.Modifiers {
-    k := b.Input.GetKey(b.Modifiers[i])
-    fmt.Printf("Modifier: %v, %f %t\n", k, k.CurPressAmt(), b.Down[i])
-  }
-*/
   for i := range b.Modifiers {
     if b.Input.key_map[b.Modifiers[i]].IsDown() != b.Down[i] {
       return 0

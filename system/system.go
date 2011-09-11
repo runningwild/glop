@@ -1,5 +1,9 @@
 package system
 
+import (
+  "glop/gin"
+)
+
 type Window uintptr
 
 type System interface {
@@ -18,7 +22,7 @@ type System interface {
   GetWindowSize(window Window) (int,int)
 
   SwapBuffers(window Window)
-  GetInputEvents() []KeyEvent
+  GetInputEvents() []gin.EventGroup
 
   // These probably shouldn't be here, probably always want to do the Think() approach
 //  Run()
@@ -54,27 +58,46 @@ type Os interface {
 
   // Returns all of the events in the order that they happened since the last call to
   // this function.  The events do not have to be in order according to KeyEvent.Timestamp,
-  // but they will be sorted according to this value.  There must always be a terminal
-  // event that has a Timestamp equal to the largest value such that no future calls
-  // to this function will yield an event with a Timestamp less than or equal to it.
-  // TODO: Mention that KeyEvent.Index on the terminal event should probably be Dummy or something
-  GetInputEvents() []KeyEvent
+  // but they will be sorted according to this value.  The timestamp returned is the event
+  // horizon, no future events will have a timestamp less than or equal to it.
+  GetInputEvents() ([]gin.OsEvent, int64)
 
   // These probably shouldn't be here, probably always want to do the Think() approach
 //  Run()
 //  Quit()
 }
 
-type Mouse struct {
-  X,Y,Dx,Dy int
+type sysObj struct {
+  os     Os
+  input  *gin.Input
+  events []gin.EventGroup
 }
-type KeyEvent struct {
-  // TODO: rename index to KeyId or something more appropriate
-  Index     int
-  Press_amt float64
-  Mouse     Mouse
-  Timestamp int64
-  Num_lock  int
-  Caps_lock int
+func Make(os Os) System {
+  return &sysObj{
+    os : os,
+    input : gin.Make(),
+  }
 }
-
+func (sys *sysObj) Startup() {
+  sys.os.Startup()
+}
+func (sys *sysObj) Think() {
+  sys.os.Think()
+  events,_ := sys.os.GetInputEvents()
+  sys.events = sys.input.Think(-1, false, events)
+}
+func (sys *sysObj) CreateWindow(x,y,width,height int) Window {
+  return sys.os.CreateWindow(x, y, width, height)
+}
+func (sys *sysObj) GetWindowPosition(window Window) (int,int) {
+  return sys.os.GetWindowPosition(window)
+}
+func (sys *sysObj) GetWindowSize(window Window) (int,int) {
+  return sys.os.GetWindowSize(window)
+}
+func (sys *sysObj) SwapBuffers(window Window) {
+  sys.os.SwapBuffers(window)
+}
+func (sys *sysObj) GetInputEvents() []gin.EventGroup {
+  return sys.events
+}
