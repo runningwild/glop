@@ -47,7 +47,6 @@ type keyStats struct {
 
 type baseAggregator struct {
   this,prev  keyStats
-  last_press int64
 }
 func (a *baseAggregator) FramePressCount() int {
   return a.prev.press_count
@@ -85,6 +84,7 @@ func (a *baseAggregator) handleEventType(event_type EventType) {
 // the standardAggregator's sum is an integral of the press_amt over time
 type standardAggregator struct {
   baseAggregator
+  last_press int64
 }
 func (sa *standardAggregator) IsDown() bool {
   return sa.this.press_amt != 0
@@ -115,17 +115,14 @@ func (aa *axisAggregator) IsDown() bool {
 func (aa *axisAggregator) SetPressAmt(amt float64, ms int64, event_type EventType) {
   aa.this.press_sum += amt
   aa.this.press_amt = amt
-  aa.last_press = ms
   if amt != 0 {
     aa.is_down = true
   }
   aa.handleEventType(event_type)
 }
 func (aa *axisAggregator) Think(ms int64) {
-  aa.this.press_sum += aa.this.press_amt * float64(ms - aa.last_press)
   aa.prev = aa.this
   aa.this = keyStats{}
-  aa.last_press = ms
   if aa.prev.press_amt == 0 {
     aa.is_down = false
   }

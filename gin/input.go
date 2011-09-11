@@ -101,8 +101,8 @@ func Make() *Input {
   input.registerNaturalKey(193, "KeyEnd")
   input.registerNaturalKey(194, "KeyPageUp")
   input.registerNaturalKey(195, "KeyPageDown")
-  input.registerNaturalKey(300, "MouseXAxis")
-  input.registerNaturalKey(301, "MouseYAxis")
+  input.registerAxisKey(300, "MouseXAxis")
+  input.registerAxisKey(301, "MouseYAxis")
   input.registerNaturalKey(302, "MouseWheelUp")
   input.registerNaturalKey(303, "MouseWheelDown")
   input.registerNaturalKey(304, "MouseLButton")
@@ -169,6 +169,10 @@ func (input *Input) registerNaturalKey(id KeyId, name string) {
   input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id)
 }
 
+func (input *Input) registerAxisKey(id KeyId, name string) {
+  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id)
+}
+
 func (input *Input) GetKey(id KeyId) Key {
   key,ok := input.key_map[id]
   if !ok {
@@ -196,7 +200,6 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
   if lost_focus {
 //    clearAllKeyState()
   }
-
   // Generate all key events here.  Derived keys are handled through pressKey and all
   // events are aggregated into one array.  Events in this array will necessarily be in
   // sorted order.

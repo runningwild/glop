@@ -328,3 +328,37 @@ func EventSpec(c gospec.Context) {
   })
 }
 
+func AxisSpec(c gospec.Context) {
+  input := gin.Make()
+
+  // TODO: This is the mouse x axis key, we need a constant for this or something
+  x := input.GetKey(300)
+  events := make([]gin.OsEvent, 0)
+
+  c.Specify("Axes aggregate press amts and report IsDown() properly.", func() {
+    injectEvent(&events, x.Id(), 1, 5)
+    injectEvent(&events, x.Id(), 10, 6)
+    injectEvent(&events, x.Id(), -3, 7)
+    input.Think(10, false, events)
+    c.Expect(x.FramePressAmt(), Equals, -3.0)
+    c.Expect(x.FramePressSum(), Equals, 8.0)
+  })
+
+  c.Specify("Axes can sum to zero and still be down.", func() {
+    input.Think(0, false, events)
+    events = events[0:0]
+    c.Expect(x.FramePressSum(), Equals, 0.0)
+    c.Expect(x.IsDown(), Equals, false)
+
+    injectEvent(&events, x.Id(), 5, 5)
+    injectEvent(&events, x.Id(), -5, 6)
+    input.Think(10, false, events)
+    events = events[0:0]
+    c.Expect(x.FramePressSum(), Equals, 0.0)
+    c.Expect(x.IsDown(), Equals, true)
+
+    input.Think(20, false, events)
+    c.Expect(x.FramePressSum(), Equals, 0.0)
+    c.Expect(x.IsDown(), Equals, false)
+ })
+}

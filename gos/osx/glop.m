@@ -232,6 +232,10 @@ int* getInputStateVal(int flag) {
       }
     }
   } else if ([event type] == NSMouseMoved) {
+    // TODO: It looks like OSX will only give us one MouseMoved event per Think, it
+    // must be modifyin whatever MouseMoved event is in the queue as new MouseMoved
+    // events come in.  To get better resolution we need to find the cursor position
+    // when other events happen and generate mouse moved events for each one.
     KeyEvent key_x_event;
     ClearEvent(&key_x_event, event);
     key_x_event.index = kMouseXAxis;
@@ -244,7 +248,7 @@ int* getInputStateVal(int flag) {
     KeyEvent key_y_event;
     ClearEvent(&key_y_event, event);
     key_y_event.index = kMouseYAxis;
-    key_x_event.press_amt = [event deltaY];
+    key_y_event.press_amt = [event deltaY];
     key_y_event.cursor_y = inputState.mouse_y;
     if (key_y_event.press_amt != 0) {
       AddEvent(&key_y_event);
