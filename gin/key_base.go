@@ -67,14 +67,18 @@ func (ks *keyState) Id() KeyId {
 // cause is the event that made this happen.
 func (ks *keyState) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
   event.Type = NoEvent
+  event.Key = ks
   if (ks.this.press_amt == 0) != (amt == 0) {
-    event.Key = ks
     if amt == 0 {
       event.Type = Release
       ks.this.release_count++
     } else {
       event.Type = Press
       ks.this.press_count++
+    }
+  } else {
+    if ks.this.press_amt != 0 && ks.this.press_amt != amt {
+      event.Type = Adjust
     }
   }
   ks.this.press_sum += ks.this.press_amt * float64(ms - ks.last_press)

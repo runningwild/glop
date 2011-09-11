@@ -5,7 +5,7 @@ import (
 )
 
 type Mouse struct {
-  X,Y,Dx,Dy int
+  X,Y int
 }
 
 type OsEvent struct {
@@ -33,9 +33,82 @@ func Make() *Input {
   input.all_keys = make([]Key, 16)[0:0]
   input.key_map = make(map[KeyId]Key, 128)
   input.dep_map = make(map[KeyId][]Key, 16)
+
   for c := 'a'; c <= 'z'; c++ {
     input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
   }
+  for c := '0'; c <= '9'; c++ {
+    input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
+  }
+  ascii_keys := "`[]\\-=;',./"
+  for _,key := range ascii_keys {
+    input.registerNaturalKey(KeyId(key), fmt.Sprintf("%c", key))
+  }
+  input.registerNaturalKey(32, "Space")
+  input.registerNaturalKey(8, "Backspace")
+  input.registerNaturalKey(9, "Tab")
+  input.registerNaturalKey(13, "Return")
+  input.registerNaturalKey(27, "Escape")
+  input.registerNaturalKey(129, "F1")
+  input.registerNaturalKey(130, "F2")
+  input.registerNaturalKey(131, "F3")
+  input.registerNaturalKey(132, "F4")
+  input.registerNaturalKey(133, "F5")
+  input.registerNaturalKey(134, "F6")
+  input.registerNaturalKey(135, "F7")
+  input.registerNaturalKey(136, "F8")
+  input.registerNaturalKey(137, "F9")
+  input.registerNaturalKey(138, "F10")
+  input.registerNaturalKey(139, "F11")
+  input.registerNaturalKey(140, "F12")
+  input.registerNaturalKey(150, "CapsLock")
+  input.registerNaturalKey(151, "NumLock")
+  input.registerNaturalKey(152, "ScrollLock")
+  input.registerNaturalKey(153, "PrintScreen")
+  input.registerNaturalKey(154, "Pause")
+  input.registerNaturalKey(155, "LeftShift")
+  input.registerNaturalKey(156, "RightShift")
+  input.registerNaturalKey(157, "LeftControl")
+  input.registerNaturalKey(158, "RightControl")
+  input.registerNaturalKey(159, "LeftAlt")
+  input.registerNaturalKey(160, "RightAlt")
+  input.registerNaturalKey(161, "LeftGui")
+  input.registerNaturalKey(162, "RightGui")
+  input.registerNaturalKey(166, "Right")
+  input.registerNaturalKey(167, "Left")
+  input.registerNaturalKey(168, "Up")
+  input.registerNaturalKey(169, "Down")
+  input.registerNaturalKey(170, "KeyPadDivide")
+  input.registerNaturalKey(171, "KeyPadMultiply")
+  input.registerNaturalKey(172, "KeyPadSubtract")
+  input.registerNaturalKey(173, "KeyPadAdd")
+  input.registerNaturalKey(174, "KeyPadEnter")
+  input.registerNaturalKey(175, "KeyPadDecimal")
+  input.registerNaturalKey(176, "KeyPadEquals")
+  input.registerNaturalKey(177, "KeyPad0")
+  input.registerNaturalKey(178, "KeyPad1")
+  input.registerNaturalKey(179, "KeyPad2")
+  input.registerNaturalKey(180, "KeyPad3")
+  input.registerNaturalKey(181, "KeyPad4")
+  input.registerNaturalKey(182, "KeyPad5")
+  input.registerNaturalKey(183, "KeyPad6")
+  input.registerNaturalKey(184, "KeyPad7")
+  input.registerNaturalKey(185, "KeyPad8")
+  input.registerNaturalKey(186, "KeyPad9")
+  input.registerNaturalKey(190, "KeyDelete")
+  input.registerNaturalKey(191, "KeyHome")
+  input.registerNaturalKey(192, "KeyInsert")
+  input.registerNaturalKey(193, "KeyEnd")
+  input.registerNaturalKey(194, "KeyPageUp")
+  input.registerNaturalKey(195, "KeyPageDown")
+  input.registerNaturalKey(300, "MouseXAxis")
+  input.registerNaturalKey(301, "MouseYAxis")
+  input.registerNaturalKey(302, "MouseWheelUp")
+  input.registerNaturalKey(303, "MouseWheelDown")
+  input.registerNaturalKey(304, "MouseLButton")
+  input.registerNaturalKey(305, "MouseRButton")
+  input.registerNaturalKey(306, "MouseMButton")
+
   return input
 }
 
@@ -43,6 +116,7 @@ type EventType int
 const (
   Press   EventType = iota
   Release
+  Adjust   // The key was and is down, but the value of it has changed
   NoEvent
 )
 func (event EventType) String() string {
@@ -51,6 +125,10 @@ func (event EventType) String() string {
       return "press"
     case Release:
       return "release"
+    case NoEvent:
+      return "noevent"
+    case Adjust:
+      return "adjust"
   }
   panic(fmt.Sprintf("%d is not a valid EventType", event))
   return ""
@@ -64,6 +142,9 @@ func (e Event) String() string {
   if e.Key == nil || e.Type == NoEvent {
     return fmt.Sprintf("NoEvent")
   }
+  if e.Key == nil {
+    return fmt.Sprintf("'%v %v'", e.Type, nil)
+  }
   return fmt.Sprintf("'%v %v'", e.Type, e.Key)
 }
 
@@ -73,10 +154,10 @@ type EventGroup struct {
   Timestamp int64
 }
 
-func init() {
-}
-
 func (input *Input) registerKey(key Key, id KeyId) {
+  if id <= 0 {
+    panic(fmt.Sprintf("Cannot register a key with id %d, ids must be greater than 0.", id))
+  }
   if prev,ok := input.key_map[id]; ok {
     panic(fmt.Sprintf("Cannot register key '%v' with id %d, '%v' is already registered with that id.", key, id, prev))
   }
@@ -91,6 +172,7 @@ func (input *Input) registerNaturalKey(id KeyId, name string) {
 func (input *Input) GetKey(id KeyId) Key {
   key,ok := input.key_map[id]
   if !ok {
+    panic(fmt.Sprintf("No key registered with id == %d.", id))
     return nil
   }
   return key
@@ -125,17 +207,18 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
       Timestamp : os_event.Timestamp,
     }
     input.pressKey(
-        input.key_map[os_event.KeyId],
+        input.GetKey(os_event.KeyId),
         os_event.Press_amt,
         os_event.Timestamp,
         Event{},
         &group)
-    groups = append(groups, group)
+    if len(group.Events) > 0 {
+      groups = append(groups, group)
+    }
   }
 
   for _,key := range input.all_keys {
     key.Think(t)
   }
-
   return groups
 }

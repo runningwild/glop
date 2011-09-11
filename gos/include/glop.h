@@ -72,18 +72,13 @@
 #define kKeyPageUp  194
 #define kKeyPageDown  195
 
-// Key constants - mouse
-#define kFirstMouseKeyIndex  300
-#define kNumMouseButtons  8
-#define kMouseUp  300
-#define kMouseRight  301
-#define kMouseDown  302
-#define kMouseLeft  303
-#define kMouseWheelUp  304
-#define kMouseWheelDown  305
-#define kMouseLButton  306
-#define kMouseRButton  307
-#define kMouseMButton  308
+#define kMouseXAxis  300
+#define kMouseYAxis  301
+#define kMouseWheelUp  302
+#define kMouseWheelDown  303
+#define kMouseLButton  304
+#define kMouseRButton  305
+#define kMouseMButton  306
 
 
 
@@ -96,8 +91,6 @@ typedef struct {
   short index;
   short device;
   float press_amt;
-  int mouse_dx;
-  int mouse_dy;
   long long timestamp;
   int cursor_x;
   int cursor_y;

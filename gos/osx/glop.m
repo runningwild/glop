@@ -29,8 +29,6 @@ struct inputState {
 
 void ClearEvent(KeyEvent* event, NSEvent* ns_event) {
   event->timestamp = (long long)((double)([ns_event timestamp]) / 1000.0 + 0.5);
-  event->mouse_dx = 0;
-  event->mouse_dy = 0;
   event->press_amt = 0;
   event->cursor_x = inputState.mouse_x;
   event->cursor_y = inputState.mouse_y;
@@ -229,6 +227,7 @@ int* getInputStateVal(int flag) {
         } else {
           *val = 0;
         }
+        key_event.press_amt = *val;
         AddEvent(&key_event);
       }
     }
@@ -239,16 +238,22 @@ int* getInputStateVal(int flag) {
     if (window != nil) {
       cursor = [window convertBaseToScreen:window_cursor];
     }
-    KeyEvent key_event;
-    ClearEvent(&key_event, event);
-    key_event.index = kNoKey;
-    key_event.mouse_dx = (int)(cursor.x - inputState.mouse_x);
-    key_event.mouse_dy = (int)(cursor.y - inputState.mouse_y);
+
+    KeyEvent key_x_event;
+    ClearEvent(&key_x_event, event);
+    key_x_event.index = kMouseXAxis;
+    key_x_event.press_amt = ((int)cursor.x - inputState.mouse_x);
     inputState.mouse_x = (int)(cursor.x);
+    key_x_event.cursor_x = inputState.mouse_x;
+    AddEvent(&key_x_event);
+
+    KeyEvent key_y_event;
+    ClearEvent(&key_y_event, event);
+    key_y_event.index = kMouseYAxis;
+    key_y_event.press_amt = ((int)cursor.y - inputState.mouse_y);
     inputState.mouse_y = (int)(cursor.y);
-    key_event.cursor_x = inputState.mouse_x;
-    key_event.cursor_y = inputState.mouse_y;
-    AddEvent(&key_event);
+    key_y_event.cursor_y = inputState.mouse_y;
+    AddEvent(&key_y_event);
   } else if ([event type] == NSKeyDown ||
              [event type] == NSKeyUp) {
     KeyEvent key_event;
