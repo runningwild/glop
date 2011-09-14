@@ -24,13 +24,18 @@ type Input struct {
   all_keys []Key
   key_map map[KeyId]Key
 
-  dep_map map[KeyId][]Key
   // map from keyId to list of (derived) Keys that depend on it in some way
+  dep_map map[KeyId][]Key
+
+  // The listeners will receive all events immediately after those events have been used to
+  // update all key states.  The order in which listeners are notified of a particular event
+  // group can change from group to group.
+  listeners []Listener
 }
 
 func Make() *Input {
   input := new(Input)
-  input.all_keys = make([]Key, 16)[0:0]
+  input.all_keys = make([]Key, 0, 16)
   input.key_map = make(map[KeyId]Key, 128)
   input.dep_map = make(map[KeyId][]Key, 16)
 
@@ -194,6 +199,21 @@ func (input *Input) pressKey(k Key, amt float64, t int64, cause Event, group *Ev
   }
 }
 
+// The Input object can have a single Listener registered with it.  This object will receive
+// event groups as they are processed.  During HandleEventGroup a listener can query keys as to
+// their current state (i.e. with Cur*() methods) and these will accurately report their state
+// given that the current event group has happened and no future events have happened yet.
+// Frame*() methods on keys will report state from last frame.
+// Listener.Think() will be called after all the events for a frame have been processed.
+type Listener interface {
+  HandleEventGroup(EventGroup)
+  Think(int64)
+}
+
+func (input *Input) RegisterEventListener(listener Listener) {
+  input.listeners = append(input.listeners, listener)
+}
+
 func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]EventGroup) {
   // If we have lost focus, clear all key state. Note that down_keys_frame_ is rebuilt every frame
   // regardless, so we do not need to worry about it here.
@@ -203,10 +223,9 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
   // Generate all key events here.  Derived keys are handled through pressKey and all
   // events are aggregated into one array.  Events in this array will necessarily be in
   // sorted order.
-  groups := make([]EventGroup, 10)[0:0]
+  var groups []EventGroup
   for _,os_event := range os_events {
     group := EventGroup{
-      Events : make([]Event, 1)[0:0],
       Timestamp : os_event.Timestamp,
     }
     input.pressKey(
@@ -218,10 +237,16 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
     if len(group.Events) > 0 {
       groups = append(groups, group)
     }
+    for _,listener := range input.listeners {
+      listener.HandleEventGroup(group)
+    }
   }
 
   for _,key := range input.all_keys {
     key.Think(t)
   }
+    for _,listener := range input.listeners {
+      listener.Think(t)
+    }
   return groups
 }

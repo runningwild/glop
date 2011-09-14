@@ -32,6 +32,7 @@ func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
       aggregator : &standardAggregator{},
     },
     Bindings : bindings,
+    bindings_down : make([]bool, len(bindings)),
   }
   input.registerKey(dk, dk.id)
 
@@ -56,46 +57,57 @@ func (input *Input) MakeBinding(primary KeyId, modifiers []KeyId, down []bool) B
 // A derivedKey is down if any of its bindings are down
 type derivedKey struct {
   keyState
-  Bindings []Binding
   is_down  bool
+
+  Bindings      []Binding
+  bindings_down []bool
 }
 
 func (dk *derivedKey) CurPressAmt() float64 {
   sum := 0.0
-  for _,binding := range dk.Bindings {
-    sum += binding.CurPressAmt()
+  for index := range dk.Bindings {
+    if dk.bindings_down[index] {
+      sum += dk.Bindings[index].primaryPressAmt()
+    } else {
+      sum += dk.Bindings[index].CurPressAmt()
+    }
   }
   return sum
 }
 
 func (dk *derivedKey) IsDown() bool {
-  return dk.is_down
+  return dk.numBindingsDown() > 0
+}
+
+func (dk *derivedKey) numBindingsDown() int {
+  count := 0
+  for _,down := range dk.bindings_down {
+    if down {
+      count++
+    }
+  }
+  return count
 }
 
 func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
-  is_primary := false
+  index := -1
   if cause.Type != NoEvent {
-    for _,binding := range dk.Bindings {
+    for i,binding := range dk.Bindings {
       if cause.Key.Id() == binding.PrimaryKey {
-        is_primary = true
+        index = i
       }
     }
   }
-  can_press := is_primary && cause.Type == Press
-  can_release := is_primary && dk.is_down
-
   event.Type = NoEvent
-  if (dk.keyState.CurPressAmt() == 0) != (amt == 0) {
-    event.Key = &dk.keyState
-    if amt == 0 && can_release {
-      event.Type = Release
-      dk.is_down = false
-    } else if amt != 0 && can_press {
-      event.Type = Press
-      dk.is_down = true
-    } else {
-      event.Type = NoEvent
-    }
+  event.Key = &dk.keyState
+  if amt == 0 && index != -1 && dk.numBindingsDown() == 1 && dk.bindings_down[index] {
+    event.Type = Release
+  }
+  if amt != 0 && index != -1 && dk.numBindingsDown() == 0 && !dk.bindings_down[index] {
+    event.Type = Press
+  }
+  if index != -1 {
+    dk.bindings_down[index] = dk.Bindings[index].CurPressAmt() != 0
   }
   dk.keyState.aggregator.SetPressAmt(amt, ms, event.Type)
   return
@@ -108,6 +120,10 @@ type Binding struct {
   Modifiers  []KeyId
   Down       []bool
   Input      *Input
+}
+
+func (b *Binding) primaryPressAmt() float64 {
+  return b.Input.key_map[b.PrimaryKey].CurPressAmt()
 }
 
 func (b *Binding) CurPressAmt() float64 {

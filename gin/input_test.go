@@ -136,6 +136,7 @@ func DerivedKeySpec(c gospec.Context) {
     c.Expect(ABc_Ef.FramePressCount(), Equals, 1)
     events = events[0:0]
 
+
     c.Specify("Release happens once primary key is released", func() {
       injectEvent(&events, 'a', 0, 11)
       input.Think(20, false, events)
@@ -144,7 +145,7 @@ func DerivedKeySpec(c gospec.Context) {
       c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 1)
     })
 
-    c.Specify("Release happens when a modifier that should be pressed is released", func() {
+    c.Specify("Key remains down when when a down modifier is released", func() {
       injectEvent(&events, 'b', 0, 11)
       input.Think(20, false, events)
       c.Expect(ABc_Ef.IsDown(), Equals, true)
@@ -152,12 +153,30 @@ func DerivedKeySpec(c gospec.Context) {
       c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 0)
     })
 
-    c.Specify("Release happens when a modifier that should be released is pressed", func() {
+    c.Specify("Key remains down when an up modifier is pressed", func() {
       injectEvent(&events, 'c', 1, 11)
       input.Think(20, false, events)
       c.Expect(ABc_Ef.IsDown(), Equals, true)
       c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
       c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 0)
+    })
+    c.Specify("Release isn't affect by bindings changing states first", func() {
+      c.Specify("releasing b", func() {
+        injectEvent(&events, 'b', 0, 11)
+        injectEvent(&events, 'a', 0, 11)
+        input.Think(20, false, events)
+        c.Expect(ABc_Ef.IsDown(), Equals, false)
+        c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
+        c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 1)
+      })
+      c.Specify("pressing c", func() {
+        injectEvent(&events, 'c', 1, 11)
+        injectEvent(&events, 'a', 0, 11)
+        input.Think(20, false, events)
+        c.Expect(ABc_Ef.IsDown(), Equals, false)
+        c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
+        c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 1)
+      })
     })
 
     c.Specify("Pressing a second binding should not generate another press on the derived key", func() {
@@ -175,6 +194,8 @@ func DerivedKeySpec(c gospec.Context) {
     injectEvent(&events, 'c', 0, 21)
     injectEvent(&events, 'e', 0, 21)
     input.Think(30, false, events)
+    c.Expect(ABc_Ef.FramePressAmt(), Equals, 0.0)
+    c.Expect(ABc_Ef.IsDown(), Equals, false)
 
     // Test that second binding can trigger a press
     events = events[0:0]
