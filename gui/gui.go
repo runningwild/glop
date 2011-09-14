@@ -1,6 +1,6 @@
 package gui
 
-import(
+import (
   "glop/gin"
 )
 
@@ -26,19 +26,11 @@ import(
 //   TODO: Figure out how to set the scissor box for all widgets to enforce the size their parent
 //         suggests for them
 
-// Handle Events
-// Then Think
-// Next Resize
-// Last Draw
-
-
-
-// Any widget that can take focus or whose descendent can take focus must implement Focusable.
-// The easiest way to do this is to embed the FocusWidget struct and implement the
-// OfferedFocus method.
+// All widgets must embed BaseWidget and so will automatically implement Focusable.  
 type Focusable interface {
   // Informs the widget that it has been offered focus because of the EventGroup passed
-  // to it.  This widget returns true iff it actually takes focus.
+  // to it.  This widget returns true iff it wants to take focus.  The default implementation
+  // of this method always returns false.
   OfferedFocus(gin.EventGroup) bool
 
   // Returns true iff this widget has focus.
@@ -47,30 +39,71 @@ type Focusable interface {
   // Returns true iff this widget or one of its children has focus
   ContainsFocus() bool
 
+  // Returns the gui's Focus object.  This can be used to give or take focus.
+  Focus() *Focus
+
+  // Add or remove a widget as a child of this widget.  All user-defined widgets that can
+  // contain other widgets need to call these functions on their child widgets, unless those
+  // widgets do not ever want to receive focus.
+  AddChild(*BaseWidget)
+  RemoveChild(*BaseWidget)
+
   // These methods require that the widget has gained or lost focus and should update
   // itself and its parents accordingly.
-  GainFocus()
-  LoseFocus()
+  gainFocus()
+  loseFocus()
+  getParent() *BaseWidget
+  getThis() *BaseWidget
 }
-type BaseFocusWidget struct {
-  parent *BaseFocusWidget
+
+// All user-defined widgets must embed BaseWidget.  This defines several methods that are used
+// for tracking focus and passing events.
+type BaseWidget struct {
+  parent   *BaseWidget
+  children []*BaseWidget
+
+  focus *Focus
 
   has_focus       bool
   child_has_focus bool
 }
-func (fw *BaseFocusWidget) HasFocus() bool {
+func (fw *BaseWidget) Focus() *Focus {
+  return fw.focus
+}
+func (fw *BaseWidget) AddChild(w *BaseWidget) {
+  fw.children = append(fw.children, w)
+}
+func (fw *BaseWidget) RemoveChild(w *BaseWidget) {
+  for i,c := range fw.children {
+    if c == w {
+      fw.children[i] = fw.children[len(fw.children)-1]
+      fw.children = fw.children[0 : len(fw.children)-1]
+      return
+    }
+  }
+}
+func (fw *BaseWidget) getParent() *BaseWidget {
+  return fw.parent
+}
+func (fw *BaseWidget) getThis() *BaseWidget {
+  return fw
+}
+func (fw *BaseWidget) OfferedFocus(gin.EventGroup) bool {
+  return false
+}
+func (fw *BaseWidget) HasFocus() bool {
   return fw.has_focus
 }
-func (fw *BaseFocusWidget) ContainsFocus() bool {
+func (fw *BaseWidget) ContainsFocus() bool {
   return fw.child_has_focus || fw.has_focus
 }
-func (fw *BaseFocusWidget) LoseFocus() {
+func (fw *BaseWidget) loseFocus() {
   fw.has_focus = false
   fw.child_has_focus = false
   if fw.parent == nil { return }
-  fw.parent.LoseFocus()
+  fw.parent.loseFocus()
 }
-func (fw *BaseFocusWidget) GainFocus() {
+func (fw *BaseWidget) gainFocus() {
   fw.has_focus = true
   fw.child_has_focus = false
   p := fw.parent
@@ -88,7 +121,9 @@ func (fw *BaseFocusWidget) GainFocus() {
 // will want to notify B that it should take focus, so it calls focus.Give(B).  This will result
 // in B.TookFocus(event_group) being called, so it knows that it has focus and the event that
 // made this happen.
-type Focus []FocusWidget
+type Focus struct {
+  widgets []FocusWidget
+}
 type FocusWidget interface {
   Focusable
   Widget
@@ -96,52 +131,52 @@ type FocusWidget interface {
 
 // Whatever widget currently has focus loses it, and the widget passed to this function gains it.
 func (f *Focus) Take(w FocusWidget) {
-  if len(*f) > 0 {
-    (*f)[len(*f)-1].LoseFocus()
+  if len(f.widgets) > 0 {
+    f.widgets[len(f.widgets)-1].loseFocus()
   } else {
-    *f = append(*f, nil)
+    f.widgets = append(f.widgets, nil)
   }
-  w.GainFocus()
-  (*f)[len(*f)-1] = w
+  w.gainFocus()
+  f.widgets[len(f.widgets)-1] = w
 }
 
 // Gives a widget the opportunity to take focus.  If it does take focus the current widget with
 // focus loses it.
 func (f *Focus) Give(w FocusWidget, event_group gin.EventGroup) {
   if w.OfferedFocus(event_group) {
-    if len(*f) > 0 {
-      (*f)[len(*f)-1].LoseFocus()
+    if len(f.widgets) > 0 {
+      f.widgets[len(f.widgets)-1].loseFocus()
     } else {
-      *f = append(*f, nil)
+      f.widgets = append(f.widgets, nil)
     }
-    (*f)[len(*f)-1] = w
+    f.widgets[len(f.widgets)-1] = w
   }
 }
 
 // Whatever widget has focus now loses it, but will regain it when Focus.Pop() is called
 func (f *Focus) Push(w FocusWidget) {
-  if len(*f) > 0 {
-    (*f)[len(*f)-1].LoseFocus()
+  if len(f.widgets) > 0 {
+    (f.widgets)[len(f.widgets)-1].loseFocus()
   }
-  w.GainFocus()
-  *f = append(*f, w)
+  w.gainFocus()
+  f.widgets = append(f.widgets, w)
 }
 
 func (f *Focus) Pop() {
-  if len(*f) == 0 {
+  if len(f.widgets) == 0 {
     panic("Cannot pop an empty Focus stack")
   }
-  (*f)[len(*f)-1].LoseFocus()
-  *f = (*f)[0 : len(*f)-1]
-  if len(*f) > 0 {
-    (*f)[len(*f)-1].GainFocus()
+  f.widgets[len(f.widgets)-1].loseFocus()
+  f.widgets = (f.widgets)[0 : len(f.widgets)-1]
+  if len(f.widgets) > 0 {
+    f.widgets[len(f.widgets)-1].gainFocus()
   }
 }
 
 type Widget interface {
   Draw()
   Think()
-  HandleEvents(gin.EventGroup) (take_focus bool)
+  HandleEventGroup(gin.EventGroup)
   Size() (int,int)
   Anchor(w Widget, srcx,srcy,dstx,dsty float64)
 }
