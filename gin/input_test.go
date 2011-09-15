@@ -383,3 +383,89 @@ func AxisSpec(c gospec.Context) {
     c.Expect(x.IsDown(), Equals, false)
  })
 }
+
+type listener struct {
+  input   *gin.Input
+  key_id  gin.KeyId
+  context gospec.Context
+
+  press_count   []int
+  release_count []int
+  press_amt     []float64
+}
+func (l *listener) ExpectPressCounts(v ...int) {
+  l.press_count = v
+}
+func (l *listener) ExpectReleaseCounts(v ...int) {
+  l.release_count = v
+}
+func (l *listener) ExpectPressAmts(v ...float64) {
+  l.press_amt = v
+}
+func (l *listener) HandleEventGroup(eg gin.EventGroup) {
+  k := l.input.GetKey(l.key_id)
+  l.context.Expect(k.CurPressCount(), Equals, l.press_count[0])
+  l.context.Expect(k.CurReleaseCount(), Equals, l.release_count[0])
+  l.context.Expect(k.CurPressAmt(), Equals, l.press_amt[0])
+  l.press_count = l.press_count[1:]
+  l.release_count = l.release_count[1:]
+  l.press_amt = l.press_amt[1:]
+}
+func (l *listener) Think(ms int64) {
+  l.context.Expect(len(l.press_count), Equals, 0)
+  l.context.Expect(len(l.release_count), Equals, 0)
+  l.context.Expect(len(l.press_amt), Equals, 0)
+}
+
+func EventListenerSpec(c gospec.Context) {
+  input := gin.Make()
+  AB_binding := input.MakeBinding('a', []gin.KeyId{'b'}, []bool{true})
+  AB := input.BindDerivedKey("AB", AB_binding)
+  events := make([]gin.OsEvent, 0)
+
+  c.Specify("Check keys report state properly while handling events", func() {
+    injectEvent(&events, 'a', 1, 1)
+    injectEvent(&events, 'a', 0, 2)
+    injectEvent(&events, 'b', 1, 3)
+    injectEvent(&events, 'a', 1, 4)
+    injectEvent(&events, 'b', 0, 5)
+    injectEvent(&events, 'a', 0, 6)
+
+    c.Specify("Test a", func() {
+      la := &listener{
+        input : input,
+        key_id : 'a',
+        context : c,
+      }
+      input.RegisterEventListener(la)
+      la.ExpectPressCounts(   1, 1, 1, 2, 2, 2)
+      la.ExpectReleaseCounts( 0, 1, 1, 1, 1, 2)
+      la.ExpectPressAmts(     1, 0, 0, 1, 1, 0)
+      input.Think(0, false, events)
+    })
+    c.Specify("Test b", func() {
+      lb := &listener{
+        input : input,
+        key_id : 'b',
+        context : c,
+      }
+      input.RegisterEventListener(lb)
+      lb.ExpectPressCounts(   0, 0, 1, 1, 1, 1)
+      lb.ExpectReleaseCounts( 0, 0, 0, 0, 1, 1)
+      lb.ExpectPressAmts(     0, 0, 1, 1, 0, 0)
+      input.Think(0, false, events)
+    })
+    c.Specify("Test ab", func() {
+      lab := &listener{
+        input : input,
+        key_id : AB.Id(),
+        context : c,
+      }
+      input.RegisterEventListener(lab)
+      lab.ExpectPressCounts(  0, 0, 0, 1, 1, 1)
+      lab.ExpectReleaseCounts(0, 0, 0, 0, 0, 1)
+      lab.ExpectPressAmts(    0, 0, 0, 1, 1, 0)
+      input.Think(0, false, events)
+    })
+  })
+}

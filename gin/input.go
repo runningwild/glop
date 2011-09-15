@@ -158,6 +158,16 @@ type EventGroup struct {
   Events    []Event
   Timestamp int64
 }
+// Returns a bool indicating whether an event corresponding to the given KeyId is present
+// in the EventGroup, and if so the Event returned is a copy of that event.
+func (eg *EventGroup) FindEvent(id KeyId) (bool, Event) {
+  for i := range eg.Events {
+    if eg.Events[i].Key.Id() == id {
+      return true, eg.Events[i]
+    }
+  }
+  return false, Event{}
+}
 
 func (input *Input) registerKey(key Key, id KeyId) {
   if id <= 0 {
