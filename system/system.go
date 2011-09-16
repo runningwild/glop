@@ -17,9 +17,11 @@ type System interface {
   // TODO: implement this:
   // DestroyWindow(Window)
 
-  // Self-explanitory getters
-  GetWindowPosition(window Window) (int,int)
-  GetWindowSize(window Window) (int,int)
+  // Gets the cursor position in screen-coordinates, glop style, with the origin in the
+  // bottom right
+  GetCursorPos(window Window) (x,y int)
+
+  GetWindowDims(window Window) (x,y,dx,dy int)
 
   SwapBuffers(window Window)
   GetInputEvents() []gin.EventGroup
@@ -51,9 +53,11 @@ type Os interface {
   // TODO: implement this:
   // DestroyWindow(Window)
 
-  // Self-explanitory getters
-  GetWindowPosition(window Window) (int,int)
-  GetWindowSize(window Window) (int,int)
+  // Gets the cursor position in screen coordinates with the origin in the top left of the
+  // screen
+  GetCursorPos() (x,y int)
+
+  GetWindowDims(window Window) (x,y,dx,dy int)
 
   // Swap the OpenGl buffers on this window
   SwapBuffers(window Window)
@@ -99,11 +103,15 @@ func (sys *sysObj) Input() *gin.Input {
 func (sys *sysObj) CreateWindow(x,y,width,height int) Window {
   return sys.os.CreateWindow(x, y, width, height)
 }
-func (sys *sysObj) GetWindowPosition(window Window) (int,int) {
-  return sys.os.GetWindowPosition(window)
+func (sys *sysObj) GetCursorPos(window Window) (x,y int) {
+  wx,wy,_,_ := sys.os.GetWindowDims(window)
+  x,y = sys.os.GetCursorPos()
+  x -= wx
+  y -= wy
+  return
 }
-func (sys *sysObj) GetWindowSize(window Window) (int,int) {
-  return sys.os.GetWindowSize(window)
+func (sys *sysObj) GetWindowDims(window Window) (int,int,int,int) {
+  return sys.os.GetWindowDims(window)
 }
 func (sys *sysObj) SwapBuffers(window Window) {
   sys.os.SwapBuffers(window)

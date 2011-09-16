@@ -175,18 +175,19 @@ func main() {
   table.InstallWidget(gui.MakeBoxWidget(50, 50, 1, 1, 0, 1), nil)
   table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(50, 50, 1, 1, 1, 1)}, nil)
   for {
-    fmt.Printf("Loop\n")
     sys.SwapBuffers(window)
-    gl.Clear(0x00004000)
     <-ticker
     sys.Think()
     ui.Draw()
     groups := sys.GetInputEvents()
     for _,group := range groups {
+      if found,_ := group.FindEvent('e'); found {
+        x,y := sys.GetCursorPos(window)
+        fmt.Printf("MOUSE: %d %d\n", x, y)
+      }
       if found,_ := group.FindEvent('q'); found {
         return
       }
-      fmt.Printf("%v\n", group.Events[0].Mouse)
     }
   }
 

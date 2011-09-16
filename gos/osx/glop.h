@@ -105,6 +105,7 @@ void SwapBuffers(void*);
 void Think();
 void Quit();
 
-void CurrentMousePos(void*,void*,void*);
+void GetMousePos(void*, void*);
+void GetWindowDims(void* _window, void* _x, void* _y, void* _dx, void* _dy);
 
 #endif
