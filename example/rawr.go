@@ -3,7 +3,6 @@ package main
 import (
   "glop/gos"
   "glop/gui"
-  "glop/gin"
   "glop/system"
   "runtime"
   "time"
@@ -153,27 +152,35 @@ func gameLoop() {
 type Foo struct {
   *gui.BoxWidget
 }
-func (f *Foo) Think(_ int64, _ bool) bool {
-  input := sys.Input()
-  var k gin.Key = input.GetKey('w')
-  fmt.Printf("W: %d\n", k.FramePressCount())
-  fmt.Printf("W: %f\n", k.FramePressAmt())
-  fmt.Printf("W: %f\n", k.FramePressSum())
-  fmt.Printf("W: %f\n", k.FramePressAvg())
-  f.R = k.FramePressAvg()
-  return false
+var window system.Window
+func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widget]gui.Dims) (bool, gui.Dims) {
+  cx,cy := sys.GetCursorPos(window)
+  cursor := gui.Point{ X : cx, Y : cy }
+  if cursor.Inside(previous) {
+    f.G = 0
+    f.B = 0
+  } else {
+    f.G = 1
+    f.B = 1
+  }
+  return f.BoxWidget.Think(0, false, previous, nil)
 }
 
 func main() {
   runtime.LockOSThread()
   sys.Startup()
-  window := sys.CreateWindow(10, 10, 1024, 768)
+  window = sys.CreateWindow(10, 10, 800, 600)
   ticker := time.Tick(5e7)
-  ui := gui.Make(sys.Input(), 1024, 768)
+  ui := gui.Make(sys.Input(), 800, 600)
   table := ui.Root.InstallWidget(new(gui.VerticalTable), nil)
-  table.InstallWidget(gui.MakeBoxWidget(50, 50, 1, 0, 1, 1), nil)
-  table.InstallWidget(gui.MakeBoxWidget(50, 50, 1, 1, 0, 1), nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(50, 50, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
   for {
     sys.SwapBuffers(window)
     <-ticker

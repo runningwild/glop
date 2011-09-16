@@ -26,19 +26,54 @@ import (
 
 // Uninstalled widgets will not Think(), and cannot take focus
 
-
+type Point struct {
+  X,Y int
+}
+func (p Point) Add(q Point) Point {
+  return Point{
+    X : p.X + q.X,
+    Y : p.Y + q.Y,
+  }
+}
+func (p Point) Inside(r Region) bool {
+  if p.X < r.X { return false }
+  if p.Y < r.Y { return false }
+  if p.X > r.X + r.Dx { return false }
+  if p.Y > r.Y + r.Dy { return false }
+  return true
+}
+type Dims struct {
+  Dx,Dy int
+}
+type Region struct {
+  Point
+  Dims
+}
+func (r Region) Add(p Point) Region {
+  return Region{
+    r.Point.Add(p),
+    r.Dims,
+  }
+}
 type Widget interface {
-  // Called once per frame.  The widget is responsible for updating its new size here.  Think is
-  // called on all of a Widget's installed children before being called on that widget, so it may
-  // query its children for their most up-to-date sizes.
-  // A widget may return true from this method to request focus.
-  Think(ms int64, has_focus bool) bool
+  // Called once per frame.
+  // previous: Regions that this widget was rendered to last frame, useful for detecting clicks.
+  // want_focus: if true the widget will take focus.  Nothing prevents multiple widgets from all
+  //   trying to take focus, so care must be taken to ensure this doesn't happen.
+  // dims: The desired dimensions for this widget to render itself next frame.  Think() is called
+  //   for children before parents, so it is safe for a widget to ask its children what size
+  //   they want to be in order to determine what size it wants to be
+  Think(ms int64, has_focus bool, previous Region, child_dims map[Widget]Dims) (want_focus bool, dims Dims)
 
-  // Returns the width and height that this widget wants to render itself.
-  Size() (int, int)
+  // Called once per frame, after Think().
+  // requested: map from child widget to the dimensions that widget requested during Think()
+  // dims: specifies the dimensions that this widget must constrain itself and all of its
+  // children to.  The regions specified in the return value should assume a region with an
+  // origin of 0,0 and the specified dims, i.e. Region{x:0, y:0, Dims:dims}
+  Layout(dims Dims, requested map[Widget]Dims) map[Widget]Region
 
   // Draws the widget, never going outside of the specified region.
-  Draw(x,y,dx,dy int)
+  Draw(region Region)
 
   // This method is called for every widget in the path from the root to the widget with focus.
   // Every widget along the way has a chance to react to the event group before it gets passed
@@ -60,9 +95,11 @@ type Widget interface {
 }
 
 type Node struct {
-  widget   Widget
-  parent   *Node
-  children []*Node
+  widget    Widget
+  parent    *Node
+  children  []*Node
+  requested Dims
+  previous  Region
 }
 
 // Returns an array of all of the nodes from the root to this node, in that order.
@@ -79,15 +116,35 @@ func (n *Node) pathFromRoot() []*Node {
 
 // Calls Think on all widgets in this node and its descendants.  Think is called first on
 // the leaves, then on the internal nodes.
-func (n *Node) think(ms int64, focus *Focus) {
+func (n *Node) think(ms int64, focus *Focus) Dims {
+//  Think(ms int64, has_focus bool, child_dims map[Widget]Dims) (want_focus bool, dims Dims)
+  child_dims := make(map[Widget]Dims, len(n.children))
   for _,child := range n.children {
-    child.think(ms, focus)
+    child.requested = child.think(ms, focus)
+    child_dims[child.widget] = child.requested
   }
   // TODO: perhaps handle the case where multiple widgets try to take focus here?
   //  maybe it should be an error, or maybe just pick one but not actually let it happened
   //  until after everything has Think()ed?
-  if n.widget.Think(ms, n == focus.top()) {
+  request_focus, request_dims := n.widget.Think(ms, n == focus.top(), n.previous, child_dims)
+  if request_focus {
     focus.Take(n)
+  }
+  return request_dims
+}
+
+
+// TODO: Enforce regions
+func (n *Node) layoutAndDraw(region Region) {
+  n.previous = region
+  n.widget.Draw(region)
+  child_dims := make(map[Widget]Dims)
+  for _,child := range n.children {
+    child_dims[child.widget] = child.requested
+  }
+  child_regions := n.widget.Layout(region.Dims, child_dims)
+  for _,child := range n.children {
+    child.layoutAndDraw(child_regions[child.widget].Add(region.Point))
   }
 }
 

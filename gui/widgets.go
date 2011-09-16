@@ -10,21 +10,20 @@ type rootWidget struct {
   Stoic
   Unthinking
   StandardParent
-  dx,dy    int
 }
-func (r *rootWidget) Draw(x,y,dx,dy int) {
+func (r *rootWidget) Draw(region Region) {
   gl.LoadIdentity();
-  gl.Ortho(0, float64(dx), 0, float64(dy), -1, 1)
+  gl.Ortho(0, float64(r.Dims.Dx), 0, float64(r.Dims.Dy), -1, 1)
   gl.MatrixMode(gl.MODELVIEW)
   gl.ClearColor(0, 0, 0, 1)
   gl.Clear(0x00004000)
-  for _,child := range r.children {
-    cdx,cdy := child.Size()
-    child.Draw(x, y, cdx, cdy)  // Let them do whatever they want
-  }
 }
-func (r *rootWidget) Size() (int,int) {
-  return r.dx,r.dy
+func (r *rootWidget) Layout(dims Dims, req map[Widget]Dims) map[Widget]Region {
+  m := make(map[Widget]Region)
+  for _,child := range r.children {
+    m[child] = Region{ Dims : req[child] }
+  }
+  return m
 }
 
 type Gui struct {
@@ -38,7 +37,7 @@ func Make(input *gin.Input, dx,dy int) *Gui {
   g.focus = new(Focus)
   input.RegisterEventListener(g)
   g.Root = &Node{
-    widget : &rootWidget{dx : dx, dy : dy },
+    widget : &rootWidget{ Unthinking : Unthinking{ Dims : Dims{ Dx : dx, Dy : dy } } },
     parent : nil,
     children : nil,
   }
@@ -72,13 +71,16 @@ func (g *Gui) Think(ms int64) {
 }
 
 func (g *Gui) Draw() {
-  dx,dy := g.Root.widget.Size()
-  g.Root.widget.Draw(0, 0, dx, dy)
+  region := Region{
+    Dims : g.Root.widget.(*rootWidget).Dims,
+  }
+  g.Root.layoutAndDraw(region)
 }
 
 type Childless struct {}
-func (c Childless)  AddChild(_ Widget, _ interface{}) {}
-func (c Childless)  RemoveChild(_ Widget) {}
+func (c Childless) AddChild(_ Widget, _ interface{}) {}
+func (c Childless) RemoveChild(_ Widget) {}
+func (c Childless) Layout(_ Dims, _ map[Widget]Dims) map[Widget]Region { return nil }
 
 type StandardParent struct {
   children []Widget
@@ -102,66 +104,57 @@ func (s Stoic) HandleEventGroup(_ gin.EventGroup) (bool, bool, *Node) {
   return false, false, nil
 }
 
-type Unthinking struct {}
-func (u Unthinking) Think(_ int64, _ bool) bool {
-  return false
+type Unthinking struct {
+  Dims Dims
+}
+func (u Unthinking) Think(_ int64, _ bool, _ Region, _ map[Widget]Dims) (bool,Dims) {
+  return false, u.Dims
 }
 
 type VerticalTable struct {
   Stoic
   StandardParent
-  Unthinking
-  dx,dy int
 }
-func (t *VerticalTable) Think(ms int64, has_focus bool) bool {
-  t.dx = 0
-  t.dy = 0
-  for _,child := range t.children {
-    dx,dy := child.Size()
-    if dx > t.dx {
-      t.dx = dx
+func (t *VerticalTable) Think(_ int64, _ bool, _ Region, child_dims map[Widget]Dims) (bool, Dims) {
+  var dims Dims
+  for _,child_dim := range child_dims {
+    if child_dim.Dx > dims.Dx {
+      dims.Dx = child_dim.Dx
     }
-    t.dy += dy
+    dims.Dy += child_dim.Dy
   }
-  return false
+  return false, dims
 }
-func (t *VerticalTable) Size() (int,int) {
-  return t.dx, t.dy
-}
-func (t *VerticalTable) Draw(x,y,dx,dy int) {
-  pos := y
-  for _,child := range t.children {
-    cdx,cdy := child.Size()
-    if cdx > dx {
-      cdx = dx
+func (t *VerticalTable) Layout(dims Dims, requested map[Widget]Dims) map[Widget]Region {
+  reg := make(map[Widget]Region)
+  var cur Point
+  for _,widget := range t.children {
+    reg[widget] = Region{
+      Point : cur,
+      Dims : requested[widget],
     }
-    if cdy > dy {
-      cdy = dy
-    }
-    child.Draw(x, pos, cdx, cdy)
-    pos += cdy
+    cur.Y += requested[widget].Dy
   }
+  return reg
+}
+func (t *VerticalTable) Draw(region Region) {
 }
 
 type BoxWidget struct {
   Childless
   Stoic
   Unthinking
-  dx,dy int
   R,G,B,A float64
 }
 func MakeBoxWidget(dx,dy int, r,g,b,a float64) *BoxWidget {
-  return &BoxWidget{ dx:dx, dy:dy, R:r, G:g, B:b, A:a }
+  return &BoxWidget{ Unthinking : Unthinking{ Dims : Dims{ Dx : dx, Dy : dy }}, R:r, G:g, B:b, A:a }
 }
-func (b *BoxWidget) Size() (int,int) {
-  return b.dx, b.dy
-}
-func (b *BoxWidget) Draw(x,y,dx,dy int) {
+func (b *BoxWidget) Draw(region Region) {
   gl.Color4d(b.R, b.G, b.B, b.A)
-  fx := float64(x)
-  fy := float64(y)
-  fdx := float64(dx)
-  fdy := float64(dy)
+  fx := float64(region.X)
+  fy := float64(region.Y)
+  fdx := float64(region.Dx)
+  fdy := float64(region.Dy)
   gl.Begin(gl.QUADS)
     gl.Vertex2d(    fx,    fy)
     gl.Vertex2d(fdx+fx,    fy)
