@@ -4,6 +4,11 @@
 #import <mach/mach_time.h>
 #import <stdio.h>
 
+// TODO: This requires OSX 10.6 or higher, just for getting uptime.
+// if we bother to fix linking on osx such that 10.5 is acceptable we 
+// should change this
+#include <Foundation/NSProcessInfo.h>
+
 @interface GlopApplication : NSApplication {
 }
 - (void)sendEvent:(NSEvent*)event;
@@ -27,8 +32,12 @@ struct inputState {
   int function;
 } inputState;
 
+long long NSTimeIntervalToMS(NSTimeInterval t) {
+  return (long long)((double)(t) * 1000.0 + 0.5);
+}
+
 void ClearEvent(KeyEvent* event, NSEvent* ns_event) {
-  event->timestamp = (long long)((double)([ns_event timestamp]) / 1000.0 + 0.5);
+  event->timestamp = NSTimeIntervalToMS([ns_event timestamp]);
   event->press_amt = 0;
   event->cursor_x = inputState.mouse_x;
   event->cursor_y = inputState.mouse_y;
@@ -39,6 +48,7 @@ void ClearEvent(KeyEvent* event, NSEvent* ns_event) {
 NSAutoreleasePool* pool;
 NSApplication* glop_app;
 NSEvent* terminator;
+NSTimeInterval osx_horizon;
 
 // These structures provide a way to allow threads to write events to a buffer
 // and then grab the events as a batch in a synchronously.
@@ -79,10 +89,7 @@ void GetEvents(KeyEvent** events, int* length, long long* horizon) {
   }
   current_event_buffer->length = 0;
 
-  *horizon = (long long)mach_absolute_time();
-
-  uint64_t uptime = mach_absolute_time();
-
+  *horizon = NSTimeIntervalToMS(osx_horizon);
   pthread_mutex_unlock(&event_group_mutex);
 }
 
@@ -105,6 +112,7 @@ void Init() {
   current_event_buffer = &event_buffer_1;
   event_buffer_1.length = 0;
   event_buffer_2.length = 0;
+  osx_horizon = [[NSProcessInfo processInfo] systemUptime];
   pthread_mutex_init(&event_group_mutex, NULL);
 }
 
@@ -236,6 +244,14 @@ int* getInputStateVal(int flag) {
     // must be modifyin whatever MouseMoved event is in the queue as new MouseMoved
     // events come in.  To get better resolution we need to find the cursor position
     // when other events happen and generate mouse moved events for each one.
+    NSPoint cursor_pos = [event locationInWindow];
+    NSWindow* window = [event window];
+    if (window != nil) {
+      NSRect rect;
+      cursor_pos = [window convertBaseToScreen:cursor_pos];
+    }
+    inputState.mouse_x = cursor_pos.x;
+    inputState.mouse_y = cursor_pos.y;
     KeyEvent key_x_event;
     ClearEvent(&key_x_event, event);
     key_x_event.index = kMouseXAxis;
@@ -292,8 +308,13 @@ void Quit() {
 }
 
 void Think() {
+  // TODO: This is retarded, but it does seem to get all of the evnts out of the queue
+  // rather than only most of them
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
+  [glop_app postEvent:terminator atStart:FALSE];
+  [glop_app run];
+  osx_horizon = [[NSProcessInfo processInfo] systemUptime];
 }
 
 void GetInputEvents(void** _key_events, int* length, long long* horizon) {

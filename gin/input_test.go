@@ -19,9 +19,9 @@ func injectEvent(events *[]gin.OsEvent, index gin.KeyId, amt float64, timestamp 
 
 func NaturalKeySpec(c gospec.Context) {
   input := gin.Make()
+  keya := input.GetKey('a')
+  keyb := input.GetKey('b')
   c.Specify("Single key press or release per frame sets basic keyState values properly.", func() {
-    keya := input.GetKey('a')
-    keyb := input.GetKey('b')
 
     events := make([]gin.OsEvent, 0)
     injectEvent(&events, 'a', 1, 5)
@@ -49,9 +49,6 @@ func NaturalKeySpec(c gospec.Context) {
   })
 
   c.Specify("Multiple key presses in a single frame work.", func() {
-    keya := input.GetKey('a')
-    keyb := input.GetKey('b')
-
     events := make([]gin.OsEvent, 0)
     injectEvent(&events, 'a', 1, 4)
     injectEvent(&events, 'a', 0, 5)
@@ -67,8 +64,6 @@ func NaturalKeySpec(c gospec.Context) {
   })
 
   c.Specify("Redundant events don't generate redundant events.", func() {
-    keya := input.GetKey('a')
-
     events := make([]gin.OsEvent, 0)
     injectEvent(&events, 'a', 1, 4)
     injectEvent(&events, 'a', 1, 5)
@@ -82,7 +77,6 @@ func NaturalKeySpec(c gospec.Context) {
   })
 
   c.Specify("Key.FramePressSum() works.", func() {
-    keya := input.GetKey('a')
     events := make([]gin.OsEvent, 0)
     injectEvent(&events, 'a', 1, 3)
     input.Think(10, false, events)
@@ -91,7 +85,6 @@ func NaturalKeySpec(c gospec.Context) {
     input.Think(20, false, events)
     c.Expect(keya.FramePressSum(),   Equals, 8.0)
 
-    keyb := input.GetKey('b')
     events = events[0:0]
     injectEvent(&events, 'b', 1, 22)
     injectEvent(&events, 'b', 0, 24)
@@ -102,6 +95,26 @@ func NaturalKeySpec(c gospec.Context) {
     injectEvent(&events, 'b', 1, 35)
     input.Think(40, false, events)
     c.Expect(keyb.FramePressSum(),   Equals, 5.0)
+  })
+
+  c.Specify("Key.FramePressAvg() works.", func() {
+    events := make([]gin.OsEvent, 0)
+    input.Think(10, false, events)
+    injectEvent(&events, 'a', 1, 10)
+    injectEvent(&events, 'a', 0, 12)
+    injectEvent(&events, 'a', 1, 14)
+    injectEvent(&events, 'a', 0, 16)
+    injectEvent(&events, 'a', 1, 18)
+    injectEvent(&events, 'a', 0, 20)
+    input.Think(20, false, events)
+    c.Expect(keya.FramePressAvg(),   Equals, 0.6)
+
+    events = events[0:0]
+    injectEvent(&events, 'b', 1, 25)
+    input.Think(30, false, events)
+    injectEvent(&events, 'b', 0, 35)
+    input.Think(40, false, events)
+    c.Expect(keyb.FramePressAvg(),   Equals, 0.5)
   })
 }
 

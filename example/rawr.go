@@ -3,6 +3,7 @@ package main
 import (
   "glop/gos"
   "glop/gui"
+  "glop/gin"
   "glop/system"
   "runtime"
   "time"
@@ -149,31 +150,43 @@ func gameLoop() {
   }
 }
 
+type Foo struct {
+  *gui.BoxWidget
+}
+func (f *Foo) Think(_ int64, _ bool) bool {
+  input := sys.Input()
+  var k gin.Key = input.GetKey('w')
+  fmt.Printf("W: %d\n", k.FramePressCount())
+  fmt.Printf("W: %f\n", k.FramePressAmt())
+  fmt.Printf("W: %f\n", k.FramePressSum())
+  fmt.Printf("W: %f\n", k.FramePressAvg())
+  f.R = k.FramePressAvg()
+  return false
+}
+
 func main() {
   runtime.LockOSThread()
   sys.Startup()
   window := sys.CreateWindow(10, 10, 1024, 768)
-  ticker := time.Tick(1e8)
+  ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), 1024, 768)
   table := ui.Root.InstallWidget(new(gui.VerticalTable), nil)
   table.InstallWidget(gui.MakeBoxWidget(50, 50, 1, 0, 1, 1), nil)
   table.InstallWidget(gui.MakeBoxWidget(50, 50, 1, 1, 0, 1), nil)
-  table.InstallWidget(gui.MakeBoxWidget(50, 50, 1, 1, 1, 1), nil)
+  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(50, 50, 1, 1, 1, 1)}, nil)
   for {
+    fmt.Printf("Loop\n")
     sys.SwapBuffers(window)
     gl.Clear(0x00004000)
     <-ticker
-    fmt.Printf("Thinking\n")
     sys.Think()
-    ui.Think(10)  // TODO: This should be wrapped into sys.Think(), maybe sys should just
-                  //       have a list of Thinkers that it will Think on each frame?
     ui.Draw()
-    fmt.Printf("Though\n")
     groups := sys.GetInputEvents()
     for _,group := range groups {
       if found,_ := group.FindEvent('q'); found {
         return
       }
+      fmt.Printf("%v\n", group.Events[0].Mouse)
     }
   }
 

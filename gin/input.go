@@ -140,8 +140,9 @@ func (event EventType) String() string {
 }
 // TODO: Consider making a Timestamp type (int64)
 type Event struct {
-  Key       Key
-  Type      EventType
+  Key   Key
+  Type  EventType
+  Mouse Mouse
 }
 func (e Event) String() string {
   if e.Key == nil || e.Type == NoEvent {
@@ -244,6 +245,14 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
         os_event.Timestamp,
         Event{},
         &group)
+
+    // Include the position of the cursor on all events.  This is mostly for the sake
+    // of mouse click events but it could be useful otherwise and it makes all Events
+    // the same in terms of structure.
+    for i := range group.Events {
+      group.Events[i].Mouse = os_event.Mouse
+    }
+
     if len(group.Events) > 0 {
       groups = append(groups, group)
     }
@@ -255,8 +264,9 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
   for _,key := range input.all_keys {
     key.Think(t)
   }
-    for _,listener := range input.listeners {
-      listener.Think(t)
-    }
+
+  for _,listener := range input.listeners {
+    listener.Think(t)
+  }
   return groups
 }

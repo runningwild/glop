@@ -26,6 +26,7 @@ type subAggregator interface {
   FrameReleaseCount() int
   FramePressAmt() float64
   FramePressSum() float64
+  FramePressAvg() float64
   CurPressCount() int
   CurReleaseCount() int
   CurPressAmt() float64
@@ -43,6 +44,7 @@ type keyStats struct {
   release_count int
   press_amt     float64
   press_sum     float64
+  press_avg     float64
 }
 
 type baseAggregator struct {
@@ -59,6 +61,9 @@ func (a *baseAggregator) FramePressAmt() float64 {
 }
 func (a *baseAggregator) FramePressSum() float64 {
   return a.prev.press_sum
+}
+func (a *baseAggregator) FramePressAvg() float64 {
+  return a.prev.press_avg
 }
 func (a *baseAggregator) CurPressCount() int {
   return a.this.press_count
@@ -85,6 +90,7 @@ func (a *baseAggregator) handleEventType(event_type EventType) {
 type standardAggregator struct {
   baseAggregator
   last_press int64
+  last_think int64
 }
 func (sa *standardAggregator) IsDown() bool {
   return sa.this.press_amt != 0
@@ -97,17 +103,20 @@ func (sa *standardAggregator) SetPressAmt(amt float64, ms int64, event_type Even
 }
 func (sa *standardAggregator) Think(ms int64) {
   sa.this.press_sum += sa.this.press_amt * float64(ms - sa.last_press)
+  sa.this.press_avg = sa.this.press_sum / float64(ms - sa.last_think)
   sa.prev = sa.this
   sa.this = keyStats{
     press_amt : sa.prev.press_amt,
   }
   sa.last_press = ms
+  sa.last_think = ms
 }
 
 // The axisAggregator's sum is the sum of all press amounts specified by SetPressAmt()
+// FramePressAvg() returns the same value as FramePressSum()
 type axisAggregator struct {
   baseAggregator
-  is_down bool
+  is_down    bool
 }
 func (aa *axisAggregator) IsDown() bool {
   return aa.is_down
@@ -126,6 +135,7 @@ func (aa *axisAggregator) Think(ms int64) {
   if aa.prev.press_amt == 0 {
     aa.is_down = false
   }
+  aa.prev.press_avg = aa.prev.press_sum
 }
 
 

@@ -148,16 +148,16 @@ type BoxWidget struct {
   Stoic
   Unthinking
   dx,dy int
-  r,g,b,a float64
+  R,G,B,A float64
 }
 func MakeBoxWidget(dx,dy int, r,g,b,a float64) *BoxWidget {
-  return &BoxWidget{ dx:dx, dy:dy, r:r, g:g, b:b, a:a }
+  return &BoxWidget{ dx:dx, dy:dy, R:r, G:g, B:b, A:a }
 }
 func (b *BoxWidget) Size() (int,int) {
   return b.dx, b.dy
 }
 func (b *BoxWidget) Draw(x,y,dx,dy int) {
-  gl.Color4d(b.r, b.g, b.b, b.a)
+  gl.Color4d(b.R, b.G, b.B, b.A)
   fx := float64(x)
   fy := float64(y)
   fdx := float64(dx)

@@ -70,9 +70,10 @@ type Os interface {
 }
 
 type sysObj struct {
-  os     Os
-  input  *gin.Input
-  events []gin.EventGroup
+  os       Os
+  input    *gin.Input
+  events   []gin.EventGroup
+  start_ms int64
 }
 func Make(os Os) System {
   return &sysObj{
@@ -82,11 +83,15 @@ func Make(os Os) System {
 }
 func (sys *sysObj) Startup() {
   sys.os.Startup()
+  _,sys.start_ms = sys.os.GetInputEvents()
 }
 func (sys *sysObj) Think() {
   sys.os.Think()
-  events,_ := sys.os.GetInputEvents()
-  sys.events = sys.input.Think(-1, false, events)
+  events,horizon := sys.os.GetInputEvents()
+  for i := range events {
+    events[i].Timestamp -= sys.start_ms
+  }
+  sys.events = sys.input.Think(horizon - sys.start_ms, false, events)
 }
 func (sys *sysObj) Input() *gin.Input {
   return sys.input
