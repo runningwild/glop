@@ -1,3 +1,6 @@
 lib/
 obj_glop/
 _*
+*.app*
+*.old
+*bin
