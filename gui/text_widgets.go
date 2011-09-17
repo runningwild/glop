@@ -97,7 +97,7 @@ func MakeSingleLineText(font *truetype.Font, str string) *SingleLineText {
   t.font = font
   t.psize = 72
   t.context = freetype.NewContext()
-  t.context.SetDPI(113)
+  t.context.SetDPI(132)
   t.context.SetFontSize(18)
   t.texture = gl.GenTexture()
   t.figureDims()
