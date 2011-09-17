@@ -177,15 +177,21 @@ func main() {
     panic(err.String())
   }
 
-  window = sys.CreateWindow(10, 10, 800, 600)
+  window = sys.CreateWindow(10, 10, 768, 576)
   ticker := time.Tick(5e7)
-  ui := gui.Make(sys.Input(), 800, 600)
-  table := ui.Root.InstallWidget(new(gui.VerticalTable), nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  ui := gui.Make(sys.Input(), 768, 576)
+  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{768, 576}), nil)
+  anch.InstallWidget(
+      &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
+      gui.Anchor{ Bx:0.7, By:1, Wx:0.5, Wy:1})
+  anch.InstallWidget(
+      &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
+      gui.Anchor{ Bx:0, By:0.5, Wx:0, Wy:0.5})
+  anch.InstallWidget(
+      &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
+      gui.Anchor{ Bx:0.2, By:0.2, Wx:1, Wy:1})
   text_widget := gui.MakeSingleLineText(font, "Funk Monkey 7$")
-  table.InstallWidget(text_widget, nil)
+  anch.InstallWidget(text_widget, gui.Anchor{.5,.5,.5,.5})
   n := 0
   for {
     n++
