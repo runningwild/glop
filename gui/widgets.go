@@ -5,6 +5,17 @@ import (
   "gl"
 )
 
+// What widgets do we need
+// SingleLineText
+// ParagraphText
+// Tables
+// RenderFrame
+// Basic form items:
+//   Text Entry
+//   Radio Buttons
+//   Check Box
+//   COMBO BOX!?
+
 // This widget is actually superfluous, it's functionality can just be folded into Gui
 type rootWidget struct {
   Stoic
@@ -68,9 +79,6 @@ func (g *Gui) HandleEventGroup(event_group gin.EventGroup) {
 }
 func (g *Gui) Think(ms int64) {
   g.Root.think(ms, g.focus)
-}
-
-func (g *Gui) Draw() {
   region := Region{
     Dims : g.Root.widget.(*rootWidget).Dims,
   }

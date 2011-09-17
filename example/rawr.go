@@ -69,13 +69,11 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, textur
   return nil
 }
 
+/*
 func gameLoop() {
   window := sys.CreateWindow(10, 10, 1200, 700)
   texture := gl.GenTexture()
   texture.Bind(gl.TEXTURE_2D)
-  fontpath := os.Args[0] + "/../../fonts/luxisr.ttf"
-  fontpath = path.Clean(fontpath)
-  font,err := loadFont(fontpath)
   if err != nil {
     fmt.Printf("Failed to load font: %s\n", err.String())
     return
@@ -148,6 +146,7 @@ func gameLoop() {
  //   }
   }
 }
+*/
 
 type Foo struct {
   *gui.BoxWidget
@@ -157,6 +156,7 @@ func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widg
   cx,cy := sys.GetCursorPos(window)
   cursor := gui.Point{ X : cx, Y : cy }
   if cursor.Inside(previous) {
+    f.Dims.Dx += 5
     f.G = 0
     f.B = 0
   } else {
@@ -169,6 +169,14 @@ func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widg
 func main() {
   runtime.LockOSThread()
   sys.Startup()
+
+  fontpath := os.Args[0] + "/../../fonts/carleton.ttf"
+  fontpath = path.Clean(fontpath)
+  font,err := loadFont(fontpath)
+  if err != nil {
+    panic(err.String())
+  }
+
   window = sys.CreateWindow(10, 10, 800, 600)
   ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), 800, 600)
@@ -176,16 +184,15 @@ func main() {
   table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
   table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
   table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
-  table.InstallWidget(&Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)}, nil)
+  text_widget := gui.MakeSingleLineText(font, "Funk Monkey 7$")
+  table.InstallWidget(text_widget, nil)
+  n := 0
   for {
+    n++
     sys.SwapBuffers(window)
     <-ticker
+    text_widget.SetText(fmt.Sprintf("Rawr! %d", n))
     sys.Think()
-    ui.Draw()
     groups := sys.GetInputEvents()
     for _,group := range groups {
       if found,_ := group.FindEvent('e'); found {
