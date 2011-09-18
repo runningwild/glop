@@ -31,10 +31,13 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, text s
   c.SetDst(rgba)
   c.SetSrc(fg)
   c.SetClip(rgba.Bounds())
-  pt := freetype.Pt(0, int(float64(c.FUnitToPixelRU(font.UnitsPerEm())) * 0.85) )
+  // height is the fraction of the font that is above the line, 1.0 would mean
+  // that the font never falls below the line
+  height := 0.75
+  pt := freetype.Pt(0, int(float64(c.FUnitToPixelRU(font.UnitsPerEm())) * height) )
   adv,_ := c.DrawString(text, pt)
   pt.X += adv.X
-  py := int(float64(pt.Y >> 8) / 0.85 + 0.01)
+  py := int(float64(pt.Y >> 8) / height + 0.01)
   return int(pt.X >> 8), py
 }
 

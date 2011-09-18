@@ -170,7 +170,7 @@ func main() {
   runtime.LockOSThread()
   sys.Startup()
 
-  fontpath := os.Args[0] + "/../../fonts/carleton.ttf"
+  fontpath := os.Args[0] + "/../../fonts/skia.ttf"
   fontpath = path.Clean(fontpath)
   font,err := loadFont(fontpath)
   if err != nil {
