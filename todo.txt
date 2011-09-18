@@ -1,0 +1,2 @@
+If windows is ok with giving up the main thread we should switch to doing things with a Run() / Quit() mechanism instead of a for { Think() } mechanism.  Doing this would increase the number of mouse events on osx and would give better resolution in the event of a long frame.
+
