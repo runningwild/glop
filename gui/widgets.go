@@ -163,6 +163,7 @@ func (b *BoxWidget) Draw(region Region) {
   fy := float64(region.Y)
   fdx := float64(region.Dx)
   fdy := float64(region.Dy)
+  gl.Disable(gl.TEXTURE_2D)
   gl.Begin(gl.QUADS)
     gl.Vertex2d(    fx,    fy)
     gl.Vertex2d(fdx+fx,    fy)

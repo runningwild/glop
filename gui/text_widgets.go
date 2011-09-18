@@ -25,7 +25,7 @@ func mustLoadFont(filename string) *truetype.Font {
 }
 
 func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, text string) (int,int) {
-  fg, bg := image.Black, image.White
+  fg, bg := image.Black, image.Transparent
   draw.Draw(rgba, rgba.Bounds(), bg, image.ZP, draw.Src)
   c.SetFont(font)
   c.SetDst(rgba)
@@ -126,6 +126,7 @@ func (t *SingleLineText) Think(_ int64, _ bool, _ Region, _ map[Widget]Dims) (bo
 func (t *SingleLineText) Draw(region Region) {
   gl.Enable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
+  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   t.texture.Bind(gl.TEXTURE_2D)
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   fx := float64(region.X)
@@ -134,7 +135,7 @@ func (t *SingleLineText) Draw(region Region) {
   fdy := float64(t.dims.Dy)
   tx := float64(t.dims.Dx)/float64(t.rdims.Dx)
   ty := float64(t.dims.Dy)/float64(t.rdims.Dy)
-  gl.Color4d(1.0, 1.0, 1.0, 0.7)
+  gl.Color4d(1.0, 1.0, 1.0, 1.0)
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,ty)
     gl.Vertex2d(fx, fy)

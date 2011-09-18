@@ -3,7 +3,9 @@ package main
 import (
   "glop/gos"
   "glop/gui"
+  "glop/gin"
   "glop/system"
+  "glop/sprite"
   "runtime"
   "time"
   "fmt"
@@ -69,85 +71,6 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, textur
   return nil
 }
 
-/*
-func gameLoop() {
-  window := sys.CreateWindow(10, 10, 1200, 700)
-  texture := gl.GenTexture()
-  texture.Bind(gl.TEXTURE_2D)
-  if err != nil {
-    fmt.Printf("Failed to load font: %s\n", err.String())
-    return
-  }
-  context,err := makeContext()
-  if err != nil {
-    fmt.Printf("Failed to make font context: %s\n", err.String())
-    return
-  }
-  rgba := image.NewRGBA(1024, 1024)
-  for i := 0; i < 00; i++ {
-    drawText(font, context, rgba, texture, []string{"Rawr!!!"})
-  }
-
-  err = drawText(font, context, rgba, texture, []string{"Rawr!!! :-D"})
-  if err != nil {
-    fmt.Printf("Couldn't render texture: %s\n", err.String())
-    return
-  }
-
-  ticker := time.Tick(1*16666667)
-  text := make([]string, 100)[0:0]
-  for {
-    sys.SwapBuffers(window)
-    <-ticker
-    err := drawText(font, context, rgba, texture, text)
-    if err != nil {
-      fmt.Printf("Couldn't draw text: %s\n", err.String())
-      return
-    }
-    gl.LoadIdentity();
-    gl.Ortho(-2.4,2.4, -1.4,1.4, -1.1,1.1)
-    gl.MatrixMode(gl.MODELVIEW)
-    gl.ClearColor(0.2, 0.0, 1.0, 1.0)
-    gl.Clear(0x00004000)
-    gl.Color3d(0, 1, 0)
-    gl.Color4d(1.0, 1.0, 1.0, 0.7)
-    gl.Enable(gl.TEXTURE_2D)
-    gl.Enable(gl.BLEND)
-    texture.Bind(gl.TEXTURE_2D)
-    gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-    gl.Begin(gl.QUADS)
-      gl.TexCoord2d(0,1)
-      gl.Vertex2d(-1.4,-1.4)
-      gl.TexCoord2d(0,0)
-      gl.Vertex2d(-1.4, 1.4)
-      gl.TexCoord2d(1,0)
-      gl.Vertex2d( 1.4, 1.4)
-      gl.TexCoord2d(1,1)
-      gl.Vertex2d( 1.4,-1.4)
-    gl.End()
-    gl.Disable(gl.TEXTURE_2D)
-    sys.Think()
-    groups := sys.GetInputEvents()
-    text = make([]string, 0)
-    text = append(text, fmt.Sprintf("%d Groups", len(groups)))
-    for gi,group := range groups {
-      if len(group.Events) > 0 && group.Events[0].Key.Id() == 'q' {
-        return
-      }
-      for _,event := range group.Events {
-        if event.Key.Id() == sys.Input().GetKey(300).Id() {
-          text = append(text, fmt.Sprintf("%d: %v %v %f", gi, event.Type, event.Key, event.Key.FramePressSum()))
-        }
-      }
-    }
-//    text = make([]string, len(events))
- //   for i := range events {
-//      text[i] = fmt.Sprintf("%v", events[i])
- //   }
-  }
-}
-*/
-
 type Foo struct {
   *gui.BoxWidget
 }
@@ -181,6 +104,7 @@ func main() {
   ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), 768, 576)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{768, 576}), nil)
+  anch.InstallWidget(gui.MakeBoxWidget(250,250,0,0,1,1), gui.Anchor{0.5, 0.5, 0.5, 0.5})
   anch.InstallWidget(
       &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
       gui.Anchor{ Bx:0.7, By:1, Wx:0.5, Wy:1})
@@ -191,19 +115,49 @@ func main() {
       &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
       gui.Anchor{ Bx:0.2, By:0.2, Wx:1, Wy:1})
   text_widget := gui.MakeSingleLineText(font, "Funk Monkey 7$")
-  anch.InstallWidget(text_widget, gui.Anchor{.5,.5,.5,.5})
+  anch.InstallWidget(gui.MakeBoxWidget(450,50,0,1,0,1), gui.Anchor{0,1, 0,1})
+  anch.InstallWidget(text_widget, gui.Anchor{0,1,0,1})
+  frame_count_widget := gui.MakeSingleLineText(font, "Frame")
+  anch.InstallWidget(gui.MakeBoxWidget(250,50,0,1,0,1), gui.Anchor{1,1, 1,1})
+  anch.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
+
   n := 0
+  spritepath := os.Args[0] + "/../../sprites/test_sprite"
+  spritepath = path.Clean(spritepath)
+  s,err := sprite.LoadSprite(spritepath)
+  if err != nil {
+    panic(err.String())
+  }
+  s.Stats()
+
+  key_bindings := make(map[byte]string)
+  key_bindings['a'] = "defend"
+  key_bindings['s'] = "undamaged"
+  key_bindings['d'] = "damaged"
+  key_bindings['f'] = "killed"
+  key_bindings['z'] = "ranged"
+  key_bindings['x'] = "melee"
+  key_bindings['c'] = "move"
+  key_bindings['v'] = "stop"
+  key_bindings['o'] = "turn_left"
+  key_bindings['p'] = "turn_right"
+
   for {
     n++
+    frame_count_widget.SetText(fmt.Sprintf("%d", n))
+    s.RenderToQuad()
+    s.Think(50)
     sys.SwapBuffers(window)
     <-ticker
-    text_widget.SetText(fmt.Sprintf("Rawr! %d", n))
+    text_widget.SetText(s.CurState())
     sys.Think()
     groups := sys.GetInputEvents()
+
     for _,group := range groups {
-      if found,_ := group.FindEvent('e'); found {
-        x,y := sys.GetCursorPos(window)
-        fmt.Printf("MOUSE: %d %d\n", x, y)
+      for key,cmd := range key_bindings {
+        if found,event := group.FindEvent(gin.KeyId(key)); found && event.Type == gin.Press {
+          s.Command(cmd)
+        }
       }
       if found,_ := group.FindEvent('q'); found {
         return
@@ -211,6 +165,5 @@ func main() {
     }
   }
 
-//  gameLoop()
   fmt.Printf("")
 }
