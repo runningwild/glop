@@ -574,48 +574,6 @@ mark:start</attribute>
 				<attribute key="anchor" type="String">c</attribute>
 			</section>
 		</section>
-		<section name="node">
-			<attribute key="id" type="int">29</attribute>
-			<attribute key="label" type="String">turn_right_01
-time:0</attribute>
-			<section name="graphics">
-				<attribute key="x" type="double">180.0</attribute>
-				<attribute key="y" type="double">-450.0</attribute>
-				<attribute key="w" type="double">148.0</attribute>
-				<attribute key="h" type="double">29.0</attribute>
-				<attribute key="type" type="String">rectangle</attribute>
-				<attribute key="fill" type="String">#FFCC00</attribute>
-				<attribute key="outline" type="String">#000000</attribute>
-			</section>
-			<section name="LabelGraphics">
-				<attribute key="text" type="String">turn_right_01
-time:0</attribute>
-				<attribute key="fontSize" type="int">12</attribute>
-				<attribute key="fontName" type="String">Dialog</attribute>
-				<attribute key="anchor" type="String">c</attribute>
-			</section>
-		</section>
-		<section name="node">
-			<attribute key="id" type="int">30</attribute>
-			<attribute key="label" type="String">turn_left_01
-time:0</attribute>
-			<section name="graphics">
-				<attribute key="x" type="double">-360.0</attribute>
-				<attribute key="y" type="double">-450.0</attribute>
-				<attribute key="w" type="double">148.0</attribute>
-				<attribute key="h" type="double">29.0</attribute>
-				<attribute key="type" type="String">rectangle</attribute>
-				<attribute key="fill" type="String">#FFCC00</attribute>
-				<attribute key="outline" type="String">#000000</attribute>
-			</section>
-			<section name="LabelGraphics">
-				<attribute key="text" type="String">turn_left_01
-time:0</attribute>
-				<attribute key="fontSize" type="int">12</attribute>
-				<attribute key="fontName" type="String">Dialog</attribute>
-				<attribute key="anchor" type="String">c</attribute>
-			</section>
-		</section>
 		<section name="edge">
 			<attribute key="source" type="int">3</attribute>
 			<attribute key="target" type="int">1</attribute>
@@ -1135,80 +1093,6 @@ weight:5</attribute>
 		</section>
 		<section name="edge">
 			<attribute key="source" type="int">26</attribute>
-			<attribute key="target" type="int">30</attribute>
-			<attribute key="label" type="String">turn_left</attribute>
-			<section name="graphics">
-				<attribute key="fill" type="String">#000000</attribute>
-				<attribute key="targetArrow" type="String">standard</attribute>
-				<section name="Line">
-					<section name="point">
-						<attribute key="x" type="double">-90.0</attribute>
-						<attribute key="y" type="double">-244.04837036132812</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">-120.0</attribute>
-						<attribute key="y" type="double">-510.0</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">-360.0</attribute>
-						<attribute key="y" type="double">-510.0</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">-360.0</attribute>
-						<attribute key="y" type="double">-450.0</attribute>
-					</section>
-				</section>
-			</section>
-			<section name="edgeAnchor">
-				<attribute key="xSource" type="double">-0.33707866072654724</attribute>
-			</section>
-			<section name="LabelGraphics">
-				<attribute key="text" type="String">turn_left</attribute>
-				<attribute key="fontSize" type="int">12</attribute>
-				<attribute key="fontName" type="String">Dialog</attribute>
-				<attribute key="model" type="String">six_pos</attribute>
-				<attribute key="position" type="String">tail</attribute>
-			</section>
-		</section>
-		<section name="edge">
-			<attribute key="source" type="int">26</attribute>
-			<attribute key="target" type="int">29</attribute>
-			<attribute key="label" type="String">turn_right</attribute>
-			<section name="graphics">
-				<attribute key="fill" type="String">#000000</attribute>
-				<attribute key="targetArrow" type="String">standard</attribute>
-				<section name="Line">
-					<section name="point">
-						<attribute key="x" type="double">-90.0</attribute>
-						<attribute key="y" type="double">-244.04837036132812</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">-60.0</attribute>
-						<attribute key="y" type="double">-510.0</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">180.0</attribute>
-						<attribute key="y" type="double">-510.0</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">180.0</attribute>
-						<attribute key="y" type="double">-450.0</attribute>
-					</section>
-				</section>
-			</section>
-			<section name="edgeAnchor">
-				<attribute key="xSource" type="double">0.33707866072654724</attribute>
-			</section>
-			<section name="LabelGraphics">
-				<attribute key="text" type="String">turn_right</attribute>
-				<attribute key="fontSize" type="int">12</attribute>
-				<attribute key="fontName" type="String">Dialog</attribute>
-				<attribute key="model" type="String">six_pos</attribute>
-				<attribute key="position" type="String">tail</attribute>
-			</section>
-		</section>
-		<section name="edge">
-			<attribute key="source" type="int">26</attribute>
 			<attribute key="target" type="int">4</attribute>
 			<attribute key="label" type="String">ranged</attribute>
 			<section name="graphics">
@@ -1283,32 +1167,42 @@ weight:5</attribute>
 			</section>
 		</section>
 		<section name="edge">
-			<attribute key="source" type="int">30</attribute>
-			<attribute key="target" type="int">24</attribute>
-			<attribute key="label" type="String">facing:-1</attribute>
+			<attribute key="source" type="int">24</attribute>
+			<attribute key="target" type="int">0</attribute>
+			<attribute key="label" type="String">turn_right
+facing:1</attribute>
 			<section name="graphics">
 				<attribute key="fill" type="String">#000000</attribute>
 				<attribute key="targetArrow" type="String">standard</attribute>
 				<section name="Line">
 					<section name="point">
-						<attribute key="x" type="double">-360.0</attribute>
-						<attribute key="y" type="double">-450.0</attribute>
-					</section>
-					<section name="point">
-						<attribute key="x" type="double">-140.0</attribute>
-						<attribute key="y" type="double">-450.0</attribute>
+						<attribute key="x" type="double">-90.0</attribute>
+						<attribute key="y" type="double">-293.2153625488281</attribute>
 					</section>
 					<section name="point">
 						<attribute key="x" type="double">-90.0</attribute>
-						<attribute key="y" type="double">-293.2153625488281</attribute>
+						<attribute key="y" type="double">-450.0</attribute>
+					</section>
+					<section name="point">
+						<attribute key="x" type="double">60.0</attribute>
+						<attribute key="y" type="double">-450.0</attribute>
+					</section>
+					<section name="point">
+						<attribute key="x" type="double">60.0</attribute>
+						<attribute key="y" type="double">-150.0</attribute>
+					</section>
+					<section name="point">
+						<attribute key="x" type="double">-90.0</attribute>
+						<attribute key="y" type="double">-150.0</attribute>
 					</section>
 				</section>
 			</section>
 			<section name="edgeAnchor">
-				<attribute key="xTarget" type="double">-0.6756756901741028</attribute>
+				<attribute key="xTarget" type="double">0.4054054021835327</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">facing:-1</attribute>
+				<attribute key="text" type="String">turn_right
+facing:1</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="model" type="String">six_pos</attribute>
@@ -1316,33 +1210,39 @@ weight:5</attribute>
 			</section>
 		</section>
 		<section name="edge">
-			<attribute key="source" type="int">29</attribute>
-			<attribute key="target" type="int">24</attribute>
-			<attribute key="label" type="String">facing:1</attribute>
+			<attribute key="source" type="int">24</attribute>
+			<attribute key="target" type="int">0</attribute>
+			<attribute key="label" type="String">turn_left
+facing:-1</attribute>
 			<section name="graphics">
 				<attribute key="fill" type="String">#000000</attribute>
 				<attribute key="targetArrow" type="String">standard</attribute>
 				<section name="Line">
 					<section name="point">
-						<attribute key="x" type="double">180.0</attribute>
-						<attribute key="y" type="double">-450.0</attribute>
+						<attribute key="x" type="double">-90.0</attribute>
+						<attribute key="y" type="double">-293.2153625488281</attribute>
 					</section>
 					<section name="point">
-						<attribute key="x" type="double">-40.358306884765625</attribute>
-						<attribute key="y" type="double">-450.0</attribute>
+						<attribute key="x" type="double">60.0</attribute>
+						<attribute key="y" type="double">-330.0</attribute>
+					</section>
+					<section name="point">
+						<attribute key="x" type="double">60.0</attribute>
+						<attribute key="y" type="double">-150.0</attribute>
 					</section>
 					<section name="point">
 						<attribute key="x" type="double">-90.0</attribute>
-						<attribute key="y" type="double">-293.2153625488281</attribute>
+						<attribute key="y" type="double">-150.0</attribute>
 					</section>
 				</section>
 			</section>
 			<section name="edgeAnchor">
-				<attribute key="xTarget" type="double">0.6708337068557739</attribute>
-				<attribute key="yTarget" type="double">-0.5610898733139038</attribute>
+				<attribute key="ySource" type="double">-0.9753220081329346</attribute>
+				<attribute key="xTarget" type="double">0.8108108043670654</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">facing:1</attribute>
+				<attribute key="text" type="String">turn_left
+facing:-1</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="model" type="String">six_pos</attribute>

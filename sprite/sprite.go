@@ -346,6 +346,15 @@ func (s *Sprite) Think(dt int) {
   }
   dt -= s.togo
 
+fmt.Printf("-------------------\n")
+fmt.Printf("Cur: %v\n", s.cur_frame.Name)
+fmt.Printf("Cmd: %v\n", s.pending_cmds)
+fmt.Printf("Path: %v\n", s.path)
+fmt.Printf("PathNames: ")
+for _,p := range s.path {
+  fmt.Printf("%s ", s.anim.nodes[p].Name)
+}
+
   // If we don't have a path layed out but we do have pending commands we should used one
   // of those to get a new path
   if len(s.path) == 0 && len(s.pending_cmds) > 0 {
@@ -360,6 +369,7 @@ func (s *Sprite) Think(dt int) {
         // TODO: Log a warning, got a command that we can't actually handle
         s.pending_cmds = s.pending_cmds[1:]
       } else {
+        s.pending_cmds = s.pending_cmds[1:]
         break
       }
     }
@@ -373,7 +383,6 @@ func (s *Sprite) Think(dt int) {
         //       to stay still.  Instead we will just wait until we've moved one frame, but
         //       this means that we will run dijkstra's multiple times for no reason, might
         //       be worth caching that or something.
-        s.pending_cmds = s.pending_cmds[1:]
         if len(s.pending_cmds) == 0 {
           s.pending_cmds = nil
         }
