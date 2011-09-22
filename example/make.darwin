@@ -1,5 +1,4 @@
-6g -o example.6 example.go
-6l -o example example.6
+gb -m
 
 rm -rf example.app
 mkdir -p example.app/Contents/MacOS
@@ -12,5 +11,4 @@ cp fonts/* example.app/Contents/fonts/
 cp ../gos/darwin/lib/libglop.so example.app/Contents/lib/
 cp -r ../sprite/test_sprite example.app/Contents/sprites/
 rm -f example
-rm example.6
 
