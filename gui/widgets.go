@@ -82,7 +82,8 @@ func (g *Gui) Think(ms int64) {
   region := Region{
     Dims : g.Root.widget.(*rootWidget).Dims,
   }
-  g.Root.layoutAndDraw(region)
+  var c clipper
+  g.Root.layoutAndDraw(region, &c)
 }
 
 type Childless struct {}
@@ -214,11 +215,26 @@ func (w *AnchorBox) Layout(dims Dims, requested map[Widget]Dims) map[Widget]Regi
   for i := range w.children {
     widget := w.children[i]
     anchor := w.anchors[i]
-    xoff := anchor.Bx * float64(dims.Dx) - anchor.Wx * float64(requested[widget].Dx)
-    yoff := anchor.By * float64(dims.Dy) - anchor.Wy * float64(requested[widget].Dy)
+    xoff := int(anchor.Bx * float64(dims.Dx) - anchor.Wx * float64(requested[widget].Dx) + 0.5)
+    yoff := int(anchor.By * float64(dims.Dy) - anchor.Wy * float64(requested[widget].Dy) + 0.5)
+    dims := requested[widget]
+    if xoff < 0 {
+      dims.Dx += xoff
+      xoff = 0
+    }
+    if yoff < 0 {
+      dims.Dy += yoff
+      yoff = 0
+    }
+    if xoff + dims.Dx > w.Dims.Dx {
+      dims.Dx -= (xoff + dims.Dx) - w.Dims.Dx
+    }
+    if yoff + dims.Dy > w.Dims.Dy {
+      dims.Dy -= (yoff + dims.Dy) - w.Dims.Dy
+    }
     reg[widget] = Region{
-      Point : Point{ X : int(xoff), Y : int(yoff) },
-      Dims : requested[widget],
+      Point : Point{ X : xoff, Y : yoff },
+      Dims : dims,
     }
   }
   return reg

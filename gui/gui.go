@@ -2,6 +2,7 @@ package gui
 
 import (
   "glop/gin"
+  "gl"
 )
 
 // The GUI is handled in four steps:
@@ -134,9 +135,44 @@ func (n *Node) think(ms int64, focus *Focus) Dims {
 }
 
 
+type clipper struct {
+  eqs [][4]float64
+}
+func (c *clipper) Push(r Region) {
+  c.eqs = append(c.eqs, [4]float64{ 1, 0, 0, -float64(r.X)})
+  c.eqs = append(c.eqs, [4]float64{-1, 0, 0, float64(r.X + r.Dx)})
+  c.eqs = append(c.eqs, [4]float64{ 0, 1, 0, -float64(r.Y)})
+  c.eqs = append(c.eqs, [4]float64{ 0,-1, 0, float64(r.Y + r.Dy)})
+  c.set()
+}
+func (c *clipper) set() {
+  i := len(c.eqs) - 4
+  if i >= 0 {
+    gl.Enable(gl.CLIP_PLANE0)
+    gl.Enable(gl.CLIP_PLANE1)
+    gl.Enable(gl.CLIP_PLANE2)
+    gl.Enable(gl.CLIP_PLANE3)
+    gl.ClipPlane(gl.CLIP_PLANE0, &c.eqs[i][0])
+    gl.ClipPlane(gl.CLIP_PLANE1, &c.eqs[i+1][0])
+    gl.ClipPlane(gl.CLIP_PLANE2, &c.eqs[i+2][0])
+    gl.ClipPlane(gl.CLIP_PLANE3, &c.eqs[i+3][0])
+  } else {
+    gl.Disable(gl.CLIP_PLANE0)
+    gl.Disable(gl.CLIP_PLANE1)
+    gl.Disable(gl.CLIP_PLANE2)
+    gl.Disable(gl.CLIP_PLANE3)
+  }
+}
+func (c *clipper) Pop() {
+  c.eqs = c.eqs[0 : len(c.eqs) - 4]
+  c.set()
+}
+
+
 // TODO: Enforce regions
-func (n *Node) layoutAndDraw(region Region) {
+func (n *Node) layoutAndDraw(region Region, c *clipper) {
   n.previous = region
+  c.Push(region)
   n.widget.Draw(region)
   child_dims := make(map[Widget]Dims)
   for _,child := range n.children {
@@ -144,8 +180,9 @@ func (n *Node) layoutAndDraw(region Region) {
   }
   child_regions := n.widget.Layout(region.Dims, child_dims)
   for _,child := range n.children {
-    child.layoutAndDraw(child_regions[child.widget].Add(region.Point))
+    child.layoutAndDraw(child_regions[child.widget].Add(region.Point), c)
   }
+  c.Pop()
 }
 
 func (n *Node) InstallWidget(w Widget, params interface{}) *Node {
