@@ -9,7 +9,9 @@ import (
   "gl/glu"
   "io/ioutil"
   "os"
+  "fmt"
   "path"
+  "path/filepath"
 )
 
 func mustLoadFont(filename string) *truetype.Font {
@@ -41,12 +43,20 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, text s
   return int(pt.X >> 8), py
 }
 
-var basic_font *truetype.Font
+var basic_fonts map[string]*truetype.Font
 
 func init() {
-  fontpath := os.Args[0] + "/../../fonts/skia.ttf"
+  basic_fonts = make(map[string]*truetype.Font)
+}
+
+func LoadFont(name,rel_path string) os.Error {
+  if _,ok := basic_fonts[name]; ok {
+    return os.NewError(fmt.Sprintf("Cannot load two fonts with the same name: '%s'", name))
+  }
+  fontpath := filepath.Join(os.Args[0], rel_path)
   fontpath = path.Clean(fontpath)
-  basic_font = mustLoadFont(fontpath)
+  basic_fonts[name] = mustLoadFont(fontpath)
+  return nil
 }
 
 type SingleLineText struct {
@@ -93,11 +103,15 @@ func (t *SingleLineText) figureDims() {
   glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.rdims.Dx, t.rdims.Dy, gl.RGBA, t.rgba.Pix)
 }
 
-func MakeSingleLineText(font *truetype.Font, str string) *SingleLineText {
+func MakeSingleLineText(font_name,text string) *SingleLineText {
   var t SingleLineText
-  t.glyph_buf = truetype.NewGlyphBuf()
-  t.text = str
+  font,ok := basic_fonts[font_name]
+  if !ok {
+    return nil
+  }
   t.font = font
+  t.glyph_buf = truetype.NewGlyphBuf()
+  t.text = text
   t.psize = 72
   t.context = freetype.NewContext()
   t.context.SetDPI(132)

@@ -9,13 +9,6 @@ import (
   "runtime"
   "time"
   "fmt"
-  "io/ioutil"
-  "image"
-  "image/draw"
-  "freetype-go.googlecode.com/hg/freetype"
-  "freetype-go.googlecode.com/hg/freetype/truetype"
-  "gl"
-  "gl/glu"
   "os"
   "path"
   "path/filepath"
@@ -32,48 +25,6 @@ func init() {
   sys = system.Make(gos.GetSystemInterface())
 }
 
-func loadFont(filename string) (*truetype.Font, os.Error) {
-  data,err := ioutil.ReadFile(filename)
-  if err != nil {
-    return nil, err
-  }
-  font,err := freetype.ParseFont(data)
-  if err != nil {
-    return nil, err
-  }
-  return font,nil
-}
-
-func makeContext() (*freetype.Context, os.Error) {
-  c := freetype.NewContext()
-  c.SetDPI(200)
-  c.SetFontSize(15)
-  return c, nil
-}
-
-func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, texture gl.Texture, text []string) os.Error {
-  fg, bg := image.Black, image.White
-  draw.Draw(rgba, rgba.Bounds(), bg, image.ZP, draw.Src)
-  c.SetFont(font)
-  c.SetDst(rgba)
-  c.SetSrc(fg)
-  c.SetClip(rgba.Bounds())
-  pt := freetype.Pt(10, 10+c.FUnitToPixelRU(font.UnitsPerEm()))
-  for _, s := range text {
-    _, err := c.DrawString(s, pt)
-    if err != nil {
-      return err
-    }
-    pt.Y += c.PointToFix32(15 * 1.5)
-  }
-  gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, 1024, 1024, gl.RGBA, rgba.Pix)
-  return nil
-}
 
 type Foo struct {
   *gui.BoxWidget
@@ -106,10 +57,7 @@ func main() {
   flag.Parse()
   sys.Startup()
 
-  fontpath := filepath.Join(os.Args[0], *font_path)
-  fontpath = path.Clean(fontpath)
-  fmt.Printf("fontpaht:%s\n", fontpath)
-  font,err := loadFont(fontpath)
+  err := gui.LoadFont("standard", *font_path)
   if err != nil {
     panic(err.String())
   }
@@ -128,10 +76,10 @@ func main() {
   anch.InstallWidget(
       &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
       gui.Anchor{ Bx:0.2, By:0.2, Wx:1, Wy:1})
-  text_widget := gui.MakeSingleLineText(font, "Funk Monkey 7$")
+  text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$")
   anch.InstallWidget(gui.MakeBoxWidget(450,50,0,1,0,1), gui.Anchor{0,1, 0,1})
   anch.InstallWidget(text_widget, gui.Anchor{0,1,0,1})
-  frame_count_widget := gui.MakeSingleLineText(font, "Frame")
+  frame_count_widget := gui.MakeSingleLineText("standard", "Frame")
   anch.InstallWidget(gui.MakeBoxWidget(250,50,0,1,0,1), gui.Anchor{1,1, 1,1})
   anch.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
 
