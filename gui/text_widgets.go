@@ -26,8 +26,9 @@ func mustLoadFont(filename string) *truetype.Font {
   return font
 }
 
-func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, text string) (int,int) {
-  fg, bg := image.Black, image.Transparent
+func drawText(font *truetype.Font, c *freetype.Context, color image.Color, rgba *image.RGBA, text string) (int,int) {
+  fg := image.NewColorImage(color)
+  bg := image.Transparent
   draw.Draw(rgba, rgba.Bounds(), bg, image.ZP, draw.Src)
   c.SetFont(font)
   c.SetDst(rgba)
@@ -72,6 +73,7 @@ type SingleLineText struct {
   glyph_buf *truetype.GlyphBuf
   texture   gl.Texture
   rgba      *image.RGBA
+  color     image.Color
 }
 
 func nextPowerOf2(n uint32) uint32 {
@@ -84,13 +86,13 @@ func nextPowerOf2(n uint32) uint32 {
 }
 
 func (t *SingleLineText) figureDims() {
-  t.dims.Dx, t.dims.Dy = drawText(t.font, t.context, image.NewRGBA(1, 1), t.text)
+  t.dims.Dx, t.dims.Dy = drawText(t.font, t.context, t.color, image.NewRGBA(1, 1), t.text)
   t.rdims = Dims{
     Dx : int(nextPowerOf2(uint32(t.dims.Dx))),
     Dy : int(nextPowerOf2(uint32(t.dims.Dy))),
   }  
   t.rgba = image.NewRGBA(t.rdims.Dx, t.rdims.Dy)
-  drawText(t.font, t.context, t.rgba, t.text)
+  drawText(t.font, t.context, t.color, t.rgba, t.text)
 
 
   gl.Enable(gl.TEXTURE_2D)
@@ -103,7 +105,7 @@ func (t *SingleLineText) figureDims() {
   glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.rdims.Dx, t.rdims.Dy, gl.RGBA, t.rgba.Pix)
 }
 
-func MakeSingleLineText(font_name,text string) *SingleLineText {
+func MakeSingleLineText(font_name,text string, r,g,b,a float64) *SingleLineText {
   var t SingleLineText
   font,ok := basic_fonts[font_name]
   if !ok {
@@ -117,8 +119,18 @@ func MakeSingleLineText(font_name,text string) *SingleLineText {
   t.context.SetDPI(132)
   t.context.SetFontSize(18)
   t.texture = gl.GenTexture()
+  t.SetColor(r, g, b, a)
   t.figureDims()
   return &t
+}
+
+func (t *SingleLineText) SetColor(r,g,b,a float64) {
+  t.color = image.RGBAColor{
+    R : uint8(255 * r),
+    G : uint8(255 * g),
+    B : uint8(255 * b),
+    A : uint8(255 * a),
+  }
 }
 
 func (t *SingleLineText) SetText(str string) {

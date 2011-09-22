@@ -3,15 +3,11 @@ package main
 import (
   "glop/gos"
   "glop/gui"
-  "glop/gin"
   "glop/system"
-  "glop/sprite"
   "runtime"
   "time"
   "fmt"
   "os"
-  "path"
-  "path/filepath"
   "flag"
 )
 
@@ -66,61 +62,26 @@ func main() {
   ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), 768, 576)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{768, 576}), nil)
-  anch.InstallWidget(gui.MakeBoxWidget(250,250,0,0,1,1), gui.Anchor{0.5, 0.5, 0.5, 0.5})
-  anch.InstallWidget(
-      &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
-      gui.Anchor{ Bx:0.7, By:1, Wx:0.5, Wy:1})
-  anch.InstallWidget(
-      &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
-      gui.Anchor{ Bx:0, By:0.5, Wx:0, Wy:0.5})
-  anch.InstallWidget(
-      &Foo{gui.BoxWidget : gui.MakeBoxWidget(100, 100, 1, 1, 1, 1)},
-      gui.Anchor{ Bx:0.2, By:0.2, Wx:1, Wy:1})
-  text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$")
-  anch.InstallWidget(gui.MakeBoxWidget(450,50,0,1,0,1), gui.Anchor{0,1, 0,1})
-  anch.InstallWidget(text_widget, gui.Anchor{0,1,0,1})
-  frame_count_widget := gui.MakeSingleLineText("standard", "Frame")
-  anch.InstallWidget(gui.MakeBoxWidget(250,50,0,1,0,1), gui.Anchor{1,1, 1,1})
-  anch.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
+  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,1, 0,1})
 
+  text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0,0,1)
+  table.InstallWidget(gui.MakeBoxWidget(450,50,0,1,0,1), nil)
+  table.InstallWidget(text_widget, gui.Anchor{0,1,0,1})
+  frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 0,0,1,1)
+  table.InstallWidget(gui.MakeBoxWidget(250,50,0,1,0,1), nil)
+  table.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
+  table.InstallWidget(&gui.Terrain{}, nil)
   n := 0
-  spritepath := filepath.Join(os.Args[0], *sprite_path)
-  spritepath = path.Clean(spritepath)
-  s,err := sprite.LoadSprite(spritepath)
-  if err != nil {
-    panic(err.String())
-  }
-  s.Stats()
-
-  key_bindings := make(map[byte]string)
-  key_bindings['a'] = "defend"
-  key_bindings['s'] = "undamaged"
-  key_bindings['d'] = "damaged"
-  key_bindings['f'] = "killed"
-  key_bindings['z'] = "ranged"
-  key_bindings['x'] = "melee"
-  key_bindings['c'] = "move"
-  key_bindings['v'] = "stop"
-  key_bindings['o'] = "turn_left"
-  key_bindings['p'] = "turn_right"
-
   for {
     n++
     frame_count_widget.SetText(fmt.Sprintf("%d", n))
-    s.RenderToQuad()
-    s.Think(50)
     sys.SwapBuffers()
     <-ticker
-    text_widget.SetText(s.CurState())
+    text_widget.SetText("fafs")
     sys.Think()
     groups := sys.GetInputEvents()
     fmt.Printf("Num groups: %d\n", len(groups))
     for _,group := range groups {
-      for key,cmd := range key_bindings {
-        if found,event := group.FindEvent(gin.KeyId(key)); found && event.Type == gin.Press {
-          s.Command(cmd)
-        }
-      }
       if found,_ := group.FindEvent('q'); found {
         return
       }
