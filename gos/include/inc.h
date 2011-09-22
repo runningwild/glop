@@ -81,31 +81,4 @@
 #define kMouseMButton  306
 
 
-
-
-void Init();
-void CreateWindow(void**, void**, int, int, int, int);
-
-
-typedef struct {
-  short index;
-  short device;
-  float press_amt;
-  long long timestamp;
-  int cursor_x;
-  int cursor_y;
-  int num_lock;
-  int caps_lock;
-} KeyEvent;
-void GetInputEvents(void**, int*, long long*);
-// GetInputEvents(KeyEvent**, length*, horizon*);
-
-void Run();
-void SwapBuffers(void*);
-void Think();
-void Quit();
-
-void GetMousePos(void*, void*);
-void GetWindowDims(void* _window, void* _x, void* _y, void* _dx, void* _dy);
-
 #endif

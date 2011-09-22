@@ -4,8 +4,8 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=glop/gos
-CGOFILES=cgo_os.go
-CGO_LDFLAGS=-Llib -lglop -framework Cocoa -framework OpenGL -mmacosx-version-min=10.5
+CGOFILES=cgo_win32.go
+CGO_LDFLAGS=-Llib -lglop
 
 # gb: this is the local install
 GBROOT=..

@@ -18,10 +18,14 @@ import (
   "gl/glu"
   "os"
   "path"
+  "path/filepath"
+  "flag"
 )
 
 var (
   sys system.System
+  font_path *string = flag.String("font", "/fonts/skia.ttf", "relative path of a font")
+  sprite_path *string=flag.String("sprite", "/../../sprites/test_sprite", "relative path of sprite")
 )
 
 func init() {
@@ -74,9 +78,8 @@ func drawText(font *truetype.Font, c *freetype.Context, rgba *image.RGBA, textur
 type Foo struct {
   *gui.BoxWidget
 }
-var window system.Window
 func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widget]gui.Dims) (bool, gui.Dims) {
-  cx,cy := sys.GetCursorPos(window)
+  cx,cy := sys.GetCursorPos()
   cursor := gui.Point{ X : cx, Y : cy }
   if cursor.Inside(previous) {
     f.Dims.Dx += 5
@@ -91,16 +94,18 @@ func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widg
 
 func main() {
   runtime.LockOSThread()
+  flag.Parse()
   sys.Startup()
 
-  fontpath := os.Args[0] + "/../../fonts/skia.ttf"
+  fontpath := filepath.Join(os.Args[0], *font_path)
   fontpath = path.Clean(fontpath)
+  fmt.Printf("fontpaht:%s\n", fontpath)
   font,err := loadFont(fontpath)
   if err != nil {
     panic(err.String())
   }
 
-  window = sys.CreateWindow(10, 10, 768, 576)
+  sys.CreateWindow(10, 10, 768, 576)
   ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), 768, 576)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{768, 576}), nil)
@@ -122,7 +127,7 @@ func main() {
   anch.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
 
   n := 0
-  spritepath := os.Args[0] + "/../../sprites/test_sprite"
+  spritepath := filepath.Join(os.Args[0], *sprite_path)
   spritepath = path.Clean(spritepath)
   s,err := sprite.LoadSprite(spritepath)
   if err != nil {
@@ -147,12 +152,12 @@ func main() {
     frame_count_widget.SetText(fmt.Sprintf("%d", n))
     s.RenderToQuad()
     s.Think(50)
-    sys.SwapBuffers(window)
+    sys.SwapBuffers()
     <-ticker
     text_widget.SetText(s.CurState())
     sys.Think()
     groups := sys.GetInputEvents()
-
+    fmt.Printf("Num groups: %d\n", len(groups))
     for _,group := range groups {
       for key,cmd := range key_bindings {
         if found,event := group.FindEvent(gin.KeyId(key)); found && event.Type == gin.Press {
