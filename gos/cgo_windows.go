@@ -1,10 +1,9 @@
 package gos
 
-// #include "include/glop.h"
+// #include "windows/include/glop.h"
 import "C"
 
 import (
-  "fmt"
   "glop/system"
   "glop/gin"
   "unsafe"
@@ -59,16 +58,10 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
   var length C.int
   var horizon C.longlong
-  fmt.Printf("Here: %v\n", win32.window)
   C.GlopGetInputEvents(unsafe.Pointer(win32.window), cp, unsafe.Pointer(&length), unsafe.Pointer(&horizon))
-  fmt.Printf("Events: %v\n", length)
-  fmt.Printf("Horizon: %v\n", horizon)
   win32.horizon = int64(horizon)
-  print("here\n")
   c_events := (*[1000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
-  print("here\n")
   events := make([]gin.OsEvent, length)
-  print("here\n")
   for i := range c_events {
     events[i] = gin.OsEvent{
       KeyId     : gin.KeyId(c_events[i].index),

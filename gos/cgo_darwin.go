@@ -1,6 +1,6 @@
 package gos
 
-// #include "include/glop.h"
+// #include "darwin/include/glop.h"
 import "C"
 
 import (
@@ -9,15 +9,12 @@ import (
   "unsafe"
 )
 
-type osxWindow struct {
+type osxSystemObject struct {
   window  uintptr  // NSWindow*
   context uintptr  // NSOpenGLContext*
-}
-
-
-type osxSystemObject struct {
   horizon int64
 }
+
 var (
   osx_system_object osxSystemObject
 )
@@ -39,17 +36,14 @@ func (osx *osxSystemObject) Quit() {
   C.Quit()
 }
 
-func (osx *osxSystemObject) CreateWindow(x,y,width,height int) system.Window {
-  var window osxWindow
-  w := (*unsafe.Pointer)(unsafe.Pointer(&window.window))
-  c := (*unsafe.Pointer)(unsafe.Pointer(&window.context))
+func (osx *osxSystemObject) CreateWindow(x,y,width,height int) {
+  w := (*unsafe.Pointer)(unsafe.Pointer(&osx.window))
+  c := (*unsafe.Pointer)(unsafe.Pointer(&osx.context))
   C.CreateWindow(w, c, C.int(x), C.int(y), C.int(width), C.int(height))
-  return system.Window(unsafe.Pointer(&window))
 }
 
-func (osx *osxSystemObject) SwapBuffers(window system.Window) {
-  osx_window := (*osxWindow)(unsafe.Pointer(window))
-  C.SwapBuffers(unsafe.Pointer(osx_window.context))
+func (osx *osxSystemObject) SwapBuffers() {
+  C.SwapBuffers(unsafe.Pointer(osx.context))
 }
 
 func (osx *osxSystemObject) Think() {
@@ -90,13 +84,12 @@ func (osx *osxSystemObject) GetCursorPos() (x,y int) {
   return
 }
 
-func (osx *osxSystemObject) GetWindowDims(window system.Window) (int,int,int,int) {
+func (osx *osxSystemObject) GetWindowDims() (int,int,int,int) {
   var x,y,dx,dy int
-  osx_window := (*osxWindow)(unsafe.Pointer(window))
   _x := unsafe.Pointer(&x)
   _y := unsafe.Pointer(&y)
   _dx := unsafe.Pointer(&dx)
   _dy := unsafe.Pointer(&dy)
-  C.GetWindowDims(unsafe.Pointer(osx_window.window), _x, _y, _dx, _dy)
+  C.GetWindowDims(unsafe.Pointer(osx.window), _x, _y, _dx, _dy)
   return x, y, dx, dy
 }

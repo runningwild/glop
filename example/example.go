@@ -24,8 +24,8 @@ import (
 
 var (
   sys system.System
-  font_path *string = flag.String("font", "/fonts/skia.ttf", "relative path of a font")
-  sprite_path *string=flag.String("sprite", "/../../sprites/test_sprite", "relative path of sprite")
+  font_path *string = flag.String("font", "../../fonts/skia.ttf", "relative path of a font")
+  sprite_path *string=flag.String("sprite", "../../sprites/test_sprite", "relative path of sprite")
 )
 
 func init() {
@@ -94,6 +94,15 @@ func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widg
 
 func main() {
   runtime.LockOSThread()
+
+  // Running a binary via osx's package mechanism will add a flag that begins with
+  // '-psn' so we have to find it and pretend like we were expecting it so that go
+  // doesn't asplode because of an unexpected flag.
+  for _,arg := range os.Args {
+    if len(arg) >= 4 && arg[0:4] == "-psn" {
+      flag.Bool(arg[1:], false, "HERE JUST TO APPEASE GO'S FLAG PACKAGE")
+    }
+  }
   flag.Parse()
   sys.Startup()
 

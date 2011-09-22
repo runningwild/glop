@@ -6,4 +6,5 @@ _*
 *bin
 *.so
 *.o
+*.DS_Store
 
