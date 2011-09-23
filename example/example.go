@@ -13,8 +13,8 @@ import (
 
 var (
   sys system.System
-  font_path *string = flag.String("font", "../../fonts/skia.ttf", "relative path of a font")
-  sprite_path *string=flag.String("sprite", "../../sprites/test_sprite", "relative path of sprite")
+  font_path *string = flag.String("font", "../fonts/skia.ttf", "relative path of a font")
+  sprite_path *string=flag.String("sprite", "../sprites/test_sprite", "relative path of sprite")
 )
 
 func init() {
@@ -86,7 +86,6 @@ func main() {
     <-ticker
     sys.Think()
     groups := sys.GetInputEvents()
-    fmt.Printf("Num groups: %d\n", len(groups))
     for _,group := range groups {
       if found,_ := group.FindEvent('q'); found {
         return

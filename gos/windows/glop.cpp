@@ -955,6 +955,14 @@ void GlopGetWindowSize(const OsWindowData *window, int *width, int *height) {
   *height = window->height;
 }
 
+void GlopGetWindowDims(void* _window, int* x, int* y, int* dx, int* dy) {
+  OsWindowData* window = (OsWindowData*)_window;
+  *x = window->x;
+  *y = window->y;
+  *dx = window->width;
+  *dy = window->height;
+}
+
 /*
 void GlopSetIcon(OsWindowData *window, const Image *icon) {
   if (window->icon_handle != 0)
@@ -1001,6 +1009,13 @@ void GlopGetInputEvents(void* _window, void** _events_ret, void* _num_events, vo
   for (int i = 0; i < events.size(); i++) {
     glop_event_buffer[i] = events[i];
   }
+}
+
+void GlopGetMousePosition(int* x, int* y) {
+  POINT cursor_pos;
+  GetCursorPos(&cursor_pos);
+  *x = cursor_pos.x;
+  *y = cursor_pos.y;
 }
 
 void GlopSetMousePosition(int x, int y) {

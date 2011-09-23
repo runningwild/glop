@@ -15,8 +15,8 @@ type System interface {
   // TODO: implement this:
   // DestroyWindow(Window)
 
-  // Gets the cursor position in screen-coordinates, glop style, with the origin in the
-  // bottom right
+  // Gets the cursor position in window coordinates with the cursor at the bottom left
+  // corner of the window
   GetCursorPos() (x,y int)
 
   GetWindowDims() (x,y,dx,dy int)
@@ -51,8 +51,8 @@ type Os interface {
   // TODO: implement this:
   // DestroyWindow(Window)
 
-  // Gets the cursor position in screen coordinates with the origin in the top left of the
-  // screen
+  // Gets the cursor position in window coordinates with the cursor at the bottom left
+  // corner of the window
   GetCursorPos() (x,y int)
 
   GetWindowDims() (x,y,dx,dy int)
@@ -101,12 +101,8 @@ func (sys *sysObj) Input() *gin.Input {
 func (sys *sysObj) CreateWindow(x,y,width,height int) {
   sys.os.CreateWindow(x, y, width, height)
 }
-func (sys *sysObj) GetCursorPos() (x,y int) {
-  wx,wy,_,_ := sys.os.GetWindowDims()
-  x,y = sys.os.GetCursorPos()
-  x -= wx
-  y -= wy
-  return
+func (sys *sysObj) GetCursorPos() (int,int) {
+  return sys.os.GetCursorPos()
 }
 func (sys *sysObj) GetWindowDims() (int,int,int,int) {
   return sys.os.GetWindowDims()

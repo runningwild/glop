@@ -35,7 +35,8 @@ func (win32 *win32SystemObject) Quit() {
 }
 
 func (win32 *win32SystemObject) CreateWindow(x,y,width,height int) {
-  title := []byte{'a','b','c',0}
+  title := []byte("Mob Rules")
+  title = append(title, 0)
   win32.window = uintptr(unsafe.Pointer(C.GlopCreateWindow(
     unsafe.Pointer(&title[0]),
     C.int(x), C.int(y), C.int(width), C.int(height), 0, 0, 0)))
@@ -73,27 +74,18 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
       },
     }
   }
-  print("here\n")
   return events, win32.horizon
 }
 
-func (win32 *win32SystemObject) GetCursorPos() (x,y int) {
-//  _x := unsafe.Pointer(&x)
-//  _y := unsafe.Pointer(&y)
-//  C.GetMousePos(_x, _y)
-  return
+func (win32 *win32SystemObject) GetCursorPos() (int,int) {
+  wx,wy,_,wdy := win32.GetWindowDims()
+  var x,y C.int
+  C.GlopGetMousePosition(&x, &y)
+  return int(x) - wx, wy + wdy - int(y)
 }
 
 func (win32 *win32SystemObject) GetWindowDims() (int,int,int,int) {
-/*
-  var x,y,dx,dy int
-  osx_window := (*osxWindow)(unsafe.Pointer(window))
-  _x := unsafe.Pointer(&x)
-  _y := unsafe.Pointer(&y)
-  _dx := unsafe.Pointer(&dx)
-  _dy := unsafe.Pointer(&dy)
-  C.GetWindowDims(unsafe.Pointer(osx_window.window), _x, _y, _dx, _dy)
-*/
-//  return x, y, dx, dy
-  return 0,0,0,0
+  var x,y,dx,dy C.int
+  C.GlopGetWindowDims(unsafe.Pointer(win32.window), &x, &y, &dx, &dy)
+  return int(x), int(y), int(dx), int(dy)
 }
