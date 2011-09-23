@@ -22,12 +22,7 @@ type rootWidget struct {
   Unthinking
   StandardParent
 }
-func (r *rootWidget) Draw(region Region) {
-  gl.LoadIdentity();
-  gl.Ortho(0, float64(r.Dims.Dx), 0, float64(r.Dims.Dy), -1, 1)
-  gl.MatrixMode(gl.MODELVIEW)
-  gl.ClearColor(0, 0, 0, 1)
-  gl.Clear(0x00004000)
+func (r *rootWidget) Draw(dims Dims) {
 }
 func (r *rootWidget) Layout(dims Dims, req map[Widget]Dims) map[Widget]Region {
   m := make(map[Widget]Region)
@@ -83,6 +78,16 @@ func (g *Gui) Think(ms int64) {
     Dims : g.Root.widget.(*rootWidget).Dims,
   }
   var c clipper
+
+  gl.MatrixMode(gl.MODELVIEW)
+  gl.LoadIdentity();
+  gl.MatrixMode(gl.PROJECTION)
+  gl.LoadIdentity();
+  gl.Ortho(0, float64(region.Dims.Dx), 0, float64(region.Dims.Dy), -4000, 4000)
+  gl.ClearColor(0, 0, 0, 1)
+  gl.Clear(0x00004000)
+
+
   g.Root.layoutAndDraw(region, &c)
 }
 
@@ -146,7 +151,7 @@ func (t *VerticalTable) Layout(dims Dims, requested map[Widget]Dims) map[Widget]
   }
   return reg
 }
-func (t *VerticalTable) Draw(region Region) {
+func (t *VerticalTable) Draw(dims Dims) {
 }
 
 type BoxWidget struct {
@@ -158,18 +163,20 @@ type BoxWidget struct {
 func MakeBoxWidget(dx,dy int, r,g,b,a float64) *BoxWidget {
   return &BoxWidget{ Unthinking : Unthinking{ Dims : Dims{ Dx : dx, Dy : dy }}, R:r, G:g, B:b, A:a }
 }
-func (b *BoxWidget) Draw(region Region) {
+func (b *BoxWidget) Draw(dims Dims) {
+  gl.MatrixMode(gl.MODELVIEW)
+  gl.PushMatrix()
+  defer gl.PopMatrix()
+
   gl.Color4d(b.R, b.G, b.B, b.A)
-  fx := float64(region.X)
-  fy := float64(region.Y)
-  fdx := float64(region.Dx)
-  fdy := float64(region.Dy)
+  fdx := float64(dims.Dx)
+  fdy := float64(dims.Dy)
   gl.Disable(gl.TEXTURE_2D)
   gl.Begin(gl.QUADS)
-    gl.Vertex2d(    fx,    fy)
-    gl.Vertex2d(fdx+fx,    fy)
-    gl.Vertex2d(fdx+fx,fdy+fy)
-    gl.Vertex2d(    fx,fdy+fy)
+    gl.Vertex2d(  0,  0)
+    gl.Vertex2d(fdx,  0)
+    gl.Vertex2d(fdx,fdy)
+    gl.Vertex2d(  0,fdy)
   gl.End()
 }
 
@@ -239,5 +246,5 @@ func (w *AnchorBox) Layout(dims Dims, requested map[Widget]Dims) map[Widget]Regi
   }
   return reg
 }
-func (w *AnchorBox) Draw(region Region) {
+func (w *AnchorBox) Draw(dims Dims) {
 }

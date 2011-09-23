@@ -61,23 +61,29 @@ func main() {
   sys.CreateWindow(10, 10, 768, 576)
   ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), 768, 576)
-  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{768, 576}), nil)
-  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,1, 0,1})
+  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{700, 500}), nil)
+  manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{400,300}), gui.Anchor{1,1,1,1})
+  text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
 
-  text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0,0,1)
-  table.InstallWidget(gui.MakeBoxWidget(450,50,0,1,0,1), nil)
+  terrain,err := gui.MakeTerrain("../../maps/chess.png", int(1000.0/8))
+  if err != nil {
+    panic(err.String())
+  } else {
+    manch.InstallWidget(terrain, gui.Anchor{0,0,0,0})
+  }
+
+  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
+
   table.InstallWidget(text_widget, gui.Anchor{0,1,0,1})
   frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 0,0,1,1)
-  table.InstallWidget(gui.MakeBoxWidget(250,50,0,1,0,1), nil)
   table.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
-  table.InstallWidget(&gui.Terrain{}, nil)
   n := 0
   for {
     n++
+    terrain.HighlightBlockAtCursor(sys.GetCursorPos())
     frame_count_widget.SetText(fmt.Sprintf("%d", n))
     sys.SwapBuffers()
     <-ticker
-    text_widget.SetText("fafs")
     sys.Think()
     groups := sys.GetInputEvents()
     fmt.Printf("Num groups: %d\n", len(groups))

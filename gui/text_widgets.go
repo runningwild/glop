@@ -149,28 +149,30 @@ func (t *SingleLineText) Think(_ int64, _ bool, _ Region, _ map[Widget]Dims) (bo
   return false, t.dims
 }
 
-func (t *SingleLineText) Draw(region Region) {
+func (t *SingleLineText) Draw(dims Dims) {
+  gl.MatrixMode(gl.MODELVIEW)
+  gl.PushMatrix()
+  defer gl.PopMatrix()
+
   gl.Enable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   t.texture.Bind(gl.TEXTURE_2D)
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-  fx := float64(region.X)
-  fy := float64(region.Y)
-  fdx := float64(t.dims.Dx)
-  fdy := float64(t.dims.Dy)
+  fdx := float64(dims.Dx)
+  fdy := float64(dims.Dy)
   tx := float64(t.dims.Dx)/float64(t.rdims.Dx)
   ty := float64(t.dims.Dy)/float64(t.rdims.Dy)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   gl.Begin(gl.QUADS)
-    gl.TexCoord2d(0,ty)
-    gl.Vertex2d(fx, fy)
     gl.TexCoord2d(0,0)
-    gl.Vertex2d(fx, fy+fdy)
+    gl.Vertex2d(0, 0)
+    gl.TexCoord2d(0,-ty)
+    gl.Vertex2d(0, fdy)
+    gl.TexCoord2d(tx,-ty)
+    gl.Vertex2d(fdx, fdy)
     gl.TexCoord2d(tx,0)
-    gl.Vertex2d(fx+fdx, fy+fdy)
-    gl.TexCoord2d(tx,ty)
-    gl.Vertex2d(fx+fdx, fy)
+    gl.Vertex2d(fdx, 0)
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
 }

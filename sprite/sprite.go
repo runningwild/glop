@@ -58,6 +58,10 @@ func nextPowerOf2(n uint32) uint32 {
   return 0
 }
 func (s *spriteLevel) RenderToQuad(index frameIndex) {
+  gl.MatrixMode(gl.MODELVIEW)
+  gl.PushMatrix()
+  defer gl.PopMatrix()
+
   gl.Enable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)

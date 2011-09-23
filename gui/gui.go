@@ -73,8 +73,11 @@ type Widget interface {
   // origin of 0,0 and the specified dims, i.e. Region{x:0, y:0, Dims:dims}
   Layout(dims Dims, requested map[Widget]Dims) map[Widget]Region
 
-  // Draws the widget, never going outside of the specified region.
-  Draw(region Region)
+  // Draws the widget.  When Draw is called the projection matrix will have been set such that
+  // the widget should draw to the rectangle with its bottom left corner at the origin and with
+  // dimensions specified by dims.  Clipping planes 0-3 will be set to ensure nothing is drawn
+  // outisde of this region.
+  Draw(dims Dims)
 
   // This method is called for every widget in the path from the root to the widget with focus.
   // Every widget along the way has a chance to react to the event group before it gets passed
@@ -139,10 +142,10 @@ type clipper struct {
   eqs [][4]float64
 }
 func (c *clipper) Push(r Region) {
-  c.eqs = append(c.eqs, [4]float64{ 1, 0, 0, -float64(r.X)})
-  c.eqs = append(c.eqs, [4]float64{-1, 0, 0, float64(r.X + r.Dx)})
-  c.eqs = append(c.eqs, [4]float64{ 0, 1, 0, -float64(r.Y)})
-  c.eqs = append(c.eqs, [4]float64{ 0,-1, 0, float64(r.Y + r.Dy)})
+  c.eqs = append(c.eqs, [4]float64{ 1, 0, 0, 0})
+  c.eqs = append(c.eqs, [4]float64{-1, 0, 0, float64(r.Dx)})
+  c.eqs = append(c.eqs, [4]float64{ 0, 1, 0, 0})
+  c.eqs = append(c.eqs, [4]float64{ 0,-1, 0, float64(r.Dy)})
   c.set()
 }
 func (c *clipper) set() {
@@ -173,7 +176,16 @@ func (c *clipper) Pop() {
 func (n *Node) layoutAndDraw(region Region, c *clipper) {
   n.previous = region
   c.Push(region)
-  n.widget.Draw(region)
+  gl.MatrixMode(gl.PROJECTION)
+  gl.PushMatrix()
+  
+  gl.Translated(float64(region.X), float64(region.Y), 0)
+
+  n.widget.Draw(region.Dims)
+
+  gl.MatrixMode(gl.PROJECTION)
+  gl.PopMatrix()
+
   child_dims := make(map[Widget]Dims)
   for _,child := range n.children {
     child_dims[child.widget] = child.requested
