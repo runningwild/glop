@@ -13,8 +13,8 @@ import (
 
 var (
   sys system.System
-  font_path *string = flag.String("font", "../fonts/skia.ttf", "relative path of a font")
-  sprite_path *string=flag.String("sprite", "../sprites/test_sprite", "relative path of sprite")
+  font_path *string = flag.String("font", "../../fonts/skia.ttf", "relative path of a font")
+  sprite_path *string=flag.String("sprite", "../../sprites/test_sprite", "relative path of sprite")
 )
 
 func init() {
@@ -58,11 +58,15 @@ func main() {
     panic(err.String())
   }
 
-  sys.CreateWindow(10, 10, 768, 576)
-  ticker := time.Tick(5e7)
-  ui := gui.Make(sys.Input(), 768, 576)
-  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{700, 500}), nil)
-  manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{400,300}), gui.Anchor{1,1,1,1})
+  factor := 0.875
+  wdx := int(factor * float64(1024))
+  wdy := int(factor * float64(768))
+
+  sys.CreateWindow(10, 10, wdx, wdy)
+  ticker := time.Tick(1.5e7)
+  ui := gui.Make(sys.Input(), wdx, wdy)
+  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx-50, wdy-50}), nil)
+  manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy-150}), gui.Anchor{1,1,1,1})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
 
   terrain,err := gui.MakeTerrain("../../maps/chess.png", int(1000.0/8))
@@ -74,14 +78,15 @@ func main() {
 
   table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
-  table.InstallWidget(text_widget, gui.Anchor{0,1,0,1})
-  frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 0,0,1,1)
-  table.InstallWidget(frame_count_widget, gui.Anchor{1,1,1,1})
+  frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 1,0,1,1)
+  table.InstallWidget(frame_count_widget, nil)
+  table.InstallWidget(text_widget, nil)
   n := 0
   for {
     n++
     terrain.HighlightBlockAtCursor(sys.GetCursorPos())
-    frame_count_widget.SetText(fmt.Sprintf("%d", n))
+    text_widget.SetText(fmt.Sprintf("Funk Monkey %d$", n/25))
+    frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
     sys.SwapBuffers()
     <-ticker
     sys.Think()
@@ -91,6 +96,14 @@ func main() {
         return
       }
     }
+    kw := sys.Input().GetKey('w')
+    ka := sys.Input().GetKey('a')
+    ks := sys.Input().GetKey('s')
+    kd := sys.Input().GetKey('d')
+    mx := kd.FramePressSum() - ka.FramePressSum()
+    my := 2 * (kw.FramePressSum() - ks.FramePressSum())
+    m_factor := 0.003
+    terrain.Move((mx+my) * m_factor, (my-mx) * m_factor)
   }
 
   fmt.Printf("")

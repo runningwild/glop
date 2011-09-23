@@ -27,6 +27,9 @@ type Terrain struct {
   // Cursor position in window coordinates
   cx,cy int
 
+  // Focus, in map coordinates
+  fx,fy float64
+
   // Region that the terrain was displayed in last frame
   prev Region
 
@@ -67,6 +70,11 @@ func MakeTerrain(bg_path string, block_size int) (*Terrain, os.Error) {
   return &t, nil
 }
 
+func (t *Terrain) Move(dx,dy float64) {
+  t.fx += dx
+  t.fy += dy
+}
+
 func (t *Terrain) HighlightBlockAtCursor(x,y int) {
   t.cx = x
   t.cy = y
@@ -85,15 +93,24 @@ func mulMat(v [4]float64, mat [16]float64) [4]float64 {
   return ret
 }
 func (t *Terrain) Draw(dims Dims) {
+  gl.MatrixMode(gl.PROJECTION)
+  gl.PushMatrix()
+  defer gl.PopMatrix()
+  defer gl.MatrixMode(gl.PROJECTION)
+  gl.Ortho(float64(-dims.Dx / 2), float64(dims.Dx / 2), float64(-dims.Dy / 2), float64(dims.Dy / 2), -1000, 1000)
+
   gl.MatrixMode(gl.MODELVIEW)
   gl.PushMatrix()
   defer gl.PopMatrix()
-//  gl.Translated(float64(region.X), float64(region.Y), 0)
+  defer gl.MatrixMode(gl.MODELVIEW)
 
 
 
   gl.Rotated(45, 0,0,1)
   gl.Rotated(65, 1,-1,0)
+  xoff := (t.fx + 0.5) * float64(t.block_size)
+  yoff := (t.fy + 0.5) * float64(t.block_size)
+  gl.Translated(-xoff, -yoff, 0)
 
   var mv_mat [16]float64
   gl.GetDoublev(gl.MODELVIEW_MATRIX, mv_mat[:])
@@ -105,6 +122,8 @@ func (t *Terrain) Draw(dims Dims) {
   myi := [2]float64{-my[0] / det, mx[0] / det}
   cx := t.cx - t.prev.X
   cy := t.cy - t.prev.Y
+  cx -= int(mv_mat[12]) + dims.Dx / 2
+  cy -= int(mv_mat[13]) + dims.Dy / 2
   sx := float64(cx)*mxi[0] + float64(cy)*myi[0]
   sy := float64(cx)*mxi[1] + float64(cy)*myi[1]
 
@@ -134,6 +153,14 @@ func (t *Terrain) Draw(dims Dims) {
     gl.Vertex2d(float64(t.bg.Bounds().Dx()), 0)
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
+
+  gl.Color4d(.5,.5,.5,.2)
+  gl.Begin(gl.QUADS)
+  gl.Vertex3d(-1000,-1000, -99)
+  gl.Vertex3d(-1000, 1000, -99)
+  gl.Vertex3d( 1000, 1000, -99)
+  gl.Vertex3d( 1000,-1000, -99)
+  gl.End()
 
   hx := int(math.Floor(sx / float64(t.block_size)))
   hy := int(math.Floor(sy / float64(t.block_size)))
