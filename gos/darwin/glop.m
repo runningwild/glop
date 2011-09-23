@@ -372,19 +372,17 @@ void Run() {
   [NSApp run];
 }
 
-void GetMousePos(void* _x, void* _y) {
-  int* x = (int*)_x;
-  int* y = (int*)_y;
+void GetMousePos(int* x, int* y) {
   NSPoint point = [NSEvent mouseLocation];
   *x = (int)point.x;
   *y = (int)point.y;
 }
 
-void GetWindowDims(void* _window, void* _x, void* _y, void* _dx, void* _dy) {
+void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy) {
   NSWindow* window = (NSWindow*)_window;
   NSRect rect = [window frame];
-  *((int*)_x) = rect.origin.x;
-  *((int*)_y) = rect.origin.y;
-  *((int*)_dx) = rect.size.width;
-  *((int*)_dy) = rect.size.height;
+  *x = rect.origin.x;
+  *y = rect.origin.y;
+  *dx = rect.size.width;
+  *dy = rect.size.height;
 }

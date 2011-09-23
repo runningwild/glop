@@ -77,19 +77,15 @@ func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   return events, osx.horizon
 }
 
-func (osx *osxSystemObject) GetCursorPos() (x,y int) {
-  _x := unsafe.Pointer(&x)
-  _y := unsafe.Pointer(&y)
-  C.GetMousePos(_x, _y)
-  return
+func (osx *osxSystemObject) GetCursorPos() (int,int) {
+  wx,wy,_,_ := osx.GetWindowDims()
+  var x,y C.int
+  C.GetMousePos(&x, &y)
+  return int(x) - wx, int(y) - wy
 }
 
 func (osx *osxSystemObject) GetWindowDims() (int,int,int,int) {
-  var x,y,dx,dy int
-  _x := unsafe.Pointer(&x)
-  _y := unsafe.Pointer(&y)
-  _dx := unsafe.Pointer(&dx)
-  _dy := unsafe.Pointer(&dy)
-  C.GetWindowDims(unsafe.Pointer(osx.window), _x, _y, _dx, _dy)
-  return x, y, dx, dy
+  var x,y,dx,dy C.int
+  C.GetWindowDims(unsafe.Pointer(osx.window), &x, &y, &dx, &dy)
+  return int(x), int(y), int(dx), int(dy)
 }
