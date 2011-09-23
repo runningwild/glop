@@ -56,6 +56,9 @@ func (r Region) Add(p Point) Region {
     r.Dims,
   }
 }
+func (r Region) setViewport() {
+  gl.Viewport(r.Point.X, r.Point.Y, r.Dims.Dx, r.Dims.Dy)
+}
 type Widget interface {
   // Called once per frame.
   // previous: Regions that this widget was rendered to last frame, useful for detecting clicks.
@@ -137,54 +140,12 @@ func (n *Node) think(ms int64, focus *Focus) Dims {
   return request_dims
 }
 
-
-type clipper struct {
-  eqs [][4]float64
-}
-func (c *clipper) Push(r Region) {
-  c.eqs = append(c.eqs, [4]float64{ 1, 0, 0, 0})
-  c.eqs = append(c.eqs, [4]float64{-1, 0, 0, float64(r.Dx)})
-  c.eqs = append(c.eqs, [4]float64{ 0, 1, 0, 0})
-  c.eqs = append(c.eqs, [4]float64{ 0,-1, 0, float64(r.Dy)})
-  c.set()
-}
-func (c *clipper) set() {
-  i := len(c.eqs) - 4
-  if i >= 0 {
-    gl.Enable(gl.CLIP_PLANE0)
-    gl.Enable(gl.CLIP_PLANE1)
-    gl.Enable(gl.CLIP_PLANE2)
-    gl.Enable(gl.CLIP_PLANE3)
-    gl.ClipPlane(gl.CLIP_PLANE0, &c.eqs[i][0])
-    gl.ClipPlane(gl.CLIP_PLANE1, &c.eqs[i+1][0])
-    gl.ClipPlane(gl.CLIP_PLANE2, &c.eqs[i+2][0])
-    gl.ClipPlane(gl.CLIP_PLANE3, &c.eqs[i+3][0])
-  } else {
-    gl.Disable(gl.CLIP_PLANE0)
-    gl.Disable(gl.CLIP_PLANE1)
-    gl.Disable(gl.CLIP_PLANE2)
-    gl.Disable(gl.CLIP_PLANE3)
-  }
-}
-func (c *clipper) Pop() {
-  c.eqs = c.eqs[0 : len(c.eqs) - 4]
-  c.set()
-}
-
-
 // TODO: Enforce regions
-func (n *Node) layoutAndDraw(region Region, c *clipper) {
+func (n *Node) layoutAndDraw(region Region) {
   n.previous = region
-  c.Push(region)
-  gl.MatrixMode(gl.PROJECTION)
-  gl.PushMatrix()
-  
-  gl.Translated(float64(region.X), float64(region.Y), 0)
+  region.setViewport()
 
   n.widget.Draw(region.Dims)
-
-  gl.MatrixMode(gl.PROJECTION)
-  gl.PopMatrix()
 
   child_dims := make(map[Widget]Dims)
   for _,child := range n.children {
@@ -192,9 +153,8 @@ func (n *Node) layoutAndDraw(region Region, c *clipper) {
   }
   child_regions := n.widget.Layout(region.Dims, child_dims)
   for _,child := range n.children {
-    child.layoutAndDraw(child_regions[child.widget].Add(region.Point), c)
+    child.layoutAndDraw(child_regions[child.widget].Add(region.Point))
   }
-  c.Pop()
 }
 
 func (n *Node) InstallWidget(w Widget, params interface{}) *Node {

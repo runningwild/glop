@@ -77,18 +77,16 @@ func (g *Gui) Think(ms int64) {
   region := Region{
     Dims : g.Root.widget.(*rootWidget).Dims,
   }
-  var c clipper
-
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity();
   gl.MatrixMode(gl.PROJECTION)
   gl.LoadIdentity();
-  gl.Ortho(0, float64(region.Dims.Dx), 0, float64(region.Dims.Dy), -4000, 4000)
+
+  region.setViewport()
   gl.ClearColor(0, 0, 0, 1)
   gl.Clear(0x00004000)
-
-
-  g.Root.layoutAndDraw(region, &c)
+  g.Root.layoutAndDraw(region)
+  region.setViewport()
 }
 
 type Childless struct {}
