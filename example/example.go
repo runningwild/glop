@@ -63,13 +63,13 @@ func main() {
   wdy := int(factor * float64(768))
 
   sys.CreateWindow(10, 10, wdx, wdy)
-  ticker := time.Tick(1.5e7)
+  ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), wdx, wdy)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx-50, wdy-50}), nil)
   manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy-150}), gui.Anchor{1,1,1,1})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
-
-  terrain,err := gui.MakeTerrain("../../maps/chess.png", int(1000.0/8))
+  v := 1000.0 / 32.0
+  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v))
   if err != nil {
     panic(err.String())
   } else {
@@ -102,8 +102,10 @@ func main() {
     kd := sys.Input().GetKey('d')
     mx := kd.FramePressSum() - ka.FramePressSum()
     my := 2 * (kw.FramePressSum() - ks.FramePressSum())
-    m_factor := 0.003
+    m_factor := 0.009
     terrain.Move((mx+my) * m_factor, (my-mx) * m_factor)
+    zoom := sys.Input().GetKey('r').FramePressSum() - sys.Input().GetKey('f').FramePressSum()
+    terrain.Zoom(zoom * 0.0025)
   }
 
   fmt.Printf("")
