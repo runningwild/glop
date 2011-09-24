@@ -40,7 +40,7 @@ func (b board) Adjacent(n int) ([]int, []float64) {
 }
 
 
-func GraphSpec(c gospec.Context) {
+func DijkstraSpec(c gospec.Context) {
   b := [][]int{
     []int{ 1,2,9,4,3,2,1 },  // 0 - 6
     []int{ 9,2,9,4,3,1,1 },  // 7 - 13
@@ -63,3 +63,25 @@ func GraphSpec(c gospec.Context) {
     c.Expect(path, ContainsInOrder, []int{ 0, 1, 8, 15, 22, 21 })
   })
 }
+
+func ReachableSpec(c gospec.Context) {
+  b := [][]int{
+    []int{ 1,2,9,4,3,2,1 },  // 0 - 6
+    []int{ 9,2,9,4,3,1,1 },  // 7 - 13
+    []int{ 2,1,5,5,5,2,1 },  // 14 - 20
+    []int{ 1,1,1,1,1,1,1 },  // 21 - 27
+  }
+  c.Specify("Check reachability", func() {
+    reach := algorithm.ReachableWithinLimit(board(b), []int{ 3 }, 5)
+    c.Expect(reach, ContainsInOrder, []int{ 3, 4, 5, 10 })
+    reach = algorithm.ReachableWithinLimit(board(b), []int{ 3 }, 10)
+    c.Expect(reach, ContainsInOrder, []int{ 2, 3, 4, 5, 6, 10, 11, 12, 13, 17, 19, 20, 24, 25, 26, 27 })
+  })
+  c.Specify("Check reachability with multiple sources", func() {
+    reach := algorithm.ReachableWithinLimit(board(b), []int{ 0, 6 }, 3)
+    c.Expect(reach, ContainsInOrder, []int{ 0, 1, 5, 6, 12, 13, 20, 27 })
+    reach = algorithm.ReachableWithinLimit(board(b), []int{ 21, 27 }, 2)
+    c.Expect(reach, ContainsInOrder, []int{ 13, 14, 15, 20, 21, 22, 23, 25, 26, 27 })
+  })
+}
+

@@ -8,7 +8,8 @@ import (
 
 func TestAllSpecs(t *testing.T) {
   r := gospec.NewRunner()
-  r.AddSpec(GraphSpec)
+  r.AddSpec(DijkstraSpec)
+  r.AddSpec(ReachableSpec)
   gospec.MainGoTest(r, t)
 }
 

@@ -2,6 +2,7 @@ package algorithm
 
 import (
   "container/heap"
+  "sort"
 )
 
 type Graph interface {
@@ -34,6 +35,36 @@ func (da *dArray) Pop() interface{} {
   return val
 }
 
+// Returns the list of vertices that can be reached from the vertices in src with total
+// path weight <= limit.
+func ReachableWithinLimit(g Graph, src []int, limit float64) []int {
+  used := make([]bool, g.NumVertex())
+  h := make(dArray, len(src))
+  for i,s := range src {
+    h[i] = dNode{ v:s, weight:0 }
+  }
+
+  for len(h) > 0 {
+    cur := heap.Pop(&h).(dNode)
+    if used[cur.v] { continue }
+    if cur.weight > limit { break }
+    used[cur.v] = true
+    adj,weights := g.Adjacent(cur.v)
+    for i := range adj {
+      heap.Push(&h, dNode{ v:adj[i], weight:weights[i]+cur.weight })
+    }
+  }
+
+  var ret []int
+  for v := range used {
+    if used[v] {
+      ret = append(ret, v)
+    }
+  }
+
+  sort.Ints(ret)
+  return ret
+}
 
 func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
   used := make([]bool, g.NumVertex())
