@@ -65,11 +65,11 @@ func main() {
   sys.CreateWindow(10, 10, wdx, wdy)
   ticker := time.Tick(5e7)
   ui := gui.Make(sys.Input(), wdx, wdy)
-  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx-50, wdy-50}), nil)
-  manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy-150}), gui.Anchor{1,1,1,1})
+  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 50, wdy - 50}), nil)
+  manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
   v := 1000.0 / 32.0
-  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v))
+  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), 65)
   if err != nil {
     panic(err.String())
   } else {
@@ -100,10 +100,10 @@ func main() {
     ka := sys.Input().GetKey('a')
     ks := sys.Input().GetKey('s')
     kd := sys.Input().GetKey('d')
-    mx := kd.FramePressSum() - ka.FramePressSum()
-    my := 2 * (kw.FramePressSum() - ks.FramePressSum())
-    m_factor := 0.009
-    terrain.Move((mx+my) * m_factor, (my-mx) * m_factor)
+    m_factor := 0.0075
+    dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
+    dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
+    terrain.Move(dx, dy)
     zoom := sys.Input().GetKey('r').FramePressSum() - sys.Input().GetKey('f').FramePressSum()
     terrain.Zoom(zoom * 0.0025)
   }

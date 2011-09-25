@@ -1,6 +1,7 @@
 package gui
 
 import (
+  "fmt"
   "glop/gin"
   "glop/util/algorithm"
   "os"
@@ -41,6 +42,10 @@ type Terrain struct {
   // Focus, in map coordinates
   fx,fy float64
 
+  // The viewing angle, 0 means the map is viewed head-on, 90 means the map is viewed
+  // on its edge (i.e. it would not be visible)
+  angle float64
+
   // Zoom factor, 1.0 is standard
   zoom float64
 
@@ -71,7 +76,7 @@ func (t *Terrain) Adjacent(v int) ([]int, []float64) {
     for dy := -1; dy <= 1; dy++ {
       if dx == 0 && dy == 0 { continue }
       if y + dy < 0 || y + dy >= len(t.grid[0]) { continue }
-
+      if t.grid[x+dx][y+dy].move_cost < 0 { continue }
       // Prevent moving along a diagonal if we couldn't get to that space normally via
       // either of the non-diagonal paths
       if dx != 0 && dy != 0 {
@@ -93,7 +98,7 @@ func (t *Terrain) Adjacent(v int) ([]int, []float64) {
 }
 
 
-func MakeTerrain(bg_path string, block_size int) (*Terrain, os.Error) {
+func MakeTerrain(bg_path string, block_size int, angle float64) (*Terrain, os.Error) {
   var t Terrain
 
   bg_path = filepath.Join(os.Args[0], bg_path)
@@ -109,6 +114,7 @@ func MakeTerrain(bg_path string, block_size int) (*Terrain, os.Error) {
   }
 
   t.block_size = block_size
+  t.angle = angle
 
   rgba := image.NewRGBA(t.bg.Bounds().Dx(), t.bg.Bounds().Dy())
   draw.Draw(rgba, t.bg.Bounds(), t.bg, image.Point{0,0}, draw.Over)
@@ -127,7 +133,14 @@ func MakeTerrain(bg_path string, block_size int) (*Terrain, os.Error) {
   for i := range t.grid {
     t.grid[i] = make([]cell, 32)
     for j := range t.grid[i] {
-      t.grid[i][j].move_cost = rand.Int() % 10
+      switch rand.Int() % 3 {
+        case 0:
+          t.grid[i][j].move_cost = -1
+        case 1:
+          t.grid[i][j].move_cost = 1
+        case 2:
+          t.grid[i][j].move_cost = 5
+      }
     }
   }
 
@@ -136,14 +149,25 @@ func MakeTerrain(bg_path string, block_size int) (*Terrain, os.Error) {
   return &t, nil
 }
 
+// The change in x and y screen coordinates to apply to point on the terrain the is in
+// focus.  These coordinates will be scaled by the current zoom.
 func (t *Terrain) Move(dx,dy float64) {
+  dy /= math.Sin(t.angle * 3.1415926535 / 180)
+  dx,dy = dy+dx, dy-dx
   t.fx += dx / t.zoom
   t.fy += dy / t.zoom
+  t.fx = math.Fmax(t.fx, 0)
+  t.fy = math.Fmax(t.fy, 0)
+  t.fx = math.Fmin(t.fx, float64(len(t.grid)))
+  t.fy = math.Fmin(t.fy, float64(len(t.grid[0])))
 }
 
+// Changes the current zoom from e^(zoom) to e^(zoom+dz)
 func (t *Terrain) Zoom(dz float64) {
-  exp := math.Log(t.zoom)
-  t.zoom = math.Exp(exp + dz)
+  exp := math.Log(t.zoom) + dz
+  exp = math.Fmax(exp, -1.25)
+  exp = math.Fmin(exp, 1.25)
+  t.zoom = math.Exp(exp)
 }
 
 func (t *Terrain) HighlightBlockAtCursor(x,y int) {
@@ -164,6 +188,7 @@ func mulMat(v [4]float64, mat [16]float64) [4]float64 {
   return ret
 }
 func (t *Terrain) Draw(dims Dims) {
+  fmt.Printf("dims: %v\n", dims)
   // Set our viewing volume to be a box with width and height specified by dims, and
   // centered on the origin.  This way we can just draw our terrain with a particular
   // point at the origin and that point will wind up centered in the window
@@ -180,7 +205,7 @@ func (t *Terrain) Draw(dims Dims) {
   defer gl.PopMatrix()
   defer gl.MatrixMode(gl.MODELVIEW)
   gl.Rotated(45, 0,0,1)
-  gl.Rotated(65, 1,-1,0)  // Might want to adjust this a little depending on the sprites
+  gl.Rotated(t.angle, 1,-1,0)
 
   // Move the terrain so that (t.fx,t.fy) is at the origin, and hence becomes centered
   // in the window
@@ -242,6 +267,29 @@ func (t *Terrain) Draw(dims Dims) {
 
 
 
+  for i := range t.grid {
+    for j := range t.grid[0] {
+      switch {
+        case t.grid[i][j].move_cost < 0:
+          gl.Color4d(0, 0, 0, 0.4)
+        case t.grid[i][j].move_cost == 1:
+          gl.Color4d(0.0, 0.7, 0.1, 0.4)
+        case t.grid[i][j].move_cost == 5:
+          gl.Color4d(0.8, 0.1, 0.1, 0.4)
+      }
+      bx := float64(t.block_size * i)
+      bx2 := float64(t.block_size * (i + 1))
+      by := float64(t.block_size * j)
+      by2 := float64(t.block_size * (j + 1))
+      gl.Begin(gl.QUADS)
+        gl.Vertex2d(bx, by)
+        gl.Vertex2d(bx, by2)
+        gl.Vertex2d(bx2, by2)
+        gl.Vertex2d(bx2, by)
+      gl.End()
+    }
+  }
+
   hx := int(math.Floor(sx / float64(t.block_size)))
   hy := int(math.Floor(sy / float64(t.block_size)))
   in_bounds :=  hx >= 0 && hy >= 0 && hx < len(t.grid) && hy < len(t.grid[0])
@@ -252,7 +300,7 @@ func (t *Terrain) Draw(dims Dims) {
   }
 
   for _,r := range reach {
-    gl.Color4d(0.9, 0.4, 0.4, 0.9)
+    gl.Color4d(0.0, 0.1, 1.0, 0.5)
     i,j := t.fromVertex(r)
     bx := float64(t.block_size * i)
     bx2 := float64(t.block_size * (i + 1))
