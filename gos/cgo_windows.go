@@ -64,22 +64,27 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   c_events := (*[1000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
   events := make([]gin.OsEvent, length)
   for i := range c_events {
+    wx,wy := osx.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
     events[i] = gin.OsEvent{
       KeyId     : gin.KeyId(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
       Timestamp : int64(c_events[i].timestamp),
-      X : int(c_events[i].cursor_x),
-      Y : int(c_events[i].cursor_y),
+      X : wx,
+      Y : wy,
     }
   }
   return events, win32.horizon
 }
 
-func (win32 *win32SystemObject) GetCursorPos() (int,int) {
+func (win32 *win32SystemObject) rawCursorToWindowCoords(x,y int) (int,int) {
   wx,wy,_,wdy := win32.GetWindowDims()
+  return x - wx, wy + wdy - y
+}
+
+func (win32 *win32SystemObject) GetCursorPos() (int,int) {
   var x,y C.int
   C.GlopGetMousePosition(&x, &y)
-  return int(x) - wx, wy + wdy - int(y)
+  return win32.rawCursorToWindowCoords(int(x), int(y))
 }
 
 func (win32 *win32SystemObject) GetWindowDims() (int,int,int,int) {

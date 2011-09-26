@@ -53,24 +53,7 @@ func Make(input *gin.Input, dx,dy int) *Gui {
 // This method shouldn't be exported, perhaps we can make it a method on a private
 // member variable
 func (g *Gui) HandleEventGroup(event_group gin.EventGroup) {
-  if g.focus.top() == nil {
-    return
-  }
-  path := g.focus.top().pathFromRoot()
-  for _,p := range path {
-    consume,give,target := p.widget.HandleEventGroup(event_group)
-    if give {
-      if target == nil {
-        g.focus.Pop()
-      } else {
-        g.focus.Take(target)
-      }
-      return
-    }
-    if consume {
-      return
-    }
-  }
+  g.Root.handleEventGroup(event_group)
 }
 func (g *Gui) Think(ms int64) {
   g.Root.think(ms, g.focus)
@@ -165,16 +148,16 @@ func (b *BoxWidget) Draw(dims Dims) {
   gl.MatrixMode(gl.MODELVIEW)
   gl.PushMatrix()
   defer gl.PopMatrix()
+  gl.LoadIdentity()
+  gl.Ortho(0,1,0,1,-1,1)
 
   gl.Color4d(b.R, b.G, b.B, b.A)
-  fdx := float64(dims.Dx)
-  fdy := float64(dims.Dy)
   gl.Disable(gl.TEXTURE_2D)
   gl.Begin(gl.QUADS)
-    gl.Vertex2d(  0,  0)
-    gl.Vertex2d(fdx,  0)
-    gl.Vertex2d(fdx,fdy)
-    gl.Vertex2d(  0,fdy)
+    gl.Vertex2d(0,0)
+    gl.Vertex2d(1,0)
+    gl.Vertex2d(1,1)
+    gl.Vertex2d(0,1)
   gl.End()
 }
 

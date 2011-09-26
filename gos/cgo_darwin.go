@@ -64,22 +64,27 @@ func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   c_events := (*[1000]C.KeyEvent)(unsafe.Pointer(first_event))[:length]
   events := make([]gin.OsEvent, length)
   for i := range c_events {
+    wx,wy := osx.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
     events[i] = gin.OsEvent{
       KeyId     : gin.KeyId(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
       Timestamp : int64(c_events[i].timestamp),
-      X : int(c_events[i].cursor_x),
-      Y : int(c_events[i].cursor_y),
+      X : wx,
+      Y : wy,
     }
   }
   return events, osx.horizon
 }
 
-func (osx *osxSystemObject) GetCursorPos() (int,int) {
+func (osx *osxSystemObject) rawCursorToWindowCoords(x,y int) (int,int) {
   wx,wy,_,_ := osx.GetWindowDims()
+  return x - wx, y - wy
+}
+
+func (osx *osxSystemObject) GetCursorPos() (int,int) {
   var x,y C.int
   C.GetMousePos(&x, &y)
-  return int(x) - wx, int(y) - wy
+  return osx.rawCursorToWindowCoords(int(x), int(y))
 }
 
 func (osx *osxSystemObject) GetWindowDims() (int,int,int,int) {

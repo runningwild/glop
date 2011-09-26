@@ -1,7 +1,6 @@
 package gui
 
 import (
-  "fmt"
   "glop/gin"
   "glop/util/algorithm"
   "os"
@@ -188,7 +187,6 @@ func mulMat(v [4]float64, mat [16]float64) [4]float64 {
   return ret
 }
 func (t *Terrain) Draw(dims Dims) {
-  fmt.Printf("dims: %v\n", dims)
   // Set our viewing volume to be a box with width and height specified by dims, and
   // centered on the origin.  This way we can just draw our terrain with a particular
   // point at the origin and that point will wind up centered in the window

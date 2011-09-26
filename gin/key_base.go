@@ -161,6 +161,9 @@ func (ks *keyState) Id() KeyId {
 }
 
 func (ks *keyState) Cursor() Cursor {
+  if ks.cursor == nil {
+    return nil
+  }
   return ks.cursor
 }
 

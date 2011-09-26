@@ -3,6 +3,7 @@ package main
 import (
   "glop/gos"
   "glop/gui"
+  "glop/gin"
   "glop/system"
   "runtime"
   "time"
@@ -25,11 +26,20 @@ func init() {
 type Foo struct {
   *gui.BoxWidget
 }
+func (f *Foo) HandleEventGroup(group gin.EventGroup) (bool, bool, *gui.Node) {
+  // TODO: 304!!!!!!!!!!!!!!!!!
+  if found,event := group.FindEvent(304); found {
+    if c := event.Key.Cursor(); c != nil && c.Name() == "Mouse"  && event.Type == gin.Press {
+      f.Dims.Dx += 5
+    }
+  }
+  return false, false, nil
+}
+
 func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widget]gui.Dims) (bool, gui.Dims) {
   cx,cy := sys.GetCursorPos()
   cursor := gui.Point{ X : cx, Y : cy }
   if cursor.Inside(previous) {
-    f.Dims.Dx += 5
     f.G = 0
     f.B = 0
   } else {
@@ -67,6 +77,7 @@ func main() {
   ui := gui.Make(sys.Input(), wdx, wdy)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 50, wdy - 50}), nil)
   manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
+  manch.InstallWidget(&Foo{gui.MakeBoxWidget(100, 100, 1,1,1,1)}, gui.Anchor{1,0,1,0})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
   v := 1000.0 / 32.0
   terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), 65)
@@ -85,7 +96,8 @@ func main() {
   for {
     n++
     terrain.HighlightBlockAtCursor(sys.GetCursorPos())
-    text_widget.SetText(fmt.Sprintf("Funk Monkey %d$", n/25))
+    cx,cy := sys.GetCursorPos()
+    text_widget.SetText(fmt.Sprintf("Cursor pos: %d %d\n", cx, cy))
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
     sys.SwapBuffers()
     <-ticker

@@ -140,6 +140,23 @@ func (n *Node) think(ms int64, focus *Focus) Dims {
   return request_dims
 }
 
+func (n *Node) handleEventGroup(event_group gin.EventGroup) bool {
+  cursor := event_group.Events[0].Key.Cursor()
+  if cursor != nil {
+    var p Point
+    p.X, p.Y = cursor.Point()
+    if !p.Inside(n.previous) {
+      return false
+    }
+  }
+  consume,_,_ := n.widget.HandleEventGroup(event_group)
+  if consume { return true }
+  for _,child := range n.children {
+    if child.handleEventGroup(event_group) { return true }
+  }
+  return false
+}
+
 // TODO: Enforce regions
 func (n *Node) layoutAndDraw(region Region) {
   n.previous = region

@@ -295,9 +295,9 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
 
     if len(group.Events) > 0 {
       groups = append(groups, group)
-    }
-    for _,listener := range input.listeners {
-      listener.HandleEventGroup(group)
+      for _,listener := range input.listeners {
+        listener.HandleEventGroup(group)
+      }
     }
   }
 
