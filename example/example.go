@@ -6,7 +6,6 @@ import (
   "glop/gin"
   "glop/system"
   "runtime"
-  "time"
   "fmt"
   "os"
   "flag"
@@ -96,7 +95,6 @@ func main() {
 //  ticker := time.Tick(3e7)
   for {
     n++
-    terrain.HighlightBlockAtCursor(sys.GetCursorPos())
     cx,cy := sys.GetCursorPos()
     text_widget.SetText(fmt.Sprintf("Cursor pos: %d %d\n", cx, cy))
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
