@@ -4,15 +4,36 @@ import (
   "fmt"
 )
 
-type Mouse struct {
-  X,Y float64
+type Cursor interface {
+  Name() string
+  Point() (int,int)
+}
+
+type cursor struct {
+  name string
+
+  // Window coordinates of the cursor with the origin set as the lower-left
+  // corner of the window.
+  X,Y  int
+}
+func (c *cursor) Name() string {
+  return c.name
+}
+func (c *cursor) Point() (int, int) {
+  return c.X, c.Y
 }
 
 type OsEvent struct {
   // TODO: rename index to KeyId or something more appropriate
   KeyId     KeyId
   Press_amt float64
-  Mouse     Mouse
+
+  // For all cursor-based events this is the location of the cursor in window
+  // coordinates when the event happened.  For mouse motion and mouse clicks this
+  // is the location of the mouse.  For non-cursor-based events these values are
+  // meaningless
+  X,Y int
+
   Timestamp int64
   Num_lock  int
   Caps_lock int
@@ -31,13 +52,19 @@ type Input struct {
   // update all key states.  The order in which listeners are notified of a particular event
   // group can change from group to group.
   listeners []Listener
+
+  // NOTE: Currently the only cursor supported is the mouse
+  // Map from KeyId to the cursor associated with that key.  All KeyIds should be registered
+  // in this map and will map to nil if they are not cursor keys.
+  cursors map[KeyId]*cursor
 }
 
 func Make() *Input {
   input := new(Input)
-  input.all_keys = make([]Key, 0, 16)
-  input.key_map = make(map[KeyId]Key, 128)
+  input.all_keys = make([]Key, 0, 512)
+  input.key_map = make(map[KeyId]Key, 512)
   input.dep_map = make(map[KeyId][]Key, 16)
+  input.cursors = make(map[KeyId]*cursor, 512)
 
   for c := 'a'; c <= 'z'; c++ {
     input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
@@ -106,13 +133,15 @@ func Make() *Input {
   input.registerNaturalKey(193, "KeyEnd")
   input.registerNaturalKey(194, "KeyPageUp")
   input.registerNaturalKey(195, "KeyPageDown")
+
   input.registerAxisKey(300, "MouseXAxis")
   input.registerAxisKey(301, "MouseYAxis")
-  input.registerNaturalKey(302, "MouseWheelUp")
-  input.registerNaturalKey(303, "MouseWheelDown")
-  input.registerNaturalKey(304, "MouseLButton")
-  input.registerNaturalKey(305, "MouseRButton")
-  input.registerNaturalKey(306, "MouseMButton")
+  mouse := &cursor{ name : "Mouse" }
+  input.registerCursorKey(302, "MouseWheelUp", mouse)
+  input.registerCursorKey(303, "MouseWheelDown", mouse)
+  input.registerCursorKey(304, "MouseLButton", mouse)
+  input.registerCursorKey(305, "MouseRButton", mouse)
+  input.registerCursorKey(306, "MouseMButton", mouse)
 
   return input
 }
@@ -140,9 +169,8 @@ func (event EventType) String() string {
 }
 // TODO: Consider making a Timestamp type (int64)
 type Event struct {
-  Key   Key
-  Type  EventType
-  Mouse Mouse
+  Key      Key
+  Type     EventType
 }
 func (e Event) String() string {
   if e.Key == nil || e.Type == NoEvent {
@@ -170,7 +198,7 @@ func (eg *EventGroup) FindEvent(id KeyId) (bool, Event) {
   return false, Event{}
 }
 
-func (input *Input) registerKey(key Key, id KeyId) {
+func (input *Input) registerKey(key Key, id KeyId, cursor* cursor) {
   if id <= 0 {
     panic(fmt.Sprintf("Cannot register a key with id %d, ids must be greater than 0.", id))
   }
@@ -178,15 +206,20 @@ func (input *Input) registerKey(key Key, id KeyId) {
     panic(fmt.Sprintf("Cannot register key '%v' with id %d, '%v' is already registered with that id.", key, id, prev))
   }
   input.key_map[id] = key
+  input.cursors[id] = cursor
   input.all_keys = append(input.all_keys, key)
 }
 
 func (input *Input) registerNaturalKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id)
+  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id, nil)
+}
+
+func (input *Input) registerCursorKey(id KeyId, name string, cursor *cursor) {
+  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}, cursor : cursor}, id, cursor)
 }
 
 func (input *Input) registerAxisKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id)
+  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, nil)
 }
 
 func (input *Input) GetKey(id KeyId) Key {
@@ -246,12 +279,19 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
         Event{},
         &group)
 
-    // Include the position of the cursor on all events.  This is mostly for the sake
-    // of mouse click events but it could be useful otherwise and it makes all Events
-    // the same in terms of structure.
-    for i := range group.Events {
-      group.Events[i].Mouse = os_event.Mouse
+    // Sets the cursor position if this is a cursor based event.
+    // TODO: Currently only the mouse is supported as a cursor, but if we want to support
+    //       joysticks as cursors, since they don't naturally have a position associated
+    //       with them, we will need to somehow associate cursors with axes and treat the
+    //       mouse and joysticks separately.
+    if cursor := input.cursors[os_event.KeyId]; cursor != nil {
+      cursor.X = os_event.X
+      cursor.Y = os_event.Y
     }
+
+//    for i := range group.Events {
+//      group.Events[i].Mouse = os_event.Mouse
+//    }
 
     if len(group.Events) > 0 {
       groups = append(groups, group)

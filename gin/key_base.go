@@ -6,15 +6,18 @@ import (
 
 
 type Key interface {
-  String() string
   // Human readable name
+  String() string
 
-  Id() KeyId
   // Unique Id
+  Id() KeyId
 
-  SetPressAmt(amt float64, ms int64, cause Event) Event
   // Sets the instantaneous press amount for this key at a specific time and returns the
   // event generated, if any
+  SetPressAmt(amt float64, ms int64, cause Event) Event
+
+  // Returns the Cursor associated with this key, or nil if it has no such association.
+  Cursor() Cursor
 
   Think(ms int64)
 
@@ -143,9 +146,9 @@ type KeyId int
 
 // natural keys and derived keys all embed a keyState
 type keyState struct {
-  id   KeyId   // Unique id among all keys ever
-  name string  // Human readable name for the key, 'Right Shift', 'q', 'Space Bar', etc...
-
+  id     KeyId   // Unique id among all keys ever
+  name   string  // Human readable name for the key, 'Right Shift', 'q', 'Space Bar', etc...
+  cursor *cursor // cursor associated with this key, or nil if it has no cursor association
   aggregator
 }
 
@@ -155,6 +158,10 @@ func (ks *keyState) String() string {
 
 func (ks *keyState) Id() KeyId {
   return ks.id
+}
+
+func (ks *keyState) Cursor() Cursor {
+  return ks.cursor
 }
 
 

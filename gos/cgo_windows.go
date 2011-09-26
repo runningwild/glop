@@ -68,10 +68,8 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
       KeyId     : gin.KeyId(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
       Timestamp : int64(c_events[i].timestamp),
-      Mouse : gin.Mouse{
-        X : float64(c_events[i].cursor_x),
-        Y : float64(c_events[i].cursor_y),
-      },
+      X : int(c_events[i].cursor_x),
+      Y : int(c_events[i].cursor_y),
     }
   }
   return events, win32.horizon
