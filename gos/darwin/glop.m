@@ -386,3 +386,9 @@ void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy) {
   *dx = rect.size.width;
   *dy = rect.size.height;
 }
+
+void EnableVSync(void* _context, int set_vsync) {
+  NSOpenGLContext* context = (NSOpenGLContext*)(_context);
+  GLint swapInt = set_vsync;
+  [context setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
+}

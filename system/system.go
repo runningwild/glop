@@ -26,6 +26,8 @@ type System interface {
 
   Input() *gin.Input
 
+  EnableVSync(bool)
+
   // These probably shouldn't be here, probably always want to do the Think() approach
 //  Run()
 //  Quit()
@@ -65,6 +67,8 @@ type Os interface {
   // but they will be sorted according to this value.  The timestamp returned is the event
   // horizon, no future events will have a timestamp less than or equal to it.
   GetInputEvents() ([]gin.OsEvent, int64)
+
+  EnableVSync(bool)
 
   // These probably shouldn't be here, probably always want to do the Think() approach
 //  Run()
@@ -112,4 +116,7 @@ func (sys *sysObj) SwapBuffers() {
 }
 func (sys *sysObj) GetInputEvents() []gin.EventGroup {
   return sys.events
+}
+func (sys *sysObj) EnableVSync(enable bool) {
+  sys.os.EnableVSync(enable)
 }

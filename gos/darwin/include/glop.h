@@ -107,5 +107,6 @@ void Quit();
 
 void GetMousePos(int*, int*);
 void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy);
+void EnableVSync(void* _context, int set_vsync);
 
 #endif

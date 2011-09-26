@@ -92,3 +92,11 @@ func (osx *osxSystemObject) GetWindowDims() (int,int,int,int) {
   C.GetWindowDims(unsafe.Pointer(osx.window), &x, &y, &dx, &dy)
   return int(x), int(y), int(dx), int(dy)
 }
+
+func (osx *osxSystemObject) EnableVSync(enable bool) {
+  var _enable C.int
+  if enable {
+    _enable = 1
+  }
+  C.EnableVSync(unsafe.Pointer(osx.context), _enable)
+}
