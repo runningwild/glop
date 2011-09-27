@@ -13,6 +13,14 @@ import (
   "rand"
 )
 
+// A ZDrawable is anything that can draw itself on an XY plane at a particular
+// value for Z.
+type ZDrawable interface {
+  // Renders the drawable on the XY plane specified by z.  The values x and y
+  // indicate an anchor point the the drawable can render itself relative to.
+  Render(x,y,z,scale float32)
+}
+
 // frameIndexes are used so that we can have maps that are keyed on the pair
 // of facing and anim_id
 type frameIndex struct {
@@ -28,9 +36,14 @@ func makeFrameIndex(facing,anim_id int) frameIndex {
   return frameIndex{ facing:uint8(facing), anim_id:uint16(anim_id) }
 }
 
-// Texture coordinates of a frame in a sprite sheet
+// Texture coordinates of a frame in a sprite sheet, as well as the anchor point
+// for that frame.
 type spriteRect struct {
-  x,y,x2,y2 float64
+  x,y,x2,y2     float32
+  anch_x,anch_y float32
+
+  // width and height of the rect in pixels
+  dx,dy float32
 }
 type spriteLevel struct {
   // indexes[i] is the frame of animation the corresponds to the image from filenames[i]
@@ -115,10 +128,14 @@ func (sl *spriteLevel) Load() {
       }
     }
     rect := spriteRect{
-      x : float64(cx) / float64(pdx),
+      x : float32(cx) / float32(pdx),
       y : 0,
-      x2 : float64(cx + bounds.Dx()) / float64(pdx),
-      y2 : float64(bounds.Dy()) / float64(pdy),
+      x2 : float32(cx + bounds.Dx()) / float32(pdx),
+      y2 : float32(bounds.Dy()) / float32(pdy),
+      anch_x : 0.5,
+      anch_y : 0.0,
+      dx : float32(bounds.Dx()),
+      dy : float32(bounds.Dy()),
     }
     sl.rects[sl.indexes[i].Int()] = rect
     cx += bounds.Dx()
@@ -142,8 +159,6 @@ func (sl *spriteLevel) Unload() {
     sl.texture.Delete()
   }
 }
-func (sl *spriteLevel) Render() {
-}
 
 // TODO: This was copied from the gui package, probably should just have some basic
 // texture loading utils that do this common stuff
@@ -155,7 +170,7 @@ func nextPowerOf2(n uint32) uint32 {
   }
   return 0
 }
-func (s *spriteLevel) RenderToQuad(index frameIndex, llx,lly,urx,ury float64) {
+func (s *spriteLevel) RenderToQuad(index frameIndex, x,y,z,scale float32) {
   gl.Enable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -163,15 +178,19 @@ func (s *spriteLevel) RenderToQuad(index frameIndex, llx,lly,urx,ury float64) {
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   rect := s.rects[index.Int()]
+  x1 := x - scale * rect.anch_x * rect.dx
+  x2 := x + scale * (1 - rect.anch_x) * rect.dx
+  y1 := y - scale * rect.anch_y * rect.dy
+  y2 := y + scale * (1 - rect.anch_y) * rect.dy
   gl.Begin(gl.QUADS)
-    gl.TexCoord2d(rect.x, rect.y2)
-    gl.Vertex2d(llx, lly)
-    gl.TexCoord2d(rect.x, rect.y)
-    gl.Vertex2d(llx, ury)
-    gl.TexCoord2d(rect.x2, rect.y)
-    gl.Vertex2d(urx, ury)
-    gl.TexCoord2d(rect.x2, rect.y2)
-    gl.Vertex2d(urx, lly)
+    gl.TexCoord2f(rect.x, rect.y2)
+    gl.Vertex3f(x1, y1, z)
+    gl.TexCoord2f(rect.x, rect.y)
+    gl.Vertex3f(x1, y2, z)
+    gl.TexCoord2f(rect.x2, rect.y)
+    gl.Vertex3f(x2, y2, z)
+    gl.TexCoord2f(rect.x2, rect.y2)
+    gl.Vertex3f(x2, y1, z)
   gl.End()
 //  gl.Disable(gl.BLEND)
 //  gl.Disable(gl.TEXTURE_2D)
@@ -223,15 +242,15 @@ type Sprite struct {
   pending_cmds []string
 }
 
-func (s *Sprite) RenderToQuad(a,b,c,d float64) {
+func (s *Sprite) RenderToQuad(x,y,z,scale float32) {
   f := frameIndex{
     facing : uint8(s.cur_facing),
     anim_id : uint16(s.cur_frame.Id),
   }
   if _,ok := s.connection.rects[f.Int()]; ok {
-    s.connection.RenderToQuad(f, a, b, c, d)
+    s.connection.RenderToQuad(f, x, y, z, scale)
   } else {
-    s.facings[s.cur_facing].RenderToQuad(f, a, b, c, d)
+    s.facings[s.cur_facing].RenderToQuad(f, x, y, z, scale)
   }
 }
 

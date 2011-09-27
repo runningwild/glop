@@ -67,7 +67,7 @@ func (g *Gui) Think(ms int64) {
 
   region.setViewport()
   gl.ClearColor(0, 0, 0, 1)
-  gl.Clear(0x00004000)
+  gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
   g.Root.layoutAndDraw(region)
   region.setViewport()
 }

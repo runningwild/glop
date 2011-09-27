@@ -3,6 +3,7 @@ package gui
 import (
   "glop/gin"
   "glop/util/algorithm"
+  "glop/sprite"
   "os"
   "path"
   "path/filepath"
@@ -22,7 +23,7 @@ type staticCellData struct {
   move_cost int
 }
 type dynamicCellData struct {
-  highlight bool
+  s *sprite.Sprite
 }
 
 type cell struct {
@@ -105,7 +106,7 @@ func (t *Terrain) Adjacent(v int) ([]int, []float64) {
   return adj,weight
 }
 
-func MakeTerrain(bg_path string, block_size int, angle float64) (*Terrain, os.Error) {
+func MakeTerrain(bg_path string, block_size,dx,dy int, angle float64) (*Terrain, os.Error) {
   var t Terrain
 
   bg_path = filepath.Join(os.Args[0], bg_path)
@@ -136,10 +137,13 @@ func MakeTerrain(bg_path string, block_size int, angle float64) (*Terrain, os.Er
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
   glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.bg.Bounds().Dx(), t.bg.Bounds().Dy(), gl.RGBA, rgba.Pix)
 
-  t.grid = make([][]cell, 32)
+  t.grid = make([][]cell, dx)
   for i := range t.grid {
-    t.grid[i] = make([]cell, 32)
+    t.grid[i] = make([]cell, dy)
     for j := range t.grid[i] {
+      if rand.Int() % 16 == 0 {
+  t.grid[i][j].s,err = sprite.LoadSprite("/Users/runningwild/code/go-glop/example/example.app/Contents/sprites/test_sprite")
+}
       switch rand.Int() % 3 {
         case 0:
           t.grid[i][j].move_cost = -1
@@ -150,16 +154,19 @@ func MakeTerrain(bg_path string, block_size int, angle float64) (*Terrain, os.Er
       }
     }
   }
-
+  if err != nil {
+    return nil,err
+  }
   t.zoom = 1.0
   t.makeMat()
+
   return &t, nil
 }
 
 func (t *Terrain) makeMat() {
   var m mathgl.Mat4
   t.mat.RotationZ(45 * 3.1415926535 / 180)
-  m.RotationAxisAngle(mathgl.Vec3{ X : 1, Y : -1}, float32(t.angle) * 3.1415926535 / 180)
+  m.RotationAxisAngle(mathgl.Vec3{ X : -1, Y : 1}, -float32(t.angle) * 3.1415926535 / 180)
   t.mat.Multiply(&m)
 
   s := float32(t.zoom)
@@ -184,11 +191,18 @@ func (t *Terrain) modelviewToBoard(mx,my float32) (int,int) {
   return int(v.X / float32(t.block_size)), int(v.Y / float32(t.block_size))
 }
 
+func (t *Terrain) boardToModelview(mx,my float32) (x,y,z float32) {
+  v := mathgl.Vec4{ X : mx * float32(t.block_size), Y : my * float32(t.block_size), W : 1 }
+  v.Transform(&t.mat)
+  x,y,z = v.X, v.Y, v.Z
+  return
+}
+
 // The change in x and y screen coordinates to apply to point on the terrain the is in
 // focus.  These coordinates will be scaled by the current zoom.
 func (t *Terrain) Move(dx,dy float64) {
   if dx == 0 && dy == 0 { return }
-  dy /= math.Sin(t.angle * 3.1415926535 / 180)
+  dy /= math.Cos(t.angle * 3.1415926535 / 180)
   dx,dy = dy+dx, dy-dx
   t.fx += dx / t.zoom
   t.fy += dy / t.zoom
@@ -222,7 +236,7 @@ func (t *Terrain) Draw(dims Dims) {
   gl.PushMatrix()
   half_dx_zoom := float64(dims.Dx) / 2
   half_dy_zoom := float64(dims.Dy) / 2
-  gl.Ortho(-half_dx_zoom, half_dx_zoom, -half_dy_zoom, half_dy_zoom, -1000, 1000)
+  gl.Ortho(-half_dx_zoom, half_dx_zoom, -half_dy_zoom, half_dy_zoom, 1000, -1000)
   defer gl.PopMatrix()
   defer gl.MatrixMode(gl.PROJECTION)
 
@@ -232,42 +246,55 @@ func (t *Terrain) Draw(dims Dims) {
   defer gl.PopMatrix()
   defer gl.MatrixMode(gl.MODELVIEW)
 
-  // Draw a simple border around the terrain
-  gl.Disable(gl.TEXTURE_2D)
-  gl.Color4d(.3,.3,.3,1)
-  gl.Begin(gl.QUADS)
-  fdx := float64(t.bg.Bounds().Dx())
-  fdy := float64(t.bg.Bounds().Dy())
-  fbs := float64(t.block_size)
-  gl.Vertex2d(-fbs, -fbs)
-  gl.Vertex2d(-fbs, fdy+fbs)
-  gl.Vertex2d(fdx+fbs, fdy+fbs)
-  gl.Vertex2d(fdx+fbs, -fbs)
-  gl.End()
-
-
-  gl.Enable(gl.TEXTURE_2D)
+  gl.Disable(gl.DEPTH_TEST)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+  fdx := float64(t.bg.Bounds().Dx())
+  fdy := float64(t.bg.Bounds().Dy())
+
+  // Draw a simple border around the terrain
+  gl.Disable(gl.TEXTURE_2D)
+  gl.Color4d(1,.3,.3,1)
+  gl.Begin(gl.QUADS)
+    fbs := float64(t.block_size)
+    gl.Vertex3d(   -fbs,    -fbs, 1)
+    gl.Vertex3d(   -fbs, fdy+fbs, 1)
+    gl.Vertex3d(fdx+fbs, fdy+fbs, 1)
+    gl.Vertex3d(fdx+fbs,    -fbs, 1)
+  gl.End()
+
+  gl.Enable(gl.TEXTURE_2D)
   t.texture.Bind(gl.TEXTURE_2D)
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0, 0)
-    gl.Vertex2d(0, 0)
-
+    gl.Vertex3d(0, 0, 0)
     gl.TexCoord2d(0, -1)
-    gl.Vertex2d(0, fdy)
-
+    gl.Vertex3d(0, fdy, 0)
     gl.TexCoord2d(1, -1)
-    gl.Vertex2d(fdx, fdy)
-
+    gl.Vertex3d(fdx, fdy, 0)
     gl.TexCoord2d(1, 0)
-    gl.Vertex2d(fdx, 0)
+    gl.Vertex3d(fdx, 0, 0)
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
 
 
+  gl.PushMatrix()
+  gl.LoadIdentity()
+  for i := len(t.grid)-1; i >= 0; i-- {
+    for j := len(t.grid[0])-1; j >= 0; j-- {
+      if t.grid[i][j].s != nil {
+        x,y,z := t.boardToModelview(float32(i) + 0.25, float32(j) + 0.25)
+        t.grid[i][j].s.Think(16)
+        if rand.Int() % 5 == 0 {
+          t.grid[i][j].s.Think(rand.Int() % 3 + 1)
+        }
+        t.grid[i][j].s.RenderToQuad(x, y, z, float32(t.zoom))
+      }
+    }
+  }
+  gl.PopMatrix()
 
   for i := range t.grid {
     for j := range t.grid[0] {

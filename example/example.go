@@ -77,8 +77,8 @@ func main() {
   manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
   manch.InstallWidget(&Foo{gui.MakeBoxWidget(100, 100, 1,1,1,1)}, gui.Anchor{1,0,1,0})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
-  v := 1000.0 / 32.0
-  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), 65)
+  v := 1000.0 / 8.0
+  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), 8, 8, 65)
   if err != nil {
     panic(err.String())
   } else {
