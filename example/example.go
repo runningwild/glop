@@ -5,6 +5,7 @@ import (
   "glop/gui"
   "glop/gin"
   "glop/system"
+  "glop/sprite"
   "runtime"
   "fmt"
   "os"
@@ -77,8 +78,9 @@ func main() {
   manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
   manch.InstallWidget(&Foo{gui.MakeBoxWidget(100, 100, 1,1,1,1)}, gui.Anchor{1,0,1,0})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
-  v := 1000.0 / 8.0
-  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), 8, 8, 65)
+  edge_size := 32
+  v := 1000.0 / float64(edge_size)
+  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), edge_size, edge_size, 65)
   if err != nil {
     panic(err.String())
   } else {
@@ -93,10 +95,19 @@ func main() {
   n := 0
   sys.EnableVSync(true)
 //  ticker := time.Tick(3e7)
+
+  
+  guy,err := sprite.LoadSprite("/Users/runningwild/code/go-glop/example/example.app/Contents/sprites/test_sprite")
+  if err != nil {
+    panic(err.String())
+  }
+  var gx,gy,tx,ty float32
+  gx = 2
+  gy = 3
+  tx = gx
+  ty = gy
   for {
     n++
-    cx,cy := sys.GetCursorPos()
-    text_widget.SetText(fmt.Sprintf("Cursor pos: %d %d\n", cx, cy))
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
     sys.Think()
     sys.SwapBuffers()
@@ -106,6 +117,41 @@ func main() {
         return
       }
     }
+    guy.Think(16)
+    var ms float32 = 0.35
+    was_moving := gx != tx || gy != ty
+    if gx < tx {
+      gx += ms
+      if gx > tx { gx = tx }
+    }
+    if gx > tx {
+      gx -= ms
+      if gx < tx { gx = tx }
+    }
+    if gy < ty {
+      gy += ms
+      if gy > ty { gy = ty }
+    }
+    if gy > ty {
+      gy -= ms
+      if gy < ty { gy = ty }
+    }
+    if gx != tx || gy != ty {
+    } else if was_moving {
+      guy.Command("stop")
+    }
+    text_widget.SetText(guy.CurState())
+    if sys.Input().GetKey('t').FramePressCount() > 0 {
+      guy.Command("turn_left")
+      guy.Command("move")
+      ty+=25
+    }
+    if sys.Input().GetKey('y').FramePressCount() > 0 {
+      guy.Command("turn_right")
+      guy.Command("move")
+      ty-=25
+    }
+    terrain.AddZDrawable(gx + 0.25, gy + 0.25, guy)
     kw := sys.Input().GetKey('w')
     ka := sys.Input().GetKey('a')
     ks := sys.Input().GetKey('s')

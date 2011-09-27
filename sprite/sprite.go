@@ -11,7 +11,30 @@ import (
   "gl"
   "gl/glu"
   "rand"
+  "sort"
+  "github.com/arbaal/mathgl"
 )
+
+type zArray struct {
+  vs        []mathgl.Vec3
+  drawables []ZDrawable
+}
+func (za *zArray) Len() int {
+  return len(za.vs)
+}
+func (za *zArray) Swap(i,j int) {
+  za.vs[i],za.vs[j] = za.vs[j],za.vs[i]
+  za.drawables[i],za.drawables[j] = za.drawables[j],za.drawables[i]
+}
+func (za *zArray) Less(i,j int) bool {
+  return za.vs[i].Z > za.vs[j].Z
+}
+
+// Convenience function that sorts the elements in drawables and vs by decreasing
+// order of the Z component of the vectors in vs
+func ZSort(vs []mathgl.Vec3, drawables []ZDrawable) {
+  sort.Sort(&zArray{vs,drawables})
+}
 
 // A ZDrawable is anything that can draw itself on an XY plane at a particular
 // value for Z.
@@ -88,13 +111,13 @@ func (sl *spriteLevel) Load() {
     filename := sl.filenames[i]
     file,err := os.Open(filename)
     if err != nil {
-      panic("Should we have a catch here in case our texture doesn't load?")
+      panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.String()))
       return
     }
     defer file.Close()
     im,_,err := image.Decode(file)
     if err != nil {
-      panic("Should we have a catch here in case our texture doesn't load?")
+      panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.String()))
       return
     }
     images = append(images, im)
@@ -150,7 +173,6 @@ func (sl *spriteLevel) Load() {
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
   glu.Build2DMipmaps(gl.TEXTURE_2D, 4, pdx, pdy, gl.RGBA, sheet.Pix)
-  fmt.Printf("built it for texture %v\n", sl.texture)
 }
 func (sl *spriteLevel) Unload() {
   sl.count--
@@ -242,7 +264,7 @@ type Sprite struct {
   pending_cmds []string
 }
 
-func (s *Sprite) RenderToQuad(x,y,z,scale float32) {
+func (s *Sprite) Render(x,y,z,scale float32) {
   f := frameIndex{
     facing : uint8(s.cur_facing),
     anim_id : uint16(s.cur_frame.Id),
@@ -398,18 +420,8 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
   return &sprite, nil
 }
 
-func (s *sharedSprite) loadFacing(facing int) {
-  var indexes []frameIndex
-  var filenames []string
-  for i := range s.indexes {
-    if int(s.indexes[i].facing) != facing { continue }
-    indexes = append(indexes, s.indexes[i])
-    filenames = append(filenames, s.filenames[i])
-  }
-}
-
 func (s *Sprite) CurState() string {
-  return fmt.Sprintf("%d: %s", s.cur_facing, s.cur_frame.Name)
+  return fmt.Sprintf("%d: %s -> %v", s.cur_facing, s.cur_frame.Name, s.pending_cmds)
 }
 
 func (s *Sprite) Command(cmd string) {
@@ -496,8 +508,11 @@ func (s *Sprite) Think(dt int) {
   for _,edge := range prev.Edges {
     if edge.Source == prev.Id && edge.Target == s.cur_frame.Id {
       if edge.Facing != 0 {
+        // We are currently using the connections spriteSheet, so it's ok to unload the facings
+        // spriteSheet
+        s.facings[s.cur_facing].Unload()
         s.cur_facing = (s.cur_facing + edge.Facing + s.num_facings) % s.num_facings
-        s.loadFacing(s.cur_facing)
+        s.facings[s.cur_facing].Load()
         break
       }
     }

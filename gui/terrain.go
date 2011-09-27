@@ -59,6 +59,8 @@ type Terrain struct {
   imat mathgl.Mat4
 
   grid [][]cell
+  positions []mathgl.Vec3
+  drawables []sprite.ZDrawable
 
   // Region that the terrain was displayed in last frame
   prev Region
@@ -67,6 +69,11 @@ type Terrain struct {
   texture gl.Texture
 }
 
+func (t *Terrain) AddZDrawable(x,y float32, zd sprite.ZDrawable) {
+  vx,vy,vz := t.boardToModelview(x, y)
+  t.positions = append(t.positions, mathgl.Vec3{ vx, vy, vz })
+  t.drawables = append(t.drawables, zd)
+}
 func (t *Terrain) NumVertex() int {
   return len(t.grid) * len(t.grid[0])
 }
@@ -141,9 +148,6 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float64) (*Terrain,
   for i := range t.grid {
     t.grid[i] = make([]cell, dy)
     for j := range t.grid[i] {
-      if rand.Int() % 16 == 0 {
-  t.grid[i][j].s,err = sprite.LoadSprite("/Users/runningwild/code/go-glop/example/example.app/Contents/sprites/test_sprite")
-}
       switch rand.Int() % 3 {
         case 0:
           t.grid[i][j].move_cost = -1
@@ -279,22 +283,19 @@ func (t *Terrain) Draw(dims Dims) {
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
 
+  sprite.ZSort(t.positions, t.drawables)
 
   gl.PushMatrix()
   gl.LoadIdentity()
-  for i := len(t.grid)-1; i >= 0; i-- {
-    for j := len(t.grid[0])-1; j >= 0; j-- {
-      if t.grid[i][j].s != nil {
-        x,y,z := t.boardToModelview(float32(i) + 0.25, float32(j) + 0.25)
-        t.grid[i][j].s.Think(16)
-        if rand.Int() % 5 == 0 {
-          t.grid[i][j].s.Think(rand.Int() % 3 + 1)
-        }
-        t.grid[i][j].s.RenderToQuad(x, y, z, float32(t.zoom))
-      }
-    }
+  for i := range t.positions {
+    v := t.positions[i]
+    t.drawables[i].Render(v.X, v.Y, v.Z, float32(t.zoom))
   }
+  t.positions = t.positions[0:0]
+  t.drawables = t.drawables[0:0]
   gl.PopMatrix()
+
+  return
 
   for i := range t.grid {
     for j := range t.grid[0] {
