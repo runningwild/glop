@@ -11,7 +11,6 @@ import (
   "gl"
   "gl/glu"
   "math"
-  "rand"
   "github.com/arbaal/mathgl"
 )
 
@@ -55,8 +54,6 @@ type Terrain struct {
   // Inverse of mat
   imat mathgl.Mat4
 
-  grid [][]cell
-
   // All drawables that will be drawn parallel to the window
   upright_drawables []sprite.ZDrawable
   upright_positions []mathgl.Vec3
@@ -68,6 +65,8 @@ type Terrain struct {
   // Region that the terrain was displayed in last frame
   prev Region
 
+  // Don't need to keep the image around once it's loaded into texture memory,
+  // only need to keep around the dimensions
   bg      image.Image
   texture gl.Texture
 }
@@ -114,20 +113,6 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float64) (*Terrain,
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
   glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.bg.Bounds().Dx(), t.bg.Bounds().Dy(), gl.RGBA, rgba.Pix)
 
-  t.grid = make([][]cell, dx)
-  for i := range t.grid {
-    t.grid[i] = make([]cell, dy)
-    for j := range t.grid[i] {
-      switch rand.Int() % 3 {
-        case 0:
-          t.grid[i][j].move_cost = -1
-        case 1:
-          t.grid[i][j].move_cost = 1
-        case 2:
-          t.grid[i][j].move_cost = 5
-      }
-    }
-  }
   if err != nil {
     return nil,err
   }
@@ -190,8 +175,8 @@ func (t *Terrain) Move(dx,dy float64) {
   t.fy += dy / t.zoom
   t.fx = math.Fmax(t.fx, 0)
   t.fy = math.Fmax(t.fy, 0)
-  t.fx = math.Fmin(t.fx, float64(len(t.grid)))
-  t.fy = math.Fmin(t.fy, float64(len(t.grid[0])))
+  t.fx = math.Fmin(t.fx, float64(t.bg.Bounds().Dx()))
+  t.fy = math.Fmin(t.fy, float64(t.bg.Bounds().Dy()))
   t.makeMat()
 }
 
@@ -260,6 +245,19 @@ func (t *Terrain) Draw(dims Dims) {
     gl.Vertex3d(fdx, 0, 0)
   gl.End()
 
+  gl.Disable(gl.TEXTURE_2D)
+  gl.Color4d(0,0,0, 0.5)
+  gl.Begin(gl.LINES)
+  for i := 0.0; i < float64(t.bg.Bounds().Dx()); i += float64(t.block_size) {
+    gl.Vertex2d(i, 0)
+    gl.Vertex2d(i, float64(t.bg.Bounds().Dy()))
+  }
+  for j := 0.0; j < float64(t.bg.Bounds().Dy()); j += float64(t.block_size) {
+    gl.Vertex2d(0, j)
+    gl.Vertex2d(float64(t.bg.Bounds().Dx()), j)
+  }
+  gl.End()
+
   for i := range t.flattened_positions {
     v := t.flattened_positions[i]
     t.flattened_drawables[i].Render(v.X, v.Y, 0, float32(t.block_size))
@@ -282,34 +280,6 @@ func (t *Terrain) Draw(dims Dims) {
   t.upright_positions = t.upright_positions[0:0]
   t.upright_drawables = t.upright_drawables[0:0]
   gl.PopMatrix()
-
-  return
-
-  gl.Enable(gl.BLEND)
-  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-  gl.Disable(gl.TEXTURE_2D)
-  for i := range t.grid {
-    for j := range t.grid[0] {
-      switch {
-        case t.grid[i][j].move_cost < 0:
-          gl.Color4d(0, 0, 0, 0.4)
-        case t.grid[i][j].move_cost == 1:
-          gl.Color4d(0.0, 0.7, 0.1, 0.4)
-        case t.grid[i][j].move_cost == 5:
-          gl.Color4d(0.8, 0.1, 0.1, 0.4)
-      }
-      bx := float64(t.block_size * i)
-      bx2 := float64(t.block_size * (i + 1))
-      by := float64(t.block_size * j)
-      by2 := float64(t.block_size * (j + 1))
-      gl.Begin(gl.QUADS)
-        gl.Vertex2d(bx, by)
-        gl.Vertex2d(bx, by2)
-        gl.Vertex2d(bx2, by2)
-        gl.Vertex2d(bx2, by)
-      gl.End()
-    }
-  }
 }
 
 func (t *Terrain) SetEventHandler(handler gin.EventHandler) {
