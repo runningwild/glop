@@ -254,7 +254,7 @@ type Sprite struct {
   cur_frame *Node
 
   // Ms remaining on this frame
-  togo      int
+  togo      int64
 
   // If len(path) == 0 then this is the animation sequence that must be followed.  This is set
   // whenever a command is given to the sprite so that the command can be followed as quickly as
@@ -420,20 +420,24 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
   return &sprite, nil
 }
 
-func (s *Sprite) CurState() string {
+func (s *Sprite) CurAnim() string {
   return fmt.Sprintf("%d: %s -> %v", s.cur_facing, s.cur_frame.Name, s.pending_cmds)
 }
-
-func (s *Sprite) Command(cmd string) {
-  if _,ok := s.cmd_target[cmd]; !ok {
-    // TODO: Log a warning, can't call this cmd on this sprite
-    return
-  }
-  s.pending_cmds = append(s.pending_cmds, cmd)
+func (s *Sprite) CurState() string {
+  return fmt.Sprintf("%s", s.cur_frame.State)
 }
 
-// Advances the TODO: WRITE COMMENTS!
-func (s *Sprite) Think(dt int) {
+func (s *Sprite) Command(cmd []string) {
+  if len(s.pending_cmds) > 1 { return }
+  s.pending_cmds = cmd
+}
+
+func (s *Sprite) Facing() int {
+  return s.cur_facing
+}
+
+// TODO: WRITE COMMENTS!
+func (s *Sprite) Think(dt int64) {
   // We might call Think(0) within think just to rerun some logic, but dt < -1 is crazy
   if dt < 0 {
     return

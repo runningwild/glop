@@ -88,7 +88,7 @@ type Node struct {
   Start bool
 
   // anim graph values
-  Time  int     // ms for this frame
+  Time  int64   // ms for this frame
   State string  // If this is an anim node then this is the state to which it belongs
                 // if this is a state node then it is ""
 }

@@ -2,11 +2,8 @@ package gui
 
 import (
   "glop/gin"
-  "glop/util/algorithm"
   "glop/sprite"
   "os"
-  "path"
-  "path/filepath"
   "image"
   "image/draw"
   _ "image/png"
@@ -38,8 +35,8 @@ type Terrain struct {
   // Length of the side of block in the source image.
   block_size int
 
-  // Most recently clicked position on the board
-  hx,hy int
+  // All events received by the terrain are passed to the handler
+  handler gin.EventHandler
 
   // Focus, in map coordinates
   fx,fy float64
@@ -59,8 +56,14 @@ type Terrain struct {
   imat mathgl.Mat4
 
   grid [][]cell
-  positions []mathgl.Vec3
-  drawables []sprite.ZDrawable
+
+  // All drawables that will be drawn parallel to the window
+  upright_drawables []sprite.ZDrawable
+  upright_positions []mathgl.Vec3
+
+  // All drawables that will be drawn on the surface of the terrain
+  flattened_drawables []sprite.ZDrawable
+  flattened_positions []mathgl.Vec3
 
   // Region that the terrain was displayed in last frame
   prev Region
@@ -69,55 +72,22 @@ type Terrain struct {
   texture gl.Texture
 }
 
-func (t *Terrain) AddZDrawable(x,y float32, zd sprite.ZDrawable) {
-  vx,vy,vz := t.boardToModelview(x, y)
-  t.positions = append(t.positions, mathgl.Vec3{ vx, vy, vz })
-  t.drawables = append(t.drawables, zd)
+func (t *Terrain) AddUprightDrawable(x,y float32, zd sprite.ZDrawable) {
+  t.upright_drawables = append(t.upright_drawables, zd)
+  t.upright_positions = append(t.upright_positions, mathgl.Vec3{ x, y, 0 })
 }
-func (t *Terrain) NumVertex() int {
-  return len(t.grid) * len(t.grid[0])
-}
-func (t *Terrain) fromVertex(v int) (int,int) {
-  return v % len(t.grid), v / len(t.grid)
-}
-func (t *Terrain) toVertex(x,y int) int {
-  return x + y * len(t.grid)
-}
-func (t *Terrain) Adjacent(v int) ([]int, []float64) {
-  x,y := t.fromVertex(v)
-  var adj []int
-  var weight []float64
-  for dx := -1; dx <= 1; dx++ {
-    if x + dx < 0 || x + dx >= len(t.grid) { continue }
-    for dy := -1; dy <= 1; dy++ {
-      if dx == 0 && dy == 0 { continue }
-      if y + dy < 0 || y + dy >= len(t.grid[0]) { continue }
-      if t.grid[x+dx][y+dy].move_cost < 0 { continue }
-      // Prevent moving along a diagonal if we couldn't get to that space normally via
-      // either of the non-diagonal paths
-      if dx != 0 && dy != 0 {
-        if t.grid[x+dx][y].move_cost >= 0 && t.grid[x][y+dy].move_cost >= 0 {
-          cost_a := float64(t.grid[x+dx][y].move_cost + t.grid[x][y+dy].move_cost) / 2
-          cost_b := float64(t.grid[x+dx][y+dy].move_cost)
-          adj = append(adj, t.toVertex(x+dx, y+dy))
-          weight = append(weight, math.Fmax(cost_a, cost_b))
-        }
-      } else {
-        if t.grid[x+dx][y+dy].move_cost >= 0 {
-          adj = append(adj, t.toVertex(x+dx, y+dy))
-          weight = append(weight, float64(t.grid[x+dx][y+dy].move_cost))
-        }
-      }
-    }
-  }
-  return adj,weight
+
+// x,y: board coordinates that the drawable should be drawn at.
+// zd: drawable that will be rendered after the terrain has been rendered, it will be rendered
+//     with the same modelview matrix as the rest of the terrain
+func (t *Terrain) AddFlattenedDrawable(x,y float32, zd sprite.ZDrawable) {
+  t.flattened_drawables = append(t.flattened_drawables, zd)
+  t.flattened_positions = append(t.flattened_positions, mathgl.Vec3{ x, y, 0 })
 }
 
 func MakeTerrain(bg_path string, block_size,dx,dy int, angle float64) (*Terrain, os.Error) {
   var t Terrain
 
-  bg_path = filepath.Join(os.Args[0], bg_path)
-  bg_path = path.Clean(bg_path)
   f,err := os.Open(bg_path)
   if err != nil {
     return nil, err
@@ -188,11 +158,19 @@ func (t *Terrain) makeMat() {
   t.imat.Inverse()
 }
 
-func (t *Terrain) modelviewToBoard(mx,my float32) (int,int) {
+// Transforms a cursor position in window coordinates to board coordinates.  Does not check
+// to make sure that the values returned represent a valid position on the board.
+func (t *Terrain) WindowToBoard(wx,wy int) (float32, float32) {
+  mx := float32(wx - t.prev.X) - float32(t.prev.Dims.Dx) / 2
+  my := float32(wy - t.prev.Y) - float32(t.prev.Dims.Dy) / 2
+  return t.modelviewToBoard(mx, my)
+}
+
+func (t *Terrain) modelviewToBoard(mx,my float32) (float32,float32) {
   mz := my * float32(math.Tan(t.angle * 3.1415926535 / 180))
   v := mathgl.Vec4{ X : mx, Y : my, Z : mz, W : 1 }
   v.Transform(&t.imat)
-  return int(v.X / float32(t.block_size)), int(v.Y / float32(t.block_size))
+  return v.X / float32(t.block_size), v.Y / float32(t.block_size)
 }
 
 func (t *Terrain) boardToModelview(mx,my float32) (x,y,z float32) {
@@ -281,22 +259,35 @@ func (t *Terrain) Draw(dims Dims) {
     gl.TexCoord2d(1, 0)
     gl.Vertex3d(fdx, 0, 0)
   gl.End()
+
+  for i := range t.flattened_positions {
+    v := t.flattened_positions[i]
+    t.flattened_drawables[i].Render(v.X, v.Y, 0, float32(t.block_size))
+  }
+  t.flattened_positions = t.flattened_positions[0:0]
+  t.flattened_drawables = t.flattened_drawables[0:0]
+
+  for i := range t.upright_positions {
+    vx,vy,vz := t.boardToModelview(t.upright_positions[i].X, t.upright_positions[i].Y)
+    t.upright_positions[i] = mathgl.Vec3{ vx, vy, vz }
+  }
+  sprite.ZSort(t.upright_positions, t.upright_drawables)
   gl.Disable(gl.TEXTURE_2D)
-
-  sprite.ZSort(t.positions, t.drawables)
-
   gl.PushMatrix()
   gl.LoadIdentity()
-  for i := range t.positions {
-    v := t.positions[i]
-    t.drawables[i].Render(v.X, v.Y, v.Z, float32(t.zoom))
+  for i := range t.upright_positions {
+    v := t.upright_positions[i]
+    t.upright_drawables[i].Render(v.X, v.Y, v.Z, float32(t.zoom))
   }
-  t.positions = t.positions[0:0]
-  t.drawables = t.drawables[0:0]
+  t.upright_positions = t.upright_positions[0:0]
+  t.upright_drawables = t.upright_drawables[0:0]
   gl.PopMatrix()
 
   return
 
+  gl.Enable(gl.BLEND)
+  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+  gl.Disable(gl.TEXTURE_2D)
   for i := range t.grid {
     for j := range t.grid[0] {
       switch {
@@ -319,49 +310,16 @@ func (t *Terrain) Draw(dims Dims) {
       gl.End()
     }
   }
+}
 
-  in_bounds :=  t.hx >= 0 && t.hy >= 0 && t.hx < len(t.grid) && t.hy < len(t.grid[0])
-  var reach []int
-  if in_bounds {
-    reach = algorithm.ReachableWithinLimit(t, []int{ t.toVertex(t.hx, t.hy) }, 10)
-  }
-
-  for _,r := range reach {
-    gl.Color4d(0.0, 0.1, 1.0, 0.5)
-    i,j := t.fromVertex(r)
-    bx := float64(t.block_size * i)
-    bx2 := float64(t.block_size * (i + 1))
-    by := float64(t.block_size * j)
-    by2 := float64(t.block_size * (j + 1))
-    gl.Begin(gl.QUADS)
-      gl.Vertex2d(bx, by)
-      gl.Vertex2d(bx, by2)
-      gl.Vertex2d(bx2, by2)
-      gl.Vertex2d(bx2, by)
-    gl.End()
-  }
-
-  if in_bounds {
-    gl.Color4d(0.1, 0.2, 1, 0.4)
-    bx := float64(t.block_size * t.hx)
-    bx2 := float64(t.block_size * (t.hx + 1))
-    by := float64(t.block_size * t.hy)
-    by2 := float64(t.block_size * (t.hy + 1))
-    gl.Begin(gl.QUADS)
-      gl.Vertex2d(bx, by)
-      gl.Vertex2d(bx, by2)
-      gl.Vertex2d(bx2, by2)
-      gl.Vertex2d(bx2, by)
-    gl.End()
-  }
+func (t *Terrain) SetEventHandler(handler gin.EventHandler) {
+  t.handler = handler
 }
 
 func (t *Terrain) HandleEventGroup(event_group gin.EventGroup) (bool, bool, *Node) {
-  if found,event := event_group.FindEvent(304); found && event.Type == gin.Press {
-    x, y := event.Key.Cursor().Point()
-    mx := float32(x - t.prev.X) - float32(t.prev.Dims.Dx) / 2
-    my := float32(y - t.prev.Y) - float32(t.prev.Dims.Dy) / 2
-    t.hx, t.hy = t.modelviewToBoard(mx, my)
+  if t.handler != nil {
+    t.handler.HandleEventGroup(event_group)
   }
   return false, false, nil
 }
+

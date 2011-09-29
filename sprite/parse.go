@@ -85,7 +85,7 @@ func ParseXMLNode(section Section) Node {
         if err != nil {
           panic(fmt.Sprintf("Error reading time for node with name '%s'", node.Name))
         }
-        node.Time = t
+        node.Time = int64(t)
       case "mark":
         switch strings.ToLower(a[2]) {
           case "start":

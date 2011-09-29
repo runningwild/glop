@@ -249,8 +249,11 @@ func (input *Input) pressKey(k Key, amt float64, t int64, cause Event, group *Ev
 // given that the current event group has happened and no future events have happened yet.
 // Frame*() methods on keys will report state from last frame.
 // Listener.Think() will be called after all the events for a frame have been processed.
-type Listener interface {
+type EventHandler interface {
   HandleEventGroup(EventGroup)
+}
+type Listener interface {
+  EventHandler
   Think(int64)
 }
 

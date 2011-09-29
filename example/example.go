@@ -3,13 +3,15 @@ package main
 import (
   "glop/gos"
   "glop/gui"
-  "glop/gin"
   "glop/system"
   "glop/sprite"
   "runtime"
   "fmt"
   "os"
   "flag"
+  "time"
+  "path"
+  "path/filepath"
 )
 
 var (
@@ -23,35 +25,8 @@ func init() {
 }
 
 
-type Foo struct {
-  *gui.BoxWidget
-}
-func (f *Foo) HandleEventGroup(group gin.EventGroup) (bool, bool, *gui.Node) {
-  // TODO: 304!!!!!!!!!!!!!!!!!
-  if found,event := group.FindEvent(304); found {
-    if c := event.Key.Cursor(); c != nil && c.Name() == "Mouse"  && event.Type == gin.Press {
-      f.Dims.Dx += 5
-    }
-  }
-  return false, false, nil
-}
-
-func (f *Foo) Think(_ int64, has_focus bool, previous gui.Region, _ map[gui.Widget]gui.Dims) (bool, gui.Dims) {
-  cx,cy := sys.GetCursorPos()
-  cursor := gui.Point{ X : cx, Y : cy }
-  if cursor.Inside(previous) {
-    f.G = 0
-    f.B = 0
-  } else {
-    f.G = 1
-    f.B = 1
-  }
-  return f.BoxWidget.Think(0, false, previous, nil)
-}
-
 func main() {
   runtime.LockOSThread()
-
   // Running a binary via osx's package mechanism will add a flag that begins with
   // '-psn' so we have to find it and pretend like we were expecting it so that go
   // doesn't asplode because of an unexpected flag.
@@ -76,16 +51,14 @@ func main() {
   ui := gui.Make(sys.Input(), wdx, wdy)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 50, wdy - 50}), nil)
   manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
-  manch.InstallWidget(&Foo{gui.MakeBoxWidget(100, 100, 1,1,1,1)}, gui.Anchor{1,0,1,0})
   text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
-  edge_size := 32
-  v := 1000.0 / float64(edge_size)
-  terrain,err := gui.MakeTerrain("../../maps/chess.jpg", int(v), edge_size, edge_size, 65)
+  mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
+  mappath = path.Clean(mappath)
+  level,err := LoadLevel(mappath)
   if err != nil {
     panic(err.String())
-  } else {
-    manch.InstallWidget(terrain, gui.Anchor{0,0,0,0})
   }
+  manch.InstallWidget(level.terrain, gui.Anchor{0,0,0,0})
 
   table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
@@ -96,18 +69,38 @@ func main() {
   sys.EnableVSync(true)
 //  ticker := time.Tick(3e7)
 
-  
-  guy,err := sprite.LoadSprite("/Users/runningwild/code/go-glop/example/example.app/Contents/sprites/test_sprite")
+  spritepath := filepath.Join(os.Args[0], "..", "..", "sprites", "test_sprite")
+  spritepath = path.Clean(spritepath)
+  guy,err := sprite.LoadSprite(spritepath)
   if err != nil {
     panic(err.String())
   }
-  var gx,gy,tx,ty float32
-  gx = 2
-  gy = 3
-  tx = gx
-  ty = gy
+  guy2,err := sprite.LoadSprite(spritepath)
+  if err != nil {
+    panic(err.String())
+  }
+  ent := &entity{
+    bx : 1,
+    by : 2,
+    move_speed : 0.01,
+    s : guy,
+  }
+  ent2 := &entity{
+    bx : 3,
+    by : 5,
+    move_speed : 0.01,
+    s : guy2,
+  }
+  level.entities = append(level.entities, ent)
+  level.entities = append(level.entities, ent2)
+  prev := time.Nanoseconds()
+
   for {
     n++
+    next := time.Nanoseconds()
+    dt := (next - prev) / 1000000
+    prev = next
+
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
     sys.Think()
     sys.SwapBuffers()
@@ -117,41 +110,8 @@ func main() {
         return
       }
     }
-    guy.Think(16)
-    var ms float32 = 0.35
-    was_moving := gx != tx || gy != ty
-    if gx < tx {
-      gx += ms
-      if gx > tx { gx = tx }
-    }
-    if gx > tx {
-      gx -= ms
-      if gx < tx { gx = tx }
-    }
-    if gy < ty {
-      gy += ms
-      if gy > ty { gy = ty }
-    }
-    if gy > ty {
-      gy -= ms
-      if gy < ty { gy = ty }
-    }
-    if gx != tx || gy != ty {
-    } else if was_moving {
-      guy.Command("stop")
-    }
-    text_widget.SetText(guy.CurState())
-    if sys.Input().GetKey('t').FramePressCount() > 0 {
-      guy.Command("turn_left")
-      guy.Command("move")
-      ty+=25
-    }
-    if sys.Input().GetKey('y').FramePressCount() > 0 {
-      guy.Command("turn_right")
-      guy.Command("move")
-      ty-=25
-    }
-    terrain.AddZDrawable(gx + 0.25, gy + 0.25, guy)
+    level.Think(dt)
+    
     kw := sys.Input().GetKey('w')
     ka := sys.Input().GetKey('a')
     ks := sys.Input().GetKey('s')
@@ -159,9 +119,12 @@ func main() {
     m_factor := 0.0075
     dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
     dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
-    terrain.Move(dx, dy)
+    level.terrain.Move(dx, dy)
     zoom := sys.Input().GetKey('r').FramePressSum() - sys.Input().GetKey('f').FramePressSum()
-    terrain.Zoom(zoom * 0.0025)
+    for i := range level.entities {
+      level.entities[i].ap += sys.Input().GetKey('p').FramePressCount()
+    }
+    level.terrain.Zoom(zoom * 0.0025)
   }
 
   fmt.Printf("")
