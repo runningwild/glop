@@ -5,11 +5,12 @@ mkdir -p example.app/Contents/MacOS
 mkdir example.app/Contents/fonts
 mkdir example.app/Contents/lib
 mkdir example.app/Contents/sprites
+mkdir example.app/Contents/maps
 
 cp example example.app/Contents/MacOS/example
 cp fonts/* example.app/Contents/fonts/
 cp ../gos/darwin/lib/libglop.so example.app/Contents/lib/
-cp -r ../sprite/test_sprite example.app/Contents/sprites/
-cp -r maps example.app/Contents/maps
+cp -r sprites/* example.app/Contents/sprites/
+cp -r maps/* example.app/Contents/maps/
 rm -f example
 

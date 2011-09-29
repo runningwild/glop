@@ -10,8 +10,6 @@ import (
   "gl/glu"
   "io/ioutil"
   "os"
-  "path"
-  "path/filepath"
 )
 
 func mustLoadFont(filename string) *truetype.Font {
@@ -50,13 +48,11 @@ func init() {
   basic_fonts = make(map[string]*truetype.Font)
 }
 
-func LoadFont(name,rel_path string) os.Error {
+func LoadFont(name,path string) os.Error {
   if _,ok := basic_fonts[name]; ok {
     return os.NewError(fmt.Sprintf("Cannot load two fonts with the same name: '%s'", name))
   }
-  fontpath := filepath.Join(os.Args[0], rel_path)
-  fontpath = path.Clean(fontpath)
-  basic_fonts[name] = mustLoadFont(fontpath)
+  basic_fonts[name] = mustLoadFont(path)
   return nil
 }
 

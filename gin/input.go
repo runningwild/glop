@@ -59,6 +59,21 @@ type Input struct {
   cursors map[KeyId]*cursor
 }
 
+// The standard input object
+var input_obj *Input
+
+func init() {
+  input_obj = Make()
+}
+
+// TODO: You fucked up, the name of this function should be Input, and it should
+//       return an interfact or something that is not called Input
+func In() *Input {
+  return input_obj
+}
+
+// Creates a new input object, mostly for testing.  Most users will just query
+// gin.Input, which is created during initialization
 func Make() *Input {
   input := new(Input)
   input.all_keys = make([]Key, 0, 512)
@@ -134,9 +149,9 @@ func Make() *Input {
   input.registerNaturalKey(194, "KeyPageUp")
   input.registerNaturalKey(195, "KeyPageDown")
 
-  input.registerAxisKey(300, "MouseXAxis")
-  input.registerAxisKey(301, "MouseYAxis")
   mouse := &cursor{ name : "Mouse" }
+  input.registerCursorAxisKey(300, "MouseXAxis", mouse)
+  input.registerCursorAxisKey(301, "MouseYAxis", mouse)
   input.registerCursorKey(302, "MouseWheelUp", mouse)
   input.registerCursorKey(303, "MouseWheelDown", mouse)
   input.registerCursorKey(304, "MouseLButton", mouse)
@@ -220,6 +235,10 @@ func (input *Input) registerCursorKey(id KeyId, name string, cursor *cursor) {
 
 func (input *Input) registerAxisKey(id KeyId, name string) {
   input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, nil)
+}
+
+func (input *Input) registerCursorAxisKey(id KeyId, name string, cursor *cursor) {
+  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, cursor)
 }
 
 func (input *Input) GetKey(id KeyId) Key {

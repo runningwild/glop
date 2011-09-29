@@ -24,8 +24,6 @@ type System interface {
   SwapBuffers()
   GetInputEvents() []gin.EventGroup
 
-  Input() *gin.Input
-
   EnableVSync(bool)
 
   // These probably shouldn't be here, probably always want to do the Think() approach
@@ -77,14 +75,12 @@ type Os interface {
 
 type sysObj struct {
   os       Os
-  input    *gin.Input
   events   []gin.EventGroup
   start_ms int64
 }
 func Make(os Os) System {
   return &sysObj{
     os : os,
-    input : gin.Make(),
   }
 }
 func (sys *sysObj) Startup() {
@@ -97,10 +93,7 @@ func (sys *sysObj) Think() {
   for i := range events {
     events[i].Timestamp -= sys.start_ms
   }
-  sys.events = sys.input.Think(horizon - sys.start_ms, false, events)
-}
-func (sys *sysObj) Input() *gin.Input {
-  return sys.input
+  sys.events = gin.In().Think(horizon - sys.start_ms, false, events)
 }
 func (sys *sysObj) CreateWindow(x,y,width,height int) {
   sys.os.CreateWindow(x, y, width, height)

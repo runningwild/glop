@@ -25,6 +25,7 @@ type Highlight int
 const (
   None Highlight = iota
   Reachable
+  MouseOver
 //  Impassable
 //  OutOfRange
 )
@@ -62,6 +63,8 @@ func (t *CellData) Render(x,y,z,scale float32) {
     switch t.highlight {
       case Reachable:
         r,g,b,a = 0,0.2,0.9,0.3
+      case MouseOver:
+        r,g,b,a = 0.1,0.9,0.2,0.4
       default:
         panic("Unknown highlight")
     }
@@ -142,7 +145,6 @@ type entity struct {
 }
 
 func (e *entity) advance(dist float32) {
-    fmt.Printf("Curstate: %s\n", e.s.CurState())
   if len(e.path) == 0 {
     if e.s.CurState() != "ready" {
       e.s.Command([]string{"stop"})
@@ -191,6 +193,9 @@ type Level struct {
   entities []*entity
 
   selected *entity
+
+  // window coords of the mouse
+  winx,winy int
 }
 
 func (l *Level) Think(dt int64) {
@@ -207,6 +212,7 @@ func (l *Level) Think(dt int64) {
       l.grid[i][j].highlight = None
     }
   }
+
   if l.selected != nil {
     if len(l.selected.path) == 0 {
       bx := int(l.selected.bx)
@@ -223,6 +229,13 @@ func (l *Level) Think(dt int64) {
     }
   }
 
+  bx,by := l.terrain.WindowToBoard(l.winx, l.winy)
+  mx := int(bx)
+  my := int(by)
+  if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
+    l.grid[mx][my].highlight = MouseOver
+  }
+
   // Draw tile movement speeds
   for i := range l.grid {
     for j := range l.grid[i] {
@@ -232,26 +245,40 @@ func (l *Level) Think(dt int64) {
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
+  x,y := gin.In().GetKey(304).Cursor().Point()
+  l.winx = x
+  l.winy = y
+  bx,by := l.terrain.WindowToBoard(x, y)
+
   // Left mouse click, do the first option from this list that is possible
   // Select/Deselect the entity under the mouse
   // Tell the selected entity to mouse to the current mouse position
   if found,event := event_group.FindEvent(304); found && event.Type == gin.Press {
-    cx,cy := event.Key.Cursor().Point()
-    bx,by := l.terrain.WindowToBoard(cx, cy)
-    ibx := int(bx)
-    iby := int(by)
-    if ibx < 0 || iby < 0 || ibx >= len(l.grid) || iby >= len(l.grid[0]) {
-      return
-    }
+    click := mathgl.Vec2{ bx, by }
+
     var ent *entity
+    var dist float32 = float32(math.Inf(1))
     for i := range l.entities {
-      if int(l.entities[i].bx) == int(bx) && int(l.entities[i].by) == int(by) {
+      var cc mathgl.Vec2
+      cc.Assign(&click)
+      cc.Subtract(&mathgl.Vec2{ l.entities[i].bx + 0.5, l.entities[i].by + 0.5 })
+      dx := cc.X
+      if dx < 0 { dx = -dx }
+      dy := cc.Y
+      if dy < 0 { dy = -dy }
+      d := float32(math.Fmax(float64(dx), float64(dy)))
+      if d < dist {
+        dist = d
         ent = l.entities[i]
-        break
       }
     }
 
-    if ent != nil {
+    if l.selected == nil && dist < 3 {
+      l.selected = ent
+      return
+    }
+
+    if l.selected != nil && dist < 0.5 {
       if l.selected == ent {
         l.selected = nil
       } else {
@@ -260,9 +287,11 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
       return
     }
 
+    ent = nil
+
     if l.selected != nil && ent == nil {
       start := l.toVertex(int(l.selected.bx), int(l.selected.by))
-      end := l.toVertex(ibx, iby)
+      end := l.toVertex(int(click.X), int(click.Y))
       fmt.Printf("start,end: %d %d\n", start, end)
       ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
       if len(path) == 0 || int(ap) > l.selected.ap { return }
