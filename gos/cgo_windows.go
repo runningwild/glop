@@ -61,10 +61,10 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   var horizon C.longlong
   C.GlopGetInputEvents(unsafe.Pointer(win32.window), cp, unsafe.Pointer(&length), unsafe.Pointer(&horizon))
   win32.horizon = int64(horizon)
-  c_events := (*[1000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
+  c_events := (*[10000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
   events := make([]gin.OsEvent, length)
   for i := range c_events {
-    wx,wy := osx.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
+    wx,wy := win32.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
     events[i] = gin.OsEvent{
       KeyId     : gin.KeyId(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
@@ -91,4 +91,12 @@ func (win32 *win32SystemObject) GetWindowDims() (int,int,int,int) {
   var x,y,dx,dy C.int
   C.GlopGetWindowDims(unsafe.Pointer(win32.window), &x, &y, &dx, &dy)
   return int(x), int(y), int(dx), int(dy)
+}
+
+func (win32 *win32SystemObject) EnableVSync(enable bool) {
+  var _enable C.int
+  if enable {
+    _enable = 1
+  }
+  C.GlopEnableVSync(_enable)
 }

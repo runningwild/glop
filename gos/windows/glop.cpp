@@ -311,6 +311,11 @@ class InputPollingThread: public Thread {
  protected:
   // Continuously polls the input.
   void Run() {
+    POINT prev_pos;
+    int mouse_buttons[3];
+    for (int i = 0; i < 3; i++) {
+      mouse_buttons[i] = 0;
+    }
     while (!IsStopRequested()) {
       window_->input_mutex.Acquire();
       long long timestamp = GlopGetTime();
@@ -362,6 +367,22 @@ class InputPollingThread: public Thread {
       }
       if (!FAILED(hr)) {
         // TODO: GlopKeyEvent
+        if (cursor_pos.x != prev_pos.x) {
+          GlopKeyEvent e = base;
+          e.index = kMouseXAxis;
+          e.press_amt = cursor_pos.x - prev_pos.x;
+          e.cursor_x = cursor_pos.x;
+          e.cursor_y = cursor_pos.y;
+          data_.push_back(e);
+        }
+        if (cursor_pos.y != prev_pos.y) {
+          GlopKeyEvent e = base;
+          e.index = kMouseYAxis;
+          e.press_amt = cursor_pos.y - prev_pos.y;
+          e.cursor_x = cursor_pos.x;
+          e.cursor_y = cursor_pos.y;
+          data_.push_back(e);
+        }
 /*
         data_.push_back(GlopKeyEvent(mouse_state.lX, mouse_state.lY, timestamp, cursor_pos.x,
                                      cursor_pos.y, is_num_lock_set, is_caps_lock_set));
@@ -369,7 +390,21 @@ class InputPollingThread: public Thread {
                                      cursor_pos.y, is_num_lock_set, is_caps_lock_set));
         data_.push_back(GlopKeyEvent(kMouseWheelUp, mouse_state.lZ > 0, timestamp, cursor_pos.x,
                                      cursor_pos.y, is_num_lock_set, is_caps_lock_set));
+*/
 //        ASSERT(kNumMouseButtons == 8);  // Update section if this changes
+        for (int i = 0; i < 3; i++) {
+          GlopKeyEvent e = base;
+          e.index = kMouseLButton + i;
+          int press = !!((mouse_state.rgbButtons[i] & 0x80) > 0);
+          if (press == mouse_buttons[i]) { continue; }
+          mouse_buttons[i] = press;
+          e.press_amt = press;
+          e.cursor_x = cursor_pos.x;
+          e.cursor_y = cursor_pos.y;
+          data_.push_back(e);
+        }
+        prev_pos = cursor_pos;
+/*
         for (int i = 0; i < kNumMouseButtons; i++) {
           data_.push_back(GlopKeyEvent(GetMouseButton(i), (mouse_state.rgbButtons[i] & 0x80) > 0,
                                        timestamp, cursor_pos.x, cursor_pos.y, is_num_lock_set,
@@ -1065,7 +1100,7 @@ int GlopGetRefreshRate() {
   return dev_mode.dmDisplayFrequency;
 }
 
-void GlopEnableVSync(bool is_enabled) {
+void GlopEnableVSync(int is_enabled) {
   // TODO: Stub
 }
 
