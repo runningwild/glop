@@ -1,6 +1,8 @@
 package main
 
 import (
+  "math"
+  "fmt"
   "glop/sprite"
   "github.com/arbaal/mathgl"
 )
@@ -26,13 +28,15 @@ type entity struct {
 func (e *entity) advance(dist float32) {
   if len(e.path) == 0 {
     if e.s.CurState() != "ready" {
-      e.s.Command([]string{"stop"})
+      e.s.Command("stop")
     }
     return
   }
   if e.s.CurState() != "walk" {
-    e.s.Command([]string{"move"})
+    e.s.Command("move")
   }
+  fmt.Printf("")
+  if e.s.CurAnim() != "walk" { return }
   if dist <= 0 { return }
   var b,t mathgl.Vec2
   b = mathgl.Vec2{ e.bx, e.by }
@@ -44,13 +48,25 @@ func (e *entity) advance(dist float32) {
     e.advance(dist - moved)
     return
   }
-
+  final_dist := dist
+  if final_dist > moved {
+    final_dist = moved
+  }
   t.Normalize()
-  t.Scale(dist)
+  t.Scale(final_dist)
   b.Add(&t)
   e.bx = b.X
   e.by = b.Y
-  e.advance(dist - moved)
+  e.advance(dist - final_dist)
+  facing := int(math.Atan2(float64(t.Y), float64(t.X)) / (2 * math.Pi) * 2 + 0.5)
+  facing = (facing + 1) % 2
+  fmt.Printf("Cur/Target: %d %d\n", e.s.StateFacing(), facing)
+  if e.s.StateFacing() != facing {
+    e.s.Command("stop")
+    e.s.Command("turn_left")
+    e.s.Command("move")
+    fmt.Printf("post Cur/Target: %d %d\n", e.s.StateFacing(), facing)
+  }
 }
 
 func (e *entity) Think(dt int64) {

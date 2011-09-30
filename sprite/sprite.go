@@ -10,7 +10,6 @@ import (
   _ "image/png"
   "gl"
   "gl/glu"
-  "rand"
   "sort"
   "github.com/arbaal/mathgl"
 )
@@ -95,6 +94,7 @@ func makeSpriteLevel(indexes []frameIndex, filenames []string) *spriteLevel {
   copy(sl.filenames, filenames)
   return &sl
 }
+
 // TODO: Might want to have the load part happen in a separate go-routine so we don't block
 // here if we're loading a lot of textures.  In that case we should have a default sprite or
 // something that displays if a spriteLevel isn't available yet.
@@ -247,11 +247,18 @@ type sharedSprite struct {
 type Sprite struct {
   *sharedSprite
 
-  // the facing number, always in the range [0, num_facings)
-  cur_facing int
+  // the facing number for the animation, always in the range [0, num_facings)
+  anim_facing int
+
+  // the facing number for the state, always in the range [0, num_facings]
+  state_facing int
 
   // The current frame of animation that is displayed when Render is called
   cur_frame *Node
+
+  // The current state based on all commands that have been received so far.  The
+  // current animation frame may lag behind this.
+  cur_state *Node
 
   // Ms remaining on this frame
   togo      int64
@@ -266,13 +273,13 @@ type Sprite struct {
 
 func (s *Sprite) Render(x,y,z,scale float32) {
   f := frameIndex{
-    facing : uint8(s.cur_facing),
+    facing : uint8(s.anim_facing),
     anim_id : uint16(s.cur_frame.Id),
   }
   if _,ok := s.connection.rects[f.Int()]; ok {
     s.connection.RenderToQuad(f, x, y, z, scale)
   } else {
-    s.facings[s.cur_facing].RenderToQuad(f, x, y, z, scale)
+    s.facings[s.anim_facing].RenderToQuad(f, x, y, z, scale)
   }
 }
 
@@ -416,24 +423,36 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
 
   sprite.facings[0].Load()
   sprite.cur_frame = sprite.anim.StartNode()
+  sprite.cur_state = sprite.state.StartNode()
   sprite.togo = sprite.cur_frame.Time
   return &sprite, nil
 }
 
 func (s *Sprite) CurAnim() string {
-  return fmt.Sprintf("%d: %s -> %v", s.cur_facing, s.cur_frame.Name, s.pending_cmds)
+  return s.cur_frame.State
+  return fmt.Sprintf("%d: %s -> %v", s.anim_facing, s.cur_frame.Name, s.pending_cmds)
 }
 func (s *Sprite) CurState() string {
-  return fmt.Sprintf("%s", s.cur_frame.State)
+  return s.cur_state.Name
 }
 
-func (s *Sprite) Command(cmd []string) {
-  if len(s.pending_cmds) > 1 { return }
-  s.pending_cmds = cmd
+func (s *Sprite) Command(cmd string) {
+  edge := s.cur_state.FindEdge(cmd)
+  if edge == nil { return }
+  s.cur_state = s.state.nodes[edge.Target]
+  if edge.Facing != 0 {
+    s.state_facing = (s.state_facing + edge.Facing + s.num_facings) % s.num_facings
+    s.facings[s.state_facing].Load()
+  }
+  s.pending_cmds = append(s.pending_cmds, cmd)
 }
 
-func (s *Sprite) Facing() int {
-  return s.cur_facing
+func (s *Sprite) StateFacing() int {
+  return s.state_facing
+}
+
+func (s *Sprite) AnimFacing() int {
+  return s.anim_facing
 }
 
 // TODO: WRITE COMMENTS!
@@ -491,22 +510,10 @@ func (s *Sprite) Think(dt int64) {
     s.path = s.path[1:]
     s.togo = s.cur_frame.Time
   } else {
-    var edges []Edge
-    weight := 0.0
-    for _,edge := range s.cur_frame.Edges {
-      if edge.State != "" { continue }
-      edges = append(edges, edge)
-      weight += edge.Weight
-    }
-    hit := rand.Float64() * weight
-    sum := 0.0
-    for _,edge := range edges {
-      sum += edge.Weight
-      if hit < sum {
-        s.cur_frame = s.anim.nodes[edge.Target]
-        s.togo = s.cur_frame.Time
-        break
-      }
+    edge := s.cur_frame.FindEdge("")
+    if edge != nil {
+      s.cur_frame = s.anim.nodes[edge.Target]
+      s.togo = s.cur_frame.Time
     }
   }
   for _,edge := range prev.Edges {
@@ -514,9 +521,9 @@ func (s *Sprite) Think(dt int64) {
       if edge.Facing != 0 {
         // We are currently using the connections spriteSheet, so it's ok to unload the facings
         // spriteSheet
-        s.facings[s.cur_facing].Unload()
-        s.cur_facing = (s.cur_facing + edge.Facing + s.num_facings) % s.num_facings
-        s.facings[s.cur_facing].Load()
+        s.facings[s.anim_facing].Unload()
+        s.anim_facing = (s.anim_facing + edge.Facing + s.num_facings) % s.num_facings
+        s.facings[s.anim_facing].Load()
         break
       }
     }

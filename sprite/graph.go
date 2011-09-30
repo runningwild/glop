@@ -3,6 +3,7 @@ package sprite
 import (
   "fmt"
   "os"
+  "rand"
   "strings"
 )
 
@@ -94,6 +95,32 @@ type Node struct {
 }
 func (node *Node) IsCore() bool {
   return strings.HasPrefix(node.Name, node.State)
+}
+
+// Returns an edge from node with the name cmd.
+// If multiple such edges exist one will be chosen at random using the weights
+// specified in the matching edges.  If no edges match this function returns nil.
+func (node *Node) FindEdge(cmd string) *Edge {
+  var matches []*Edge
+  weight := 0.0
+  for i := range node.Edges {
+    if node.Edges[i].State == cmd {
+      matches = append(matches, &node.Edges[i])
+      weight += node.Edges[i].Weight
+    }
+  }
+  if len(matches) == 0 { return nil }
+  hit := rand.Float64() * weight
+  sum := 0.0
+  for _,edge := range matches {
+    sum += edge.Weight
+    if hit < sum {
+      return edge
+    }
+  }
+  // TODO: should probably log a warning here, this shouldn't ever happen
+  panic("WHAT")
+  return matches[len(matches)-1]
 }
 
 func ProcessGraph(graph_name string, g *Graph) os.Error {

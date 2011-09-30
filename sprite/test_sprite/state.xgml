@@ -451,7 +451,8 @@ mark:start</attribute>
 		<section name="edge">
 			<attribute key="source" type="int">0</attribute>
 			<attribute key="target" type="int">0</attribute>
-			<attribute key="label" type="String">turn_left</attribute>
+			<attribute key="label" type="String">turn_left
+facing:-1</attribute>
 			<section name="graphics">
 				<attribute key="fill" type="String">#000000</attribute>
 				<attribute key="targetArrow" type="String">standard</attribute>
@@ -480,7 +481,8 @@ mark:start</attribute>
 				<attribute key="yTarget" type="double">0.6390572190284729</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">turn_left</attribute>
+				<attribute key="text" type="String">turn_left
+facing:-1</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="model" type="String">six_pos</attribute>
@@ -490,7 +492,8 @@ mark:start</attribute>
 		<section name="edge">
 			<attribute key="source" type="int">0</attribute>
 			<attribute key="target" type="int">0</attribute>
-			<attribute key="label" type="String">turn_right</attribute>
+			<attribute key="label" type="String">turn_right
+facing:1</attribute>
 			<section name="graphics">
 				<attribute key="fill" type="String">#000000</attribute>
 				<attribute key="targetArrow" type="String">standard</attribute>
@@ -519,7 +522,8 @@ mark:start</attribute>
 				<attribute key="yTarget" type="double">-0.23333333432674408</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">turn_right</attribute>
+				<attribute key="text" type="String">turn_right
+facing:1</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="model" type="String">six_pos</attribute>

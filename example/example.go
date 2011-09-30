@@ -84,14 +84,14 @@ func main() {
   ent := &entity{
     bx : 1,
     by : 2,
-    move_speed : 0.01,
+    move_speed : 0.0075,
     s : guy,
     ap : 25,
   }
   ent2 := &entity{
     bx : 3,
     by : 5,
-    move_speed : 0.01,
+    move_speed : 0.0075,
     s : guy2,
     ap : 25,
   }
