@@ -1,7 +1,6 @@
 package main
 
 import (
-  "fmt"
   "glop/gin"
   "glop/gui"
   "glop/util/algorithm"
@@ -239,7 +238,6 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
     if l.selected != nil && ent == nil {
       start := l.toVertex(int(l.selected.bx), int(l.selected.by))
       end := l.toVertex(int(click.X), int(click.Y))
-      fmt.Printf("start,end: %d %d\n", start, end)
       ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
       if len(path) == 0 || int(ap) > l.selected.ap { return }
       path = path[1:]

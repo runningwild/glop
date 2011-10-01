@@ -67,6 +67,13 @@ type spriteRect struct {
   // width and height of the rect in pixels
   dx,dy float32
 }
+type renderParams struct {
+  index frameIndex
+  x,y,z,scale float32
+}
+func (rp renderParams) params() (index frameIndex, x,y,z,scale float32) {
+  return rp.index, rp.x, rp.y, rp.z, rp.scale
+}
 type spriteLevel struct {
   // indexes[i] is the frame of animation the corresponds to the image from filenames[i]
   indexes   []frameIndex
@@ -83,6 +90,14 @@ type spriteLevel struct {
   // number of Load() calls - number of Unload() calls.  When this reaches
   // zero it will free its data
   count   int
+
+  // channels used to manage the loading/unloading/rendering in a safe way
+  load_count     chan int
+  render         chan renderParams
+
+  // Loaded when load() is called, but not actually bound to a texture until the
+  // first time it is rendered.
+  sheet *image.RGBA
 }
 
 // TODO: runtime.SetFinalizer()!!
@@ -92,18 +107,50 @@ func makeSpriteLevel(indexes []frameIndex, filenames []string) *spriteLevel {
   copy(sl.indexes, indexes)
   sl.filenames = make([]string, len(filenames))
   copy(sl.filenames, filenames)
+  sl.load_count = make(chan int)
+  sl.render = make(chan renderParams)
+  go sl.routine()
   return &sl
+}
+
+// all sprite level commands go through here so that we can call a load early and check
+// back later for the results in a nice thread-safe fashion
+func (sl *spriteLevel) routine() {
+  for {
+    select {
+      case count := <-sl.load_count:
+        prev := sl.count
+        sl.count += count
+        if (prev == 0) != (sl.count == 0) {
+          if sl.count == 0 {
+            sl.unload()
+          } else {
+            sl.load()
+          }
+        }
+        if sl.count < 0 {
+          panic("Cannot unload a sprite level more times than it is loaded.")
+        }
+
+      case data := <-sl.render:
+        sl.renderToQuad(data.params())
+        sl.render <- renderParams{}
+    }
+  }
+}
+
+func (sl *spriteLevel) Load() {
+  sl.load_count <- 1
+}
+
+func (sl *spriteLevel) Unload() {
+  sl.load_count <- -1
 }
 
 // TODO: Might want to have the load part happen in a separate go-routine so we don't block
 // here if we're loading a lot of textures.  In that case we should have a default sprite or
 // something that displays if a spriteLevel isn't available yet.
-func (sl *spriteLevel) Load() {
-  if sl.count > 0 {
-    return
-  }
-  sl.count++
-
+func (sl *spriteLevel) load() {
   sl.rects = make(map[int]spriteRect)
 
   var images []image.Image
@@ -114,8 +161,8 @@ func (sl *spriteLevel) Load() {
       panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.String()))
       return
     }
-    defer file.Close()
     im,_,err := image.Decode(file)
+    file.Close()
     if err != nil {
       panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.String()))
       return
@@ -164,22 +211,13 @@ func (sl *spriteLevel) Load() {
     cx += bounds.Dx()
   }
 
-  gl.Enable(gl.TEXTURE_2D)
-  sl.texture = gl.GenTexture()
-  sl.texture.Bind(gl.TEXTURE_2D)
-  gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, pdx, pdy, gl.RGBA, sheet.Pix)
+  // This assignment will be visible in future calls to renderToQuad because
+  // spriteLevel.routine() explicitly synchronizes these calls.
+  sl.sheet = sheet
 }
-func (sl *spriteLevel) Unload() {
-  sl.count--
-  if sl.count == 0 {
-    sl.rects = nil
-    sl.texture.Delete()
-  }
+func (sl *spriteLevel) unload() {
+  sl.rects = nil
+  sl.texture.Delete()
 }
 
 // TODO: This was copied from the gui package, probably should just have some basic
@@ -193,6 +231,25 @@ func nextPowerOf2(n uint32) uint32 {
   return 0
 }
 func (s *spriteLevel) RenderToQuad(index frameIndex, x,y,z,scale float32) {
+  s.render <- renderParams{ index, x, y, z, scale }
+  <-s.render
+}
+func (s *spriteLevel) renderToQuad(index frameIndex, x,y,z,scale float32) {
+  if s.sheet != nil {
+    gl.Enable(gl.TEXTURE_2D)
+    s.texture = gl.GenTexture()
+    s.texture.Bind(gl.TEXTURE_2D)
+    gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+    pdx := int(nextPowerOf2(uint32(s.sheet.Bounds().Dx())))
+    pdy := int(nextPowerOf2(uint32(s.sheet.Bounds().Dy())))
+    glu.Build2DMipmaps(gl.TEXTURE_2D, 4, pdx, pdy, gl.RGBA, s.sheet.Pix)
+    s.sheet = nil
+  }
+  if s.texture == 0 { return }
   gl.Enable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -277,9 +334,9 @@ func (s *Sprite) Render(x,y,z,scale float32) {
     anim_id : uint16(s.cur_frame.Id),
   }
   if _,ok := s.connection.rects[f.Int()]; ok {
-    s.connection.RenderToQuad(f, x, y, z, scale)
+    s.connection.renderToQuad(f, x, y, z, scale)
   } else {
-    s.facings[s.anim_facing].RenderToQuad(f, x, y, z, scale)
+    s.facings[s.anim_facing].renderToQuad(f, x, y, z, scale)
   }
 }
 
@@ -376,10 +433,11 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     // Right now we're just taking the frames on either end of a facing change and keeping those
     // permanently loaded.
     mids := make(map[int]bool)
-    for i := range anim_graph.edges {
-      if anim_graph.edges[i].Facing != 0 {
-        mids[anim_graph.edges[i].Source] = true
-        mids[anim_graph.edges[i].Target] = true
+    for _,node := range anim_graph.nodes {
+      for _,edge := range node.Edges {
+        if edge.Facing == 0 { continue }
+        mids[edge.Source] = true
+        mids[edge.Target] = true
       }
     }
     var indexes []frameIndex
@@ -408,12 +466,14 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     }
 
     ss.cmd_target = make(map[string][]int)
-    for _,edge := range ss.anim.edges {
-      if edge.State == "" { continue }
-      if _,ok := ss.cmd_target[edge.State]; !ok {
-        ss.cmd_target[edge.State] = make([]int, 0, 1)
+    for _,node := range ss.anim.nodes {
+      for _,edge := range node.Edges {
+        if edge.State == "" { continue }
+        if _,ok := ss.cmd_target[edge.State]; !ok {
+          ss.cmd_target[edge.State] = make([]int, 0, 1)
+        }
+        ss.cmd_target[edge.State] = append(ss.cmd_target[edge.State], edge.Target)
       }
-      ss.cmd_target[edge.State] = append(ss.cmd_target[edge.State], edge.Target)
     }
     sm.loaded_sprites[path] = ss
   }
@@ -521,9 +581,9 @@ func (s *Sprite) Think(dt int64) {
       if edge.Facing != 0 {
         // We are currently using the connections spriteSheet, so it's ok to unload the facings
         // spriteSheet
-        s.facings[s.anim_facing].Unload()
+//        s.facings[s.anim_facing].Unload()
         s.anim_facing = (s.anim_facing + edge.Facing + s.num_facings) % s.num_facings
-        s.facings[s.anim_facing].Load()
+//        s.facings[s.anim_facing].Load()
         break
       }
     }

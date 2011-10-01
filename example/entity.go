@@ -57,16 +57,21 @@ func (e *entity) advance(dist float32) {
   b.Add(&t)
   e.bx = b.X
   e.by = b.Y
-  e.advance(dist - final_dist)
-  facing := int(math.Atan2(float64(t.Y), float64(t.X)) / (2 * math.Pi) * 2 + 0.5)
-  facing = (facing + 1) % 2
-  fmt.Printf("Cur/Target: %d %d\n", e.s.StateFacing(), facing)
-  if e.s.StateFacing() != facing {
-    e.s.Command("stop")
-    e.s.Command("turn_left")
-    e.s.Command("move")
-    fmt.Printf("post Cur/Target: %d %d\n", e.s.StateFacing(), facing)
+
+  if moved > dist {
+    facing := math.Atan2(float64(t.Y), float64(t.X)) / (2 * math.Pi) * 360.0
+    var face int
+    if facing >= 22.5 || facing < -157.5 {
+      face = 0
+    } else {
+      face = 1
+    }
+    if face != e.s.StateFacing() {
+      e.s.Command("turn_left")
+    }
   }
+
+  e.advance(dist - final_dist)
 }
 
 func (e *entity) Think(dt int64) {

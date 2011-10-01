@@ -88,6 +88,7 @@ func main() {
     s : guy,
     ap : 25,
   }
+  level.entities = append(level.entities, ent)
   ent2 := &entity{
     bx : 3,
     by : 5,
@@ -95,7 +96,6 @@ func main() {
     s : guy2,
     ap : 25,
   }
-  level.entities = append(level.entities, ent)
   level.entities = append(level.entities, ent2)
   prev := time.Nanoseconds()
 

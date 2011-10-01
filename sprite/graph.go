@@ -43,7 +43,6 @@ func (g *commandGraph) Adjacent(n int) ([]int, []float64) {
 
 type Graph struct {
   nodes []*Node
-  edges []Edge
 }
 func (g *Graph) NumVertex() int {
   return len(g.nodes)
@@ -68,9 +67,11 @@ func (g *Graph) IdFromName(name string) int {
 }
 func (g *Graph) AllCmds() map[string]bool {
   cmds := make(map[string]bool)
-  for _,edge := range g.edges {
-    if edge.State == "" { continue }
-    cmds[edge.State] = true
+  for _,node := range g.nodes {
+    for _,edge := range node.Edges {
+      if edge.State == "" { continue }
+      cmds[edge.State] = true
+    }
   }
   return cmds
 }
