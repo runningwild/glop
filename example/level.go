@@ -140,6 +140,10 @@ type Level struct {
 
   selected *entity
 
+  // If a unit is selected this will hold the list of cells that are reachable
+  // from that unit's position within its allotted AP
+  reachable []int
+
   // window coords of the mouse
   winx,winy int
 }
@@ -161,10 +165,12 @@ func (l *Level) Think(dt int64) {
 
   if l.selected != nil {
     if len(l.selected.path) == 0 {
-      bx := int(l.selected.bx)
-      by := int(l.selected.by)
-      vs := algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
-      for _,v := range vs {
+      if len(l.reachable) == 0 {
+        bx := int(l.selected.bx)
+        by := int(l.selected.by)
+        l.reachable = algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
+      }
+      for _,v := range l.reachable {
         x,y := l.fromVertex(v)
         l.grid[x][y].highlight = Reachable
       }
@@ -242,6 +248,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
       if len(path) == 0 || int(ap) > l.selected.ap { return }
       path = path[1:]
       l.selected.path = l.selected.path[0:0]
+      l.reachable = nil
       for i := range path {
         x,y := l.fromVertex(path[i])
         l.selected.path = append(l.selected.path, [2]int{x,y})
