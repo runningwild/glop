@@ -35,7 +35,7 @@ func (t *CellData) Render(x,y,z,scale float32) {
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   var r,g,b,a float32
-  a = 0.0
+  a = 1.0
   switch t.move_cost {
     case 1:
       r,g,b = 0.1, 0.9, 0.4
@@ -95,6 +95,12 @@ func (s *StaticLevelData) Adjacent(v int) ([]int, []float64) {
   x,y := s.fromVertex(v)
   var adj []int
   var weight []float64
+
+  // separate arrays for the adjacent diagonal cells, this way we make sure they are listed
+  // at the end so that searches will prefer orthogonal adjacent cells
+  var adj_diag []int
+  var weight_diag []float64
+
   for dx := -1; dx <= 1; dx++ {
     if x + dx < 0 || x + dx >= len(s.grid) { continue }
     for dy := -1; dy <= 1; dy++ {
@@ -107,12 +113,8 @@ func (s *StaticLevelData) Adjacent(v int) ([]int, []float64) {
         if s.grid[x+dx][y].move_cost > 0 && s.grid[x][y+dy].move_cost > 0 {
           cost_a := float64(s.grid[x+dx][y].move_cost + s.grid[x][y+dy].move_cost) / 2
           cost_b := float64(s.grid[x+dx][y+dy].move_cost)
-          adj = append(adj, s.toVertex(x+dx, y+dy))
-
-          // This is kind of hacky, but by adding a very small cost to moving diagonally
-          // we will prevent a path from including diagonal movement when it doesn't
-          // actually need it.
-          weight = append(weight, math.Fmax(cost_a, cost_b) + 0.00001)
+          adj_diag = append(adj, s.toVertex(x+dx, y+dy))
+          weight_diag = append(weight, math.Fmax(cost_a, cost_b))
         }
       } else {
         if s.grid[x+dx][y+dy].move_cost > 0 {
@@ -121,6 +123,10 @@ func (s *StaticLevelData) Adjacent(v int) ([]int, []float64) {
         }
       }
     }
+  }
+  for i := range adj_diag {
+    adj = append(adj, adj_diag[i])
+    weight = append(weight, weight_diag[i])
   }
   return adj,weight
 }
@@ -227,6 +233,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
 
     if l.selected == nil && dist < 3 {
       l.selected = ent
+      l.reachable = nil
       return
     }
 
@@ -234,6 +241,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
       if l.selected == ent {
         l.selected = nil
       } else {
+        l.reachable = nil
         l.selected = ent
       }
       return
