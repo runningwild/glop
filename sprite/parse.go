@@ -239,30 +239,6 @@ func ParseXMLGraph(section Section) *Graph {
       g.nodes[i].Edges[j].Target = m[g.nodes[i].Edges[j].Target]
     }
   }
-
-  for i,node := range g.nodes {
-    fmt.Printf("Node(%d): %s\n", i, node.Name)
-    for j,edge := range node.Edges {
-      fmt.Printf("Edge(%d): %v -> %s\n", j, edge, g.nodes[edge.Target].Name)
-    }
-    fmt.Printf("\n")
-  }
-
-
-/*
-  for i := range g.nodes {
-    fmt.Printf("%d: %s\n", i, g.nodes[i].Name)
-  }
-  for i := range g.edges {
-    e := g.edges[i]
-    if e.State != "" {
-      fmt.Printf("\nNamed edge: %s\n", e.State)
-    }
-    fmt.Printf("%s -> %s\n", g.nodes[e.Source].Name, g.nodes[e.Target].Name)
-
-  }
-*/
-
   return &g
 }
 
