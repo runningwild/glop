@@ -7,22 +7,67 @@ import (
   "github.com/arbaal/mathgl"
 )
 
+type damage struct {
+  piercing int
+  smashing int
+  fire     int
+}
+
+type armor interface {
+  Absorb(damage) damage
+}
+
+type unitStats struct {
+  health     int
+  max_health int
+
+  // unit stat scale?  maybe a typical human has 100 in all stats
+  strength int
+  speed    int
+
+  // All damage taken is passed through each of these armors in the order they are listed
+  armors []armor
+
+  max_ap int
+  ap     int
+
+  // The position this unit is in for the purposes of game mechanics, not animation
+  px,py int
+}
+
+type cosmeticStats struct {
+  // in board coordinates per ms
+  move_speed float32
+}
+
 type entity struct {
-  // TODO: entity needs some sort of static data, like ap/round, etc...
+  unitStats
+  cosmeticStats
 
   s *sprite.Sprite
 
-  // in board coordinates per ms
-  move_speed float32
+  level *StaticLevelData
 
   // Board coordinates of this entity's current position
   bx,by float32
 
-  // number of ap remaining
-  ap int
-
   // If the entity is currently moving then it will follow the vertices in path
   path [][2]int
+}
+
+// On Turn is always called before OnRound
+func (e *entity) OnTurn() {
+}
+func (e *entity) OnRound() {
+  e.ap = e.max_ap
+}
+
+func (e *entity) enterCell(x,y int) {
+  e.ap -= e.level.grid[x][y].move_cost
+  if e.ap < 0 {
+    // TODO: Log a warning
+    e.ap = 0
+  }
 }
 
 func (e *entity) advance(dist float32) {
@@ -44,6 +89,7 @@ func (e *entity) advance(dist float32) {
   t.Subtract(&b)
   moved := t.Length()
   if moved <= 1e-5 {
+    e.enterCell(e.path[0][0], e.path[0][1])
     e.path = e.path[1:]
     e.advance(dist - moved)
     return

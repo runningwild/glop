@@ -84,17 +84,29 @@ func main() {
   ent := &entity{
     bx : 1,
     by : 2,
-    move_speed : 0.0075,
     s : guy,
-    ap : 25,
+    level : &level.StaticLevelData,
+    unitStats : unitStats{
+      max_ap : 25,
+      ap : 25,
+    },
+    cosmeticStats : cosmeticStats{
+      move_speed : 0.0075,
+    },
   }
   level.entities = append(level.entities, ent)
   ent2 := &entity{
     bx : 3,
     by : 5,
-    move_speed : 0.0075,
     s : guy2,
-    ap : 25,
+    level : &level.StaticLevelData,
+    unitStats : unitStats{
+      max_ap : 25,
+      ap : 25,
+    },
+    cosmeticStats : cosmeticStats{
+      move_speed : 0.0075,
+    },
   }
   level.entities = append(level.entities, ent2)
   prev := time.Nanoseconds()
@@ -127,6 +139,9 @@ func main() {
     zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
     for i := range level.entities {
       level.entities[i].ap += gin.In().GetKey('p').FramePressCount()
+    }
+    if gin.In().GetKey('m').FramePressCount() > 0 {
+      level.PrepMove()
     }
     level.terrain.Zoom(zoom * 0.0025)
   }

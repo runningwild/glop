@@ -4,7 +4,6 @@ import (
   "glop/gin"
   "glop/gui"
   "glop/util/algorithm"
-  "glop/sprite"
   "gl"
   "math"
   "github.com/arbaal/mathgl"
@@ -12,6 +11,7 @@ import (
   "path/filepath"
   "io/ioutil"
   "os"
+  "fmt"
 )
 
 type staticCellData struct {
@@ -141,13 +141,19 @@ func (s *StaticLevelData) Adjacent(v int) ([]int, []float64) {
   return adj,weight
 }
 
+type Command int
+const (
+  NoCommand Command = iota
+  Move
+  Attack
+)
+
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
 
-  // List of all sprites currently on the map
-  dudes []*sprite.Sprite
-  d_pos []mathgl.Vec2
+  // unset when the cache is cleared, lets Think() know it has to refil the cache
+  cached bool
 
   // The gui element rendering the terrain and all of the other drawables
   terrain *gui.Terrain
@@ -156,15 +162,21 @@ type Level struct {
 
   selected *entity
 
+  // window coords of the mouse
+  winx,winy int
+
+  // The most recently prepped valid command
+  command Command
+
+  // MOVE data
+
   // If a unit is selected this will hold the list of cells that are reachable
   // from that unit's position within its allotted AP
   reachable []int
 
-  // window coords of the mouse
-  winx,winy int
 
-  // unset when the cache is cleared, lets Think() know it has to refil the cache
-  cached bool
+
+  // ATTACK data
 }
 
 func (l *Level) clearCache() {
@@ -176,6 +188,53 @@ func (l *Level) clearCache() {
     }
   }
   l.cached = false
+}
+
+func (l *Level) maintainCommand() {
+  switch l.command {
+    case Move:
+    for _,v := range l.reachable {
+      x,y := l.fromVertex(v)
+      l.grid[x][y].highlight = Reachable
+    }
+
+    case Attack:
+
+    case NoCommand:
+    default:
+      panic(fmt.Sprintf("Unknown command: %d", l.command))
+  }
+}
+
+func (l *Level) PrepAttack() {
+  if l.selected == nil { return }
+  l.command = Attack
+
+  
+}
+func (l *Level) PrepMove() {
+  if l.selected == nil { return }
+  l.command = Move
+  bx := int(l.selected.bx)
+  by := int(l.selected.by)
+  l.reachable = algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
+}
+
+func (l *Level) DoMove(click_x,click_y int) {
+  if l.selected == nil { return }
+  l.clearCache()
+  l.command = NoCommand
+  start := l.toVertex(int(l.selected.bx), int(l.selected.by))
+  end := l.toVertex(click_x, click_y)
+  ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
+  if len(path) == 0 || int(ap) > l.selected.ap { return }
+  path = path[1:]
+  l.selected.path = l.selected.path[0:0]
+  l.reachable = nil
+  for i := range path {
+    x,y := l.fromVertex(path[i])
+    l.selected.path = append(l.selected.path, [2]int{x,y})
+  }
 }
 
 func (l *Level) Think(dt int64) {
@@ -191,33 +250,14 @@ func (l *Level) Think(dt int64) {
     l.terrain.AddUprightDrawable(e.bx + 0.25, e.by + 0.25, e.s)
   }
 
-  if !l.cached && l.selected != nil {
-    if len(l.selected.path) == 0 {
-      if len(l.reachable) == 0 {
-        bx := int(l.selected.bx)
-        by := int(l.selected.by)
-        l.reachable = algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
-      }
-      for _,v := range l.reachable {
-        x,y := l.fromVertex(v)
-        l.grid[x][y].highlight = Reachable
-      }
-    } else {
-      for _,v := range l.selected.path {
-        l.grid[v[0]][v[1]].highlight = Reachable
-      }
-    }
-  }
+  l.maintainCommand()
 
-  // Draw tile movement speeds
+  // Draw tiles
   for i := range l.grid {
     for j := range l.grid[i] {
-      if i == 0 && j == 0 { print("added drawables\n")}
       l.terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
     }
   }
-
-  l.cached = true
 
   // Highlight the square under the cursor
   bx,by := l.terrain.WindowToBoard(l.winx, l.winy)
@@ -229,6 +269,14 @@ func (l *Level) Think(dt int64) {
     l.terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
   }
 
+  // Highlight selected entity
+  if l.selected != nil {
+    cell := l.grid[int(l.selected.bx)][int(l.selected.by)]
+    cell.highlight = Reachable
+    l.terrain.AddFlattenedDrawable(l.selected.bx, l.selected.by, &cell)
+  }
+
+  l.cached = true
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
@@ -278,22 +326,14 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
       return
     }
 
-    ent = nil
-
-    if l.selected != nil && ent == nil {
-      start := l.toVertex(int(l.selected.bx), int(l.selected.by))
-      end := l.toVertex(int(click.X), int(click.Y))
-      ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
-      if len(path) == 0 || int(ap) > l.selected.ap { return }
-      path = path[1:]
-      l.selected.path = l.selected.path[0:0]
-      l.reachable = nil
-      for i := range path {
-        x,y := l.fromVertex(path[i])
-        l.selected.path = append(l.selected.path, [2]int{x,y})
-      }
-      l.clearCache()
+    switch l.command {
+      case Move:
+        l.DoMove(int(bx), int(by))
+      case Attack:
+      case NoCommand:
+      default:
     }
+
   }
 }
 
