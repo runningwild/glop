@@ -105,19 +105,24 @@ func (e *entity) advance(dist float32) {
   e.by = b.Y
 
   if moved > dist {
-    facing := math.Atan2(float64(t.Y), float64(t.X)) / (2 * math.Pi) * 360.0
-    var face int
-    if facing >= 22.5 || facing < -157.5 {
-      face = 0
-    } else {
-      face = 1
-    }
-    if face != e.s.StateFacing() {
-      e.s.Command("turn_left")
-    }
+    e.turnToFace(mathgl.Vec2{ float32(e.path[0][0]), float32(e.path[0][1]) })
   }
 
   e.advance(dist - final_dist)
+}
+
+func (e *entity) turnToFace(target mathgl.Vec2) {
+  target.Subtract(&mathgl.Vec2{ e.bx, e.by })
+  facing := math.Atan2(float64(target.Y), float64(target.X)) / (2 * math.Pi) * 360.0
+  var face int
+  if facing >= 22.5 || facing < -157.5 {
+    face = 0
+  } else {
+    face = 1
+  }
+  if face != e.s.StateFacing() {
+    e.s.Command("turn_left")
+  }
 }
 
 func (e *entity) Think(dt int64) {
