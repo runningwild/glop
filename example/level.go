@@ -14,10 +14,16 @@ import (
   "os"
 )
 
-type CellData struct {
+type staticCellData struct {
   move_cost int
-
+}
+type cachedCellData struct {
   highlight Highlight
+}
+
+type CellData struct {
+  staticCellData
+  cachedCellData
 }
 
 type Highlight int
@@ -29,13 +35,17 @@ const (
 //  OutOfRange
 )
 
+func (t *CellData) Clear() {
+  t.cachedCellData = cachedCellData{}
+}
+
 func (t *CellData) Render(x,y,z,scale float32) {
   gl.Disable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   var r,g,b,a float32
-  a = 1.0
+  a = 0.2
   switch t.move_cost {
     case 1:
       r,g,b = 0.1, 0.9, 0.4
@@ -152,24 +162,36 @@ type Level struct {
 
   // window coords of the mouse
   winx,winy int
+
+  // unset when the cache is cleared, lets Think() know it has to refil the cache
+  cached bool
+}
+
+func (l *Level) clearCache() {
+  if !l.cached { return }
+  print("Clearing\n")
+  for i := range l.grid {
+    for j := range l.grid[i] {
+      l.grid[i][j].Clear()
+    }
+  }
+  l.cached = false
 }
 
 func (l *Level) Think(dt int64) {
-
   // Draw all sprites
   for i := range l.entities {
     e := l.entities[i]
+    pbx := int(e.bx)
+    pby := int(e.by)
     e.Think(dt)
+    if pbx != int(e.bx) || pby != int(e.by) {
+      l.clearCache()
+    }
     l.terrain.AddUprightDrawable(e.bx + 0.25, e.by + 0.25, e.s)
   }
 
-  for i := range l.grid {
-    for j := range l.grid[i] {
-      l.grid[i][j].highlight = None
-    }
-  }
-
-  if l.selected != nil {
+  if !l.cached && l.selected != nil {
     if len(l.selected.path) == 0 {
       if len(l.reachable) == 0 {
         bx := int(l.selected.bx)
@@ -187,19 +209,26 @@ func (l *Level) Think(dt int64) {
     }
   }
 
+  // Draw tile movement speeds
+  for i := range l.grid {
+    for j := range l.grid[i] {
+      if i == 0 && j == 0 { print("added drawables\n")}
+      l.terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
+    }
+  }
+
+  l.cached = true
+
+  // Highlight the square under the cursor
   bx,by := l.terrain.WindowToBoard(l.winx, l.winy)
   mx := int(bx)
   my := int(by)
   if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
-    l.grid[mx][my].highlight = MouseOver
+    cell := l.grid[mx][my]
+    cell.highlight = MouseOver
+    l.terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
   }
 
-  // Draw tile movement speeds
-  for i := range l.grid {
-    for j := range l.grid[i] {
-      l.terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
-    }
-  }
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
@@ -234,6 +263,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
     if l.selected == nil && dist < 3 {
       l.selected = ent
       l.reachable = nil
+      l.clearCache()
       return
     }
 
@@ -244,6 +274,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
         l.reachable = nil
         l.selected = ent
       }
+      l.clearCache()
       return
     }
 
@@ -261,6 +292,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
         x,y := l.fromVertex(path[i])
         l.selected.path = append(l.selected.path, [2]int{x,y})
       }
+      l.clearCache()
     }
   }
 }
