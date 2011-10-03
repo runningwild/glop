@@ -118,6 +118,7 @@ func main() {
     prev = next
 
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
+    text_widget.SetText(fmt.Sprintf("%s %s", ent.s.CurState(), ent2.s.CurState()))
     sys.Think()
     sys.SwapBuffers()
     groups := sys.GetInputEvents()
@@ -126,7 +127,6 @@ func main() {
         return
       }
     }
-    level.Think(dt)
     
     kw := gin.In().GetKey('w')
     ka := gin.In().GetKey('a')
@@ -143,7 +143,11 @@ func main() {
     if gin.In().GetKey('m').FramePressCount() > 0 {
       level.PrepMove()
     }
+    if gin.In().GetKey('k').FramePressCount() > 0 {
+      level.PrepAttack()
+    }
     level.terrain.Zoom(zoom * 0.0025)
+    level.Think(dt)
   }
 
   fmt.Printf("")

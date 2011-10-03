@@ -26,10 +26,20 @@ type CellData struct {
   cachedCellData
 }
 
+func maxNormi(x,y,x2,y2 int) int {
+  dx := x2 - x
+  if dx < 0 { dx = -dx }
+  dy := y2 - y
+  if dy < 0 { dy = -dy }
+  if dx > dy { return dx }
+  return dy
+}
+
 type Highlight int
 const (
   None Highlight = iota
   Reachable
+  Attackable
   MouseOver
 //  Impassable
 //  OutOfRange
@@ -71,9 +81,11 @@ func (t *CellData) Render(x,y,z,scale float32) {
   if t.highlight != None {
     switch t.highlight {
       case Reachable:
-        r,g,b,a = 0,0.2,0.9,0.3
+        r,g,b,a = 0, 0.2, 0.9, 0.3
+      case Attackable:
+        r,g,b,a = 0.7, 0.2, 0.2, 0.9
       case MouseOver:
-        r,g,b,a = 0.1,0.9,0.2,0.4
+        r,g,b,a = 0.1, 0.9, 0.2, 0.4
       default:
         panic("Unknown highlight")
     }
@@ -101,8 +113,8 @@ func (s *StaticLevelData) fromVertex(v int) (int,int) {
 func (s *StaticLevelData) toVertex(x,y int) int {
   return x + y * len(s.grid)
 }
-func (s *StaticLevelData) Adjacent(v int) ([]int, []float64) {
-  x,y := s.fromVertex(v)
+func (l *Level) Adjacent(v int) ([]int, []float64) {
+  x,y := l.fromVertex(v)
   var adj []int
   var weight []float64
 
@@ -112,24 +124,35 @@ func (s *StaticLevelData) Adjacent(v int) ([]int, []float64) {
   var weight_diag []float64
 
   for dx := -1; dx <= 1; dx++ {
-    if x + dx < 0 || x + dx >= len(s.grid) { continue }
+    if x + dx < 0 || x + dx >= len(l.grid) { continue }
     for dy := -1; dy <= 1; dy++ {
       if dx == 0 && dy == 0 { continue }
-      if y + dy < 0 || y + dy >= len(s.grid[0]) { continue }
-      if s.grid[x+dx][y+dy].move_cost <= 0 { continue }
+      if y + dy < 0 || y + dy >= len(l.grid[0]) { continue }
+      if l.grid[x+dx][y+dy].move_cost <= 0 { continue }
+
+      // Don't want to be able to walk through other units
+      occupied := false
+      for i := range l.entities {
+        if int(l.entities[i].bx) == x+dx && int(l.entities[i].by) == y+dy {
+          occupied = true
+          break
+        }
+      }
+      if occupied { continue }
+
       // Prevent moving along a diagonal if we couldn't get to that space normally via
       // either of the non-diagonal paths
       if dx != 0 && dy != 0 {
-        if s.grid[x+dx][y].move_cost > 0 && s.grid[x][y+dy].move_cost > 0 {
-          cost_a := float64(s.grid[x+dx][y].move_cost + s.grid[x][y+dy].move_cost) / 2
-          cost_b := float64(s.grid[x+dx][y+dy].move_cost)
-          adj_diag = append(adj, s.toVertex(x+dx, y+dy))
+        if l.grid[x+dx][y].move_cost > 0 && l.grid[x][y+dy].move_cost > 0 {
+          cost_a := float64(l.grid[x+dx][y].move_cost + l.grid[x][y+dy].move_cost) / 2
+          cost_b := float64(l.grid[x+dx][y+dy].move_cost)
+          adj_diag = append(adj, l.toVertex(x+dx, y+dy))
           weight_diag = append(weight, math.Fmax(cost_a, cost_b))
         }
       } else {
-        if s.grid[x+dx][y+dy].move_cost > 0 {
-          adj = append(adj, s.toVertex(x+dx, y+dy))
-          weight = append(weight, float64(s.grid[x+dx][y+dy].move_cost))
+        if l.grid[x+dx][y+dy].move_cost > 0 {
+          adj = append(adj, l.toVertex(x+dx, y+dy))
+          weight = append(weight, float64(l.grid[x+dx][y+dy].move_cost))
         }
       }
     }
@@ -165,8 +188,10 @@ type Level struct {
   // window coords of the mouse
   winx,winy int
 
+
   // The most recently prepped valid command
   command Command
+
 
   // MOVE data
 
@@ -177,6 +202,7 @@ type Level struct {
 
 
   // ATTACK data
+  in_range []int
 }
 
 func (l *Level) clearCache() {
@@ -199,6 +225,10 @@ func (l *Level) maintainCommand() {
     }
 
     case Attack:
+    for _,v := range l.in_range {
+      x,y := l.fromVertex(v)
+      l.grid[x][y].highlight = Attackable
+    }
 
     case NoCommand:
     default:
@@ -209,12 +239,45 @@ func (l *Level) maintainCommand() {
 func (l *Level) PrepAttack() {
   if l.selected == nil { return }
   l.command = Attack
+  l.clearCache()
 
-  
+  reach := 10
+  l.in_range = nil
+  for i := range l.entities {
+    if l.entities[i] == l.selected { continue }
+    x := int(l.entities[i].bx)
+    y := int(l.entities[i].by)
+    x2 := int(l.selected.bx)
+    y2 := int(l.selected.by)
+    dist := maxNormi(x, y, x2, y2)
+    if dist > reach { continue }
+    l.in_range = append(l.in_range, l.toVertex(x, y))
+  }
+}
+func (l *Level) DoAttack(target *entity) {
+  if l.selected == nil { return }
+
+  // First check range
+  reach := 10
+  x := int(target.bx)
+  y := int(target.by)
+  x2 := int(l.selected.bx)
+  y2 := int(l.selected.by)
+  dist := maxNormi(x, y, x2, y2)
+  if dist > reach { return }
+
+  l.selected.s.Command("ranged")
+  target.s.Command("defend")
+  target.s.Command("undamaged")
+
+  l.clearCache()
+  l.command = NoCommand
 }
 func (l *Level) PrepMove() {
   if l.selected == nil { return }
   l.command = Move
+  l.clearCache()
+
   bx := int(l.selected.bx)
   by := int(l.selected.by)
   l.reachable = algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
@@ -222,8 +285,7 @@ func (l *Level) PrepMove() {
 
 func (l *Level) DoMove(click_x,click_y int) {
   if l.selected == nil { return }
-  l.clearCache()
-  l.command = NoCommand
+
   start := l.toVertex(int(l.selected.bx), int(l.selected.by))
   end := l.toVertex(click_x, click_y)
   ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
@@ -235,6 +297,9 @@ func (l *Level) DoMove(click_x,click_y int) {
     x,y := l.fromVertex(path[i])
     l.selected.path = append(l.selected.path, [2]int{x,y})
   }
+
+  l.clearCache()
+  l.command = NoCommand
 }
 
 func (l *Level) Think(dt int64) {
@@ -285,9 +350,6 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
   l.winy = y
   bx,by := l.terrain.WindowToBoard(x, y)
 
-  // Left mouse click, do the first option from this list that is possible
-  // Select/Deselect the entity under the mouse
-  // Tell the selected entity to mouse to the current mouse position
   if found,event := event_group.FindEvent(304); found && event.Type == gin.Press {
     click := mathgl.Vec2{ bx, by }
 
@@ -310,30 +372,37 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
 
     if l.selected == nil && dist < 3 {
       l.selected = ent
-      l.reachable = nil
       l.clearCache()
+      l.command = NoCommand
       return
     }
 
+    var target *entity
     if l.selected != nil && dist < 0.5 {
-      if l.selected == ent {
-        l.selected = nil
-      } else {
-        l.reachable = nil
-        l.selected = ent
-      }
-      l.clearCache()
-      return
+      target = ent
     }
 
     switch l.command {
       case Move:
-        l.DoMove(int(bx), int(by))
+        if target == nil {
+          l.DoMove(int(bx), int(by))
+        }
+
       case Attack:
+        if target != nil {
+          l.DoAttack(target)
+          target = nil
+        }
+
       case NoCommand:
       default:
     }
 
+    if target != nil {
+      l.selected = target
+    }
+    l.clearCache()
+    l.command = NoCommand
   }
 }
 

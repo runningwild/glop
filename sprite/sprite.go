@@ -504,7 +504,10 @@ func (s *Sprite) Command(cmd string) {
     s.state_facing = (s.state_facing + edge.Facing + s.num_facings) % s.num_facings
     s.facings[s.state_facing].Load()
   }
-  s.pending_cmds = append(s.pending_cmds, cmd)
+  if cmd != "" {
+    s.pending_cmds = append(s.pending_cmds, cmd)
+    s.Command("")
+  }
 }
 
 func (s *Sprite) StateFacing() int {

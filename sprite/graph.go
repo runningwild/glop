@@ -110,7 +110,9 @@ func (node *Node) FindEdge(cmd string) *Edge {
       weight += node.Edges[i].Weight
     }
   }
-  if len(matches) == 0 { return nil }
+  if len(matches) == 0 { 
+    return nil
+  }
   hit := rand.Float64() * weight
   sum := 0.0
   for _,edge := range matches {
