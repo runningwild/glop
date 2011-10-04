@@ -14,6 +14,10 @@ type dNode struct {
   v int  // current vertex
   p int  // previous vertex (for extracting path)
   weight float64
+
+  // If every node is inserted with a unique count that is monotonically increasing then
+  // edges will be evaluated in the order that they are received.
+  count int
 }
 
 type dArray []dNode
@@ -24,7 +28,10 @@ func (da *dArray) Swap(i,j int) {
   (*da)[i],(*da)[j] = (*da)[j],(*da)[i]
 }
 func (da *dArray) Less(i,j int) bool {
-  return (*da)[i].weight < (*da)[j].weight
+  if (*da)[i].weight != (*da)[j].weight {
+    return (*da)[i].weight < (*da)[j].weight
+  }
+  return (*da)[i].count < (*da)[j].count
 }
 func (da *dArray) Push(x interface{}) {
   *da = append(*da, x.(dNode))
@@ -78,6 +85,7 @@ func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
     target[d] = true
   }
 
+  node_count := 0
   for len(h) > 0 {
     cur := heap.Pop(&h).(dNode)
     if used[cur.v] { continue }
@@ -99,7 +107,8 @@ func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
     }
     adj,weights := g.Adjacent(cur.v)
     for i := range adj {
-      heap.Push(&h, dNode{ v:adj[i], p:cur.v, weight:weights[i]+cur.weight })
+      heap.Push(&h, dNode{ v:adj[i], p:cur.v, weight:weights[i]+cur.weight, count : node_count })
+      node_count++
     }
   }
   return -1, nil

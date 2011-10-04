@@ -12,6 +12,7 @@ import (
   "io/ioutil"
   "os"
   "fmt"
+  "rand"
 )
 
 type staticCellData struct {
@@ -133,7 +134,7 @@ func (l *Level) Adjacent(v int) ([]int, []float64) {
       // Don't want to be able to walk through other units
       occupied := false
       for i := range l.entities {
-        if int(l.entities[i].bx) == x+dx && int(l.entities[i].by) == y+dy {
+        if int(l.entities[i].pos.X) == x+dx && int(l.entities[i].pos.Y) == y+dy {
           occupied = true
           break
         }
@@ -146,8 +147,8 @@ func (l *Level) Adjacent(v int) ([]int, []float64) {
         if l.grid[x+dx][y].move_cost > 0 && l.grid[x][y+dy].move_cost > 0 {
           cost_a := float64(l.grid[x+dx][y].move_cost + l.grid[x][y+dy].move_cost) / 2
           cost_b := float64(l.grid[x+dx][y+dy].move_cost)
-          adj_diag = append(adj, l.toVertex(x+dx, y+dy))
-          weight_diag = append(weight, math.Fmax(cost_a, cost_b))
+          adj_diag = append(adj_diag, l.toVertex(x+dx, y+dy))
+          weight_diag = append(weight_diag, math.Fmax(cost_a, cost_b))
         }
       } else {
         if l.grid[x+dx][y+dy].move_cost > 0 {
@@ -207,7 +208,6 @@ type Level struct {
 
 func (l *Level) clearCache() {
   if !l.cached { return }
-  print("Clearing\n")
   for i := range l.grid {
     for j := range l.grid[i] {
       l.grid[i][j].Clear()
@@ -245,10 +245,10 @@ func (l *Level) PrepAttack() {
   l.in_range = nil
   for i := range l.entities {
     if l.entities[i] == l.selected { continue }
-    x := int(l.entities[i].bx)
-    y := int(l.entities[i].by)
-    x2 := int(l.selected.bx)
-    y2 := int(l.selected.by)
+    x := int(l.entities[i].pos.X)
+    y := int(l.entities[i].pos.Y)
+    x2 := int(l.selected.pos.X)
+    y2 := int(l.selected.pos.Y)
     dist := maxNormi(x, y, x2, y2)
     if dist > reach { continue }
     l.in_range = append(l.in_range, l.toVertex(x, y))
@@ -259,16 +259,30 @@ func (l *Level) DoAttack(target *entity) {
 
   // First check range
   reach := 10
-  x := int(target.bx)
-  y := int(target.by)
-  x2 := int(l.selected.bx)
-  y2 := int(l.selected.by)
+  x := int(target.pos.X)
+  y := int(target.pos.Y)
+  x2 := int(l.selected.pos.X)
+  y2 := int(l.selected.pos.Y)
   dist := maxNormi(x, y, x2, y2)
   if dist > reach { return }
 
+  // Resolve the actual attack here
+  l.selected.turnToFace(target.pos)
   l.selected.s.Command("ranged")
   target.s.Command("defend")
-  target.s.Command("undamaged")
+  switch rand.Intn(2) {
+    case 0:
+      target.s.Command("undamaged")
+
+    case 1:
+      if rand.Intn(10) == 0 {
+        target.s.Command("killed")
+      } else {
+        target.s.Command("damaged")
+      }
+  }
+
+
 
   l.clearCache()
   l.command = NoCommand
@@ -278,15 +292,15 @@ func (l *Level) PrepMove() {
   l.command = Move
   l.clearCache()
 
-  bx := int(l.selected.bx)
-  by := int(l.selected.by)
+  bx := int(l.selected.pos.X)
+  by := int(l.selected.pos.Y)
   l.reachable = algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
 }
 
 func (l *Level) DoMove(click_x,click_y int) {
   if l.selected == nil { return }
 
-  start := l.toVertex(int(l.selected.bx), int(l.selected.by))
+  start := l.toVertex(int(l.selected.pos.X), int(l.selected.pos.Y))
   end := l.toVertex(click_x, click_y)
   ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
   if len(path) == 0 || int(ap) > l.selected.ap { return }
@@ -306,13 +320,13 @@ func (l *Level) Think(dt int64) {
   // Draw all sprites
   for i := range l.entities {
     e := l.entities[i]
-    pbx := int(e.bx)
-    pby := int(e.by)
+    pbx := int(e.pos.X)
+    pby := int(e.pos.Y)
     e.Think(dt)
-    if pbx != int(e.bx) || pby != int(e.by) {
+    if pbx != int(e.pos.X) || pby != int(e.pos.Y) {
       l.clearCache()
     }
-    l.terrain.AddUprightDrawable(e.bx + 0.25, e.by + 0.25, e.s)
+    l.terrain.AddUprightDrawable(e.pos.X + 0.25, e.pos.Y + 0.25, e.s)
   }
 
   l.maintainCommand()
@@ -336,9 +350,9 @@ func (l *Level) Think(dt int64) {
 
   // Highlight selected entity
   if l.selected != nil {
-    cell := l.grid[int(l.selected.bx)][int(l.selected.by)]
+    cell := l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
     cell.highlight = Reachable
-    l.terrain.AddFlattenedDrawable(l.selected.bx, l.selected.by, &cell)
+    l.terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
   }
 
   l.cached = true
@@ -358,7 +372,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
     for i := range l.entities {
       var cc mathgl.Vec2
       cc.Assign(&click)
-      cc.Subtract(&mathgl.Vec2{ l.entities[i].bx + 0.5, l.entities[i].by + 0.5 })
+      cc.Subtract(&mathgl.Vec2{ l.entities[i].pos.X + 0.5, l.entities[i].pos.Y + 0.5 })
       dx := cc.X
       if dx < 0 { dx = -dx }
       dy := cc.Y
