@@ -13,6 +13,7 @@ import (
   "time"
   "path"
   "path/filepath"
+  "github.com/arbaal/mathgl"
 )
 
 var (
@@ -53,7 +54,8 @@ func main() {
   ui := gui.Make(gin.In(), wdx, wdy)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 50, wdy - 50}), nil)
   manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
-  text_widget := gui.MakeSingleLineText("standard", "Funk Monkey 7$", 1,0.9,0.9,1)
+  h1 := gui.MakeSingleLineText("standard", "", 1,0.9,0.9,1)
+  h2 := gui.MakeSingleLineText("standard", "", 1,0.9,0.9,1)
   mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
   mappath = path.Clean(mappath)
   level,err := LoadLevel(mappath)
@@ -66,7 +68,8 @@ func main() {
 
   frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 1,0,1,1)
   table.InstallWidget(frame_count_widget, nil)
-  table.InstallWidget(text_widget, nil)
+  table.InstallWidget(h1, nil)
+  table.InstallWidget(h2, nil)
   n := 0
   sys.EnableVSync(true)
 //  ticker := time.Tick(3e7)
@@ -81,34 +84,69 @@ func main() {
   if err != nil {
     panic(err.String())
   }
-  ent := &entity{
-    bx : 1,
-    by : 2,
-    s : guy,
-    level : &level.StaticLevelData,
-    unitStats : unitStats{
-      max_ap : 25,
-      ap : 25,
+
+  seal := UnitType {
+    Name : "Navy Seal",
+    Health : 175,
+    Move_cost : map[Terrain]int{
+      Grass : 2,
+      Dirt  : 2,
+      Water : 6,
+      Brush : 4,
     },
-    cosmeticStats : cosmeticStats{
-      move_speed : 0.0075,
+    AP : 30,
+    Attack  : 150,
+    Defense : 140,
+    Weapons : []Weapon {
+      &Bayonet {},
+    },
+  }
+
+  rifleman := UnitType {
+    Name : "Rifleman",
+    Health : 90,
+    Move_cost : map[Terrain]int{
+      Grass : 1,
+      Dirt  : 1,
+      Water : 15,
+      Brush : 1,
+    },
+    AP : 30,
+    Attack  : 100,
+    Defense : 80,
+    Weapons : []Weapon {
+      &Rifle {
+        Range : 35,
+        Power : 55,
+      },
+    },
+  }
+
+  ent := &entity{
+    UnitStats : UnitStats {
+      Base : &seal,
+    },
+    pos : mathgl.Vec2{ 1, 2 },
+    s : guy,
+    level : level,
+    CosmeticStats : CosmeticStats{
+      Move_speed : 0.0075,
     },
   }
   level.entities = append(level.entities, ent)
   ent2 := &entity{
-    bx : 3,
-    by : 5,
-    s : guy2,
-    level : &level.StaticLevelData,
-    unitStats : unitStats{
-      max_ap : 25,
-      ap : 25,
+    UnitStats : UnitStats {
+      Base : &rifleman,
     },
-    cosmeticStats : cosmeticStats{
-      move_speed : 0.0075,
+    pos : mathgl.Vec2{ 25, 20 },
+    s : guy2,
+    level : level,
+    CosmeticStats : CosmeticStats{
+      Move_speed : 0.0075,
     },
   }
   level.entities = append(level.entities, ent2)
+  level.Setup()
   prev := time.Nanoseconds()
 
   for {
@@ -118,7 +156,8 @@ func main() {
     prev = next
 
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
-    text_widget.SetText(fmt.Sprintf("%s %s", ent.s.CurState(), ent2.s.CurState()))
+    h1.SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ent.Base.Name, ent.Health, ent.AP))
+    h2.SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ent2.Base.Name, ent2.Health, ent2.AP))
     sys.Think()
     sys.SwapBuffers()
     groups := sys.GetInputEvents()
@@ -138,13 +177,16 @@ func main() {
     level.terrain.Move(dx, dy)
     zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
     for i := range level.entities {
-      level.entities[i].ap += gin.In().GetKey('p').FramePressCount()
+      level.entities[i].AP += 100 * gin.In().GetKey('p').FramePressCount()
     }
     if gin.In().GetKey('m').FramePressCount() > 0 {
       level.PrepMove()
     }
     if gin.In().GetKey('k').FramePressCount() > 0 {
       level.PrepAttack()
+    }
+    if gin.In().GetKey('o').FramePressCount() > 0 {
+      level.Round()
     }
     level.terrain.Zoom(zoom * 0.0025)
     level.Think(dt)

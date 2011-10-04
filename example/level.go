@@ -12,11 +12,10 @@ import (
   "io/ioutil"
   "os"
   "fmt"
-  "rand"
 )
 
 type staticCellData struct {
-  move_cost int
+  Terrain
 }
 type cachedCellData struct {
   highlight Highlight
@@ -57,14 +56,14 @@ func (t *CellData) Render(x,y,z,scale float32) {
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   var r,g,b,a float32
   a = 0.2
-  switch t.move_cost {
-    case 1:
+  switch t.Terrain {
+    case Grass:
       r,g,b = 0.1, 0.9, 0.4
-    case 5:
+    case Brush:
       r,g,b = 0.0, 0.7, 0.2
-    case 10:
+    case Water:
       r,g,b = 0.0, 0.0, 1.0
-    case 2:
+    case Dirt:
       r,g,b = 0.6, 0.5, 0.3
     default:
       r,g,b = 1,0,0
@@ -104,7 +103,10 @@ func (t *CellData) Render(x,y,z,scale float32) {
 type StaticLevelData struct {
   grid [][]CellData
 }
-
+type unitGraph struct {
+  *Level
+  move_cost map[Terrain]int
+}
 func (s *StaticLevelData) NumVertex() int {
   return len(s.grid) * len(s.grid[0])
 }
@@ -114,7 +116,27 @@ func (s *StaticLevelData) fromVertex(v int) (int,int) {
 func (s *StaticLevelData) toVertex(x,y int) int {
   return x + y * len(s.grid)
 }
-func (l *Level) Adjacent(v int) ([]int, []float64) {
+
+// Assumes that src and dst are adjacent
+func (l unitGraph) costToMove(src,dst int) float64 {
+  x,y := l.fromVertex(src)
+  x2,y2 := l.fromVertex(dst)
+
+  cost_c,ok := l.move_cost[l.grid[x2][y2].Terrain]
+  if !ok { return -1 }
+  if x == x2 || y == y2 {
+    return float64(cost_c)
+  }
+
+  cost_a,ok := l.move_cost[l.grid[x][y2].Terrain]
+  if !ok { return - 1 }
+  cost_b,ok := l.move_cost[l.grid[x2][y].Terrain]
+  if !ok { return - 1 }
+
+  cost_ab := float64(cost_a + cost_b) / 2
+  return math.Fmax(cost_ab, float64(cost_c))
+}
+func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
   x,y := l.fromVertex(v)
   var adj []int
   var weight []float64
@@ -129,7 +151,6 @@ func (l *Level) Adjacent(v int) ([]int, []float64) {
     for dy := -1; dy <= 1; dy++ {
       if dx == 0 && dy == 0 { continue }
       if y + dy < 0 || y + dy >= len(l.grid[0]) { continue }
-      if l.grid[x+dx][y+dy].move_cost <= 0 { continue }
 
       // Don't want to be able to walk through other units
       occupied := false
@@ -143,18 +164,14 @@ func (l *Level) Adjacent(v int) ([]int, []float64) {
 
       // Prevent moving along a diagonal if we couldn't get to that space normally via
       // either of the non-diagonal paths
+      cost := l.costToMove(l.toVertex(x,y), l.toVertex(x+dx, y+dy))
+      if cost < 0 { continue }
       if dx != 0 && dy != 0 {
-        if l.grid[x+dx][y].move_cost > 0 && l.grid[x][y+dy].move_cost > 0 {
-          cost_a := float64(l.grid[x+dx][y].move_cost + l.grid[x][y+dy].move_cost) / 2
-          cost_b := float64(l.grid[x+dx][y+dy].move_cost)
-          adj_diag = append(adj_diag, l.toVertex(x+dx, y+dy))
-          weight_diag = append(weight_diag, math.Fmax(cost_a, cost_b))
-        }
+        adj_diag = append(adj_diag, l.toVertex(x+dx, y+dy))
+        weight_diag = append(weight_diag, cost)
       } else {
-        if l.grid[x+dx][y+dy].move_cost > 0 {
-          adj = append(adj, l.toVertex(x+dx, y+dy))
-          weight = append(weight, float64(l.grid[x+dx][y+dy].move_cost))
-        }
+        adj = append(adj, l.toVertex(x+dx, y+dy))
+        weight = append(weight, cost)
       }
     }
   }
@@ -206,6 +223,18 @@ type Level struct {
   in_range []int
 }
 
+func (l *Level) Round() {
+  for i := range l.entities {
+    l.entities[i].OnRound()
+  }
+}
+
+func (l *Level) Setup() {
+  for i := range l.entities {
+    l.entities[i].OnSetup()
+  }
+}
+
 func (l *Level) clearCache() {
   if !l.cached { return }
   for i := range l.grid {
@@ -238,10 +267,9 @@ func (l *Level) maintainCommand() {
 
 func (l *Level) PrepAttack() {
   if l.selected == nil { return }
-  l.command = Attack
-  l.clearCache()
+  weapon := l.selected.Base.Weapons[0]
+  if weapon.Cost() > l.selected.AP { return }
 
-  reach := 10
   l.in_range = nil
   for i := range l.entities {
     if l.entities[i] == l.selected { continue }
@@ -250,51 +278,71 @@ func (l *Level) PrepAttack() {
     x2 := int(l.selected.pos.X)
     y2 := int(l.selected.pos.Y)
     dist := maxNormi(x, y, x2, y2)
-    if dist > reach { continue }
+    if dist > weapon.Reach() { continue }
     l.in_range = append(l.in_range, l.toVertex(x, y))
   }
+
+  if len(l.in_range) == 0 { return }
+
+  l.command = Attack
+  l.clearCache()
 }
 func (l *Level) DoAttack(target *entity) {
   if l.selected == nil { return }
 
   // First check range
-  reach := 10
+  weapon := l.selected.Base.Weapons[0]
+  if weapon.Cost() > l.selected.AP { return }
+  l.selected.AP -= weapon.Cost()
+
   x := int(target.pos.X)
   y := int(target.pos.Y)
   x2 := int(l.selected.pos.X)
   y2 := int(l.selected.pos.Y)
   dist := maxNormi(x, y, x2, y2)
-  if dist > reach { return }
+
+  // TODO: Should probably log a warning, this shouldn't have been able to happen
+  if dist > weapon.Reach() { return }
+
+
+  res := weapon.Damage(l.selected, target)
 
   // Resolve the actual attack here
   l.selected.turnToFace(target.pos)
-  l.selected.s.Command("ranged")
-  target.s.Command("defend")
-  switch rand.Intn(2) {
-    case 0:
-      target.s.Command("undamaged")
 
-    case 1:
-      if rand.Intn(10) == 0 {
-        target.s.Command("killed")
-      } else {
-        target.s.Command("damaged")
-      }
+  if weapon.Reach() > 2 {
+    l.selected.s.Command("ranged")
+  } else {
+    l.selected.s.Command("melee")
   }
+  target.s.Command("defend")
 
-
+  if res.Connect == Hit {
+    target.Health -= res.Damage.Piercing
+    if target.Health <= 0 {
+      target.s.Command("killed")
+    } else {
+      target.s.Command("damaged")
+    }
+  } else {
+    target.s.Command("undamaged")
+  }
 
   l.clearCache()
   l.command = NoCommand
 }
 func (l *Level) PrepMove() {
   if l.selected == nil { return }
-  l.command = Move
-  l.clearCache()
 
   bx := int(l.selected.pos.X)
   by := int(l.selected.pos.Y)
-  l.reachable = algorithm.ReachableWithinLimit(l, []int{ l.toVertex(bx, by) }, float64(l.selected.ap))
+  graph := &unitGraph{ l, l.selected.Base.Move_cost }
+  l.reachable = algorithm.ReachableWithinLimit(graph, []int{ l.toVertex(bx, by) }, float64(l.selected.AP))
+
+  if len(l.reachable) == 0 { return }
+
+  l.command = Move
+  l.clearCache()
 }
 
 func (l *Level) DoMove(click_x,click_y int) {
@@ -302,8 +350,10 @@ func (l *Level) DoMove(click_x,click_y int) {
 
   start := l.toVertex(int(l.selected.pos.X), int(l.selected.pos.Y))
   end := l.toVertex(click_x, click_y)
-  ap,path := algorithm.Dijkstra(l, []int{ start }, []int{ end })
-  if len(path) == 0 || int(ap) > l.selected.ap { return }
+  graph := &unitGraph{ l, l.selected.Base.Move_cost }
+  ap,path := algorithm.Dijkstra(graph, []int{ start }, []int{ end })
+  fmt.Printf("Found a path: %f %v\n", ap, path)
+  if len(path) == 0 || int(ap) > l.selected.AP { return }
   path = path[1:]
   l.selected.path = l.selected.path[0:0]
   l.reachable = nil
@@ -457,13 +507,13 @@ func LoadLevel(pathname string) (*Level, os.Error) {
     for j := range level.grid[i] {
       switch ldc.Level.Cells[i][j].Terrain {
         case "grass":
-          level.grid[i][j].move_cost = 1
+          level.grid[i][j].Terrain = Grass
         case "brush":
-          level.grid[i][j].move_cost = 5
+          level.grid[i][j].Terrain = Brush
         case "water":
-          level.grid[i][j].move_cost = 10
+          level.grid[i][j].Terrain = Water
         case "dirt":
-          level.grid[i][j].move_cost = 2
+          level.grid[i][j].Terrain = Dirt
         default:
           panic("WTF")
       }
