@@ -182,7 +182,7 @@ func (sl *spriteLevel) load() {
   pdx := int(nextPowerOf2(uint32(dx)))
   pdy := int(nextPowerOf2(uint32(dy)))
 
-  sheet := image.NewRGBA(pdx, pdy)
+  sheet := image.NewRGBA(image.Rect(0, 0, pdx, pdy))
   cx := 0
   for i := range images {
     // blit the image onto the sheet
@@ -340,38 +340,6 @@ func (s *Sprite) Render(x,y,z,scale float32) {
   }
 }
 
-type facingVisitor struct {
-  base  string
-  count map[int]bool
-}
-func (f *facingVisitor) VisitDir(path string, _ *os.FileInfo) bool {
-  if path == f.base {
-    return true
-  }
-  _,final := filepath.Split(path)
-  num,err := strconv.Atoi(final)
-  if err != nil {
-    return false
-  }
-  if f.count == nil {
-    f.count = make(map[int]bool)
-  }
-  f.count[num] = true
-  return false
-}
-func (f *facingVisitor) VisitFile(_ string, _ *os.FileInfo) {}
-func (f *facingVisitor) Valid() bool {
-  for v := range f.count {
-    if v < 0 { return false }
-    if v >= len(f.count) { return false }
-  }
-  return true
-}
-func (f *facingVisitor) Count() int {
-  return len(f.count)
-}
-
-
 type SpriteManager struct {
   loaded_sprites map[string]*sharedSprite
 }
@@ -408,14 +376,35 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     ss.anim = anim_graph
     ss.state = state_graph
 
-    f := facingVisitor {
-      base : path,
+    face_count := make(map[int]bool)
+    fmt.Printf("path: %s\n", path)
+    walker := func(the_path string, info *os.FileInfo, err os.Error) os.Error {
+      fmt.Printf("The path: %s\n", the_path)
+      if the_path == path { return nil }
+      if info.IsRegular() { return nil }
+      _,final := filepath.Split(the_path)
+      num,err := strconv.Atoi(final)
+      if err != nil {
+        return err
+      }
+      face_count[num] = true
+      return filepath.SkipDir
     }
-    filepath.Walk(path, &f, nil)
-    if !f.Valid() || f.Count() == 0 {
+    filepath.Walk(path, walker)
+    valid := true
+    if len(face_count) == 0 {
+      valid = false
+    }
+    for f := range face_count {
+      if f < 0 || f >= len(face_count) {
+        valid = false
+      }
+    }
+    fmt.Printf("Faces: %v\n", face_count)
+    if !valid {
       return nil, os.NewError("Sprite facing directories not set up properly")
     }
-    ss.num_facings = f.Count()
+    ss.num_facings = len(face_count)
 
     for facing := 0; facing < ss.num_facings; facing++ {
       for _,node := range anim_graph.nodes {
