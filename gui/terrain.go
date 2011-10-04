@@ -117,6 +117,7 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float64) (*Terrain,
     return nil,err
   }
   t.zoom = 1.0
+
   t.makeMat()
 
   return &t, nil
@@ -169,14 +170,14 @@ func (t *Terrain) boardToModelview(mx,my float32) (x,y,z float32) {
 // focus.  These coordinates will be scaled by the current zoom.
 func (t *Terrain) Move(dx,dy float64) {
   if dx == 0 && dy == 0 { return }
-  dy /= math.Cos(t.angle * 3.1415926535 / 180)
+  dy /= math.Sin(t.angle * 3.1415926535 / 180)
   dx,dy = dy+dx, dy-dx
   t.fx += dx / t.zoom
   t.fy += dy / t.zoom
   t.fx = math.Fmax(t.fx, 0)
   t.fy = math.Fmax(t.fy, 0)
-  t.fx = math.Fmin(t.fx, float64(t.bg.Bounds().Dx()))
-  t.fy = math.Fmin(t.fy, float64(t.bg.Bounds().Dy()))
+  t.fx = math.Fmin(t.fx, float64(t.bg.Bounds().Dx()) / float64(t.block_size))
+  t.fy = math.Fmin(t.fy, float64(t.bg.Bounds().Dy()) / float64(t.block_size))
   t.makeMat()
 }
 
