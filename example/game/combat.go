@@ -6,6 +6,8 @@ import(
   "json"
   "fmt"
   "os"
+  "io"
+  "io/ioutil"
 )
 
 var terrains map[string]Terrain
@@ -49,21 +51,31 @@ type Weapon interface {
 }
 
 
-type weaponInstance struct {
+type WeaponInstance struct {
   Base string
   Name string
 }
 type WeaponSpec struct {
-  Instance weaponInstance
+  Instance WeaponInstance
   Weapon
 }
-type weaponMaker func() Weapon
-var weapon_registry map[string]weaponMaker
+
+
+// TODO: IT would be nice to change to using the reflect system, if possible, instead of
+// requiring a WeaponMaker
+type WeaponMaker func() Weapon
+
+// map from WeaponInstance.Base to a WeaponMaker for the underlying type for that weapon
+var weapon_registry map[string]WeaponMaker
+
+// map from WeaponInstance.Name to a Weapon interface for that specific weapon
+var weapon_specs_registry map[string]Weapon
 func init() {
-  weapon_registry = make(map[string]weaponMaker)
+  weapon_registry = make(map[string]WeaponMaker)
   weapon_spec_regexp = regexp.MustCompile("\\s*{\\s*\"Instance\"\\s*:\\s*(\\{[^}]*\\})\\s*,\\s*\"Weapon\"\\s*:\\s*({(\\s|\\S)*})\\s*}\\s*$")
+  weapon_specs_registry = make(map[string]Weapon)
 }
-func RegisterWeapon(base string, maker weaponMaker) {
+func RegisterWeapon(base string, maker WeaponMaker) {
   if _,ok := weapon_registry[base]; ok {
     panic(fmt.Sprintf("Tried to register the weapon '%s' twice.", base))
   }
@@ -90,6 +102,30 @@ func (w *WeaponSpec) UnmarshalJSON(data []byte) os.Error {
 }
 
 
+// Reads a file that contains an array of WeaponSpecs in JSON then adds them to the weapon
+// spec registry
+func LoadWeaponSpecs(spec io.Reader) os.Error {
+  var specs []WeaponSpec
+  data,err := ioutil.ReadAll(spec)
+  if err != nil { return err }
+  err = json.Unmarshal(data, &specs)
+  if err != nil { return err }
+  for i := range specs {
+    name := specs[i].Instance.Name
+    if _,ok := weapon_specs_registry[name]; ok {
+      return os.NewError(fmt.Sprintf("Cannot register the weapon '%s' because a weapon has already been registered with that name.", name))
+    }
+    weapon_specs_registry[name] = specs[i].Weapon
+  }
+  return nil
+}
+
+func MakeWeapon(name string) Weapon {
+  weapon,ok := weapon_specs_registry[name]
+  if !ok { return nil }
+  return weapon
+}
+
 type StaticCost int
 func (w StaticCost) Cost(_ *Entity) int {
   return int(w)
@@ -105,11 +141,14 @@ func (w StaticRange) InRange(source,target *Entity) bool {
   return int(w) >= dist
 }
 
-type Bayonet struct {
+func init() {
+  RegisterWeapon("Club", func() Weapon { return &Club{} })
+}
+type Club struct {
   StaticCost
   StaticRange
 }
-func (b *Bayonet) Damage(source,target *Entity) Resolution {
+func (c *Club) Damage(source,target *Entity) Resolution {
   mod := rand.Intn(10)
   if source.Base.Attack + mod > target.Base.Defense {
     amt := source.Base.Attack + mod - target.Base.Defense - 2
@@ -131,21 +170,24 @@ func (b *Bayonet) Damage(source,target *Entity) Resolution {
   }
 }
 
-type Rifle struct {
+func init() {
+  RegisterWeapon("Gun", func() Weapon { return &Gun{} })
+}
+type Gun struct {
   StaticCost
   StaticRange
   Power int
 }
-func (r *Rifle) Damage(source,target *Entity) Resolution {
+func (g *Gun) Damage(source,target *Entity) Resolution {
   dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
-  acc := int(r.StaticRange) - dist
+  acc := int(g.StaticRange) - dist
   if rand.Intn(acc) == 0 {
     return Resolution {
       Connect : Miss,
     }
   }
 
-  if rand.Intn(target.Base.Defense) > source.Base.Attack + r.Power {
+  if rand.Intn(target.Base.Defense) > source.Base.Attack + g.Power {
     return Resolution {
       Connect : Dodge,
     }
@@ -154,7 +196,7 @@ func (r *Rifle) Damage(source,target *Entity) Resolution {
   return Resolution {
     Connect : Hit,
     Damage : Damage {
-      Piercing : r.Power,
+      Piercing : g.Power,
     },
   }
 }
