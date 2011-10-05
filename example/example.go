@@ -6,6 +6,7 @@ import (
   "glop/gui"
   "glop/system"
   "glop/sprite"
+  "game"
   "runtime"
   "fmt"
   "os"
@@ -13,7 +14,6 @@ import (
   "time"
   "path"
   "path/filepath"
-  "github.com/arbaal/mathgl"
 )
 
 var (
@@ -52,17 +52,16 @@ func main() {
 
   sys.CreateWindow(10, 10, wdx, wdy)
   ui := gui.Make(gin.In(), wdx, wdy)
-  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 50, wdy - 50}), nil)
-  manch := anch.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx - 150, wdy - 150}), gui.Anchor{1,1,1,1})
+  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx, wdy}), nil)
   h1 := gui.MakeSingleLineText("standard", "", 1,0.9,0.9,1)
   h2 := gui.MakeSingleLineText("standard", "", 1,0.9,0.9,1)
   mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
   mappath = path.Clean(mappath)
-  level,err := LoadLevel(mappath)
+  level,err := game.LoadLevel(mappath)
   if err != nil {
     panic(err.String())
   }
-  manch.InstallWidget(level.terrain, gui.Anchor{0,0,0,0})
+  anch.InstallWidget(level.Terrain, gui.Anchor{0,0,0,0})
 
   table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
@@ -85,67 +84,44 @@ func main() {
     panic(err.String())
   }
 
-  seal := UnitType {
+  seal := game.UnitType {
     Name : "Navy Seal",
     Health : 175,
-    Move_cost : map[Terrain]int{
-      Grass : 2,
-      Dirt  : 2,
-      Water : 6,
-      Brush : 4,
+    Move_cost : map[game.Terrain]int{
+      game.Grass : 2,
+      game.Dirt  : 2,
+      game.Water : 6,
+      game.Brush : 4,
     },
     AP : 30,
     Attack  : 150,
     Defense : 140,
-    Weapons : []Weapon {
-      &Bayonet {},
+    game.Weapons : []game.Weapon {
+      &game.Bayonet {},
     },
   }
 
-  rifleman := UnitType {
+  rifleman := game.UnitType {
     Name : "Rifleman",
     Health : 90,
-    Move_cost : map[Terrain]int{
-      Grass : 1,
-      Dirt  : 1,
-      Water : 15,
-      Brush : 1,
+    Move_cost : map[game.Terrain]int{
+      game.Grass : 1,
+      game.Dirt  : 1,
+      game.Water : 15,
+      game.Brush : 1,
     },
     AP : 30,
     Attack  : 100,
     Defense : 80,
-    Weapons : []Weapon {
-      &Rifle {
+    game.Weapons : []game.Weapon {
+      &game.Rifle {
         Range : 35,
         Power : 55,
       },
     },
   }
-
-  ent := &entity{
-    UnitStats : UnitStats {
-      Base : &seal,
-    },
-    pos : mathgl.Vec2{ 1, 2 },
-    s : guy,
-    level : level,
-    CosmeticStats : CosmeticStats{
-      Move_speed : 0.0075,
-    },
-  }
-  level.entities = append(level.entities, ent)
-  ent2 := &entity{
-    UnitStats : UnitStats {
-      Base : &rifleman,
-    },
-    pos : mathgl.Vec2{ 25, 20 },
-    s : guy2,
-    level : level,
-    CosmeticStats : CosmeticStats{
-      Move_speed : 0.0075,
-    },
-  }
-  level.entities = append(level.entities, ent2)
+  ent := level.AddEntity(seal, 1, 2, 0.0075, guy)
+  ent2 := level.AddEntity(rifleman, 25, 20, 0.0075, guy2)
   level.Setup()
   prev := time.Nanoseconds()
 
@@ -174,11 +150,8 @@ func main() {
     m_factor := 0.0075
     dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
     dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
-    level.terrain.Move(dx, dy)
+    level.Terrain.Move(dx, dy)
     zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
-    for i := range level.entities {
-      level.entities[i].AP += 100 * gin.In().GetKey('p').FramePressCount()
-    }
     if gin.In().GetKey('m').FramePressCount() > 0 {
       level.PrepMove()
     }
@@ -188,7 +161,7 @@ func main() {
     if gin.In().GetKey('o').FramePressCount() > 0 {
       level.Round()
     }
-    level.terrain.Zoom(zoom * 0.0025)
+    level.Terrain.Zoom(zoom * 0.0025)
     level.Think(dt)
   }
 

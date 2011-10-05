@@ -55,6 +55,9 @@ type Entity struct {
   path [][2]int
 }
 
+func (e *Entity) Coords() (x,y int) {
+  return int(e.pos.X), int(e.pos.Y)
+}
 
 func (e *Entity) OnSetup() {
   e.Health = e.Base.Health

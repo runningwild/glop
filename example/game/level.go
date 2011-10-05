@@ -260,18 +260,13 @@ func (l *Level) maintainCommand() {
 func (l *Level) PrepAttack() {
   if l.selected == nil { return }
   weapon := l.selected.Base.Weapons[0]
-  if weapon.Cost() > l.selected.AP { return }
+  if weapon.Cost(l.selected) > l.selected.AP { return }
 
   l.in_range = nil
   for i := range l.Entities {
     if l.Entities[i] == l.selected { continue }
-    x := int(l.Entities[i].pos.X)
-    y := int(l.Entities[i].pos.Y)
-    x2 := int(l.selected.pos.X)
-    y2 := int(l.selected.pos.Y)
-    dist := maxNormi(x, y, x2, y2)
-    if dist > weapon.Reach() { continue }
-    l.in_range = append(l.in_range, l.toVertex(x, y))
+    if weapon.InRange(l.selected, l.Entities[i]) { continue }
+    l.in_range = append(l.in_range, l.toVertex(l.Entities[i].Coords()))
   }
 
   if len(l.in_range) == 0 { return }
@@ -284,8 +279,17 @@ func (l *Level) DoAttack(target *Entity) {
 
   // First check range
   weapon := l.selected.Base.Weapons[0]
-  if weapon.Cost() > l.selected.AP { return }
-  l.selected.AP -= weapon.Cost()
+  cost := weapon.Cost(l.selected)
+  if cost > l.selected.AP { return }
+  l.selected.AP -= cost
+
+  // TODO: Should probably log a warning, this shouldn't have been able to happen
+  if weapon.InRange(l.selected, target) { return }
+
+  res := weapon.Damage(l.selected, target)
+
+  // Resolve the actual attack here
+  l.selected.turnToFace(target.pos)
 
   x := int(target.pos.X)
   y := int(target.pos.Y)
@@ -293,16 +297,7 @@ func (l *Level) DoAttack(target *Entity) {
   y2 := int(l.selected.pos.Y)
   dist := maxNormi(x, y, x2, y2)
 
-  // TODO: Should probably log a warning, this shouldn't have been able to happen
-  if dist > weapon.Reach() { return }
-
-
-  res := weapon.Damage(l.selected, target)
-
-  // Resolve the actual attack here
-  l.selected.turnToFace(target.pos)
-
-  if weapon.Reach() > 2 {
+  if dist > 2 {
     l.selected.s.Command("ranged")
   } else {
     l.selected.s.Command("melee")

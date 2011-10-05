@@ -2,6 +2,10 @@ package game
 
 import(
   "rand"
+  "exp/regexp"
+  "json"
+  "fmt"
+  "os"
 )
 
 var terrains map[string]Terrain
@@ -33,17 +37,77 @@ type Resolution struct {
 }
 
 type Weapon interface {
-  Reach() int
-  Cost() int
+  // Cost in AP that the source Entity must spent to use this weapon.
+  Cost(source *Entity) int
+
+  // Returns true iff the source Entity can hit the target Entity with this weapon.
+  InRange(source,target *Entity) bool
+
+  // Returns a Resolution indicating everything that happened in once instance of an attack
+  // with this weapon
   Damage(source,target *Entity) Resolution
 }
 
-type Bayonet struct {}
-func (b *Bayonet) Reach() int {
-  return 2
+
+type weaponInstance struct {
+  Base string
+  Name string
 }
-func (b *Bayonet) Cost() int {
-  return 5
+type WeaponSpec struct {
+  Instance weaponInstance
+  Weapon
+}
+type weaponMaker func() Weapon
+var weapon_registry map[string]weaponMaker
+func init() {
+  weapon_registry = make(map[string]weaponMaker)
+  weapon_spec_regexp = regexp.MustCompile("\\s*{\\s*\"Instance\"\\s*:\\s*(\\{[^}]*\\})\\s*,\\s*\"Weapon\"\\s*:\\s*({(\\s|\\S)*})\\s*}\\s*$")
+}
+func RegisterWeapon(base string, maker weaponMaker) {
+  if _,ok := weapon_registry[base]; ok {
+    panic(fmt.Sprintf("Tried to register the weapon '%s' twice.", base))
+  }
+  weapon_registry[base] = maker
+}
+
+var weapon_spec_regexp *regexp.Regexp
+func init() {
+}
+
+func (w *WeaponSpec) UnmarshalJSON(data []byte) os.Error {
+  res := weapon_spec_regexp.FindSubmatch(data)
+  if res == nil {
+    return os.NewError(fmt.Sprintf("Unable to unmarshal the JSON for the MarshalWeapon:\n%s\n", string(data)))
+  }
+  json.Unmarshal(res[1], &w.Instance)
+  maker,ok := weapon_registry[w.Instance.Base]
+  if !ok {
+    return os.NewError(fmt.Sprintf("Unable to make a weapon of type '%s'", string(res[1])))
+  }
+  w.Weapon = maker()
+  json.Unmarshal(res[2], &w.Weapon)
+  return nil
+}
+
+
+type StaticCost int
+func (w StaticCost) Cost(_ *Entity) int {
+  return int(w)
+}
+
+type StaticRange int
+func (w StaticRange) InRange(source,target *Entity) bool {
+  x := int(source.pos.X)
+  y := int(source.pos.Y)
+  x2 := int(target.pos.X)
+  y2 := int(target.pos.Y)
+  dist := maxNormi(x, y, x2, y2)
+  return int(w) >= dist
+}
+
+type Bayonet struct {
+  StaticCost
+  StaticRange
 }
 func (b *Bayonet) Damage(source,target *Entity) Resolution {
   mod := rand.Intn(10)
@@ -68,18 +132,13 @@ func (b *Bayonet) Damage(source,target *Entity) Resolution {
 }
 
 type Rifle struct {
-  Range int
+  StaticCost
+  StaticRange
   Power int
-}
-func (r *Rifle) Reach() int {
-  return r.Range
-}
-func (r *Rifle) Cost() int {
-  return 12
 }
 func (r *Rifle) Damage(source,target *Entity) Resolution {
   dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
-  acc := r.Range - dist
+  acc := int(r.StaticRange) - dist
   if rand.Intn(acc) == 0 {
     return Resolution {
       Connect : Miss,
