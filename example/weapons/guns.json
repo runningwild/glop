@@ -1,0 +1,35 @@
+[
+  {
+    "Instance" : {
+      "Base" : "Gun",
+      "Name" : "Desert Eagle"
+    },
+    "Weapon" : {
+      "Power" : 50,
+      "StaticCost" : 6,
+      "StaticRange" : 5
+    }
+  },
+  {
+    "Instance" : {
+      "Base" : "Gun",
+      "Name" : "Hunting Rifle"
+    },
+    "Weapon" : {
+      "Power" : 25,
+      "StaticCost" : 10,
+      "StaticRange" : 35
+    }
+  },
+  {
+    "Instance" : {
+      "Base" : "Gun",
+      "Name" : "Shotgun"
+    },
+    "Weapon" : {
+      "Power" : 15,
+      "StaticCost" : 4,
+      "StaticRange" : 15
+    }
+  }
+]
