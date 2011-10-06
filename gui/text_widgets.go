@@ -82,12 +82,12 @@ func nextPowerOf2(n uint32) uint32 {
 }
 
 func (t *SingleLineText) figureDims() {
-  t.dims.Dx, t.dims.Dy = drawText(t.font, t.context, t.color, image.NewRGBA(image.Rect(0, 0, 1, 1)), t.text)
+  t.dims.Dx, t.dims.Dy = drawText(t.font, t.context, t.color, image.NewRGBA(1, 1), t.text)
   t.rdims = Dims{
     Dx : int(nextPowerOf2(uint32(t.dims.Dx))),
     Dy : int(nextPowerOf2(uint32(t.dims.Dy))),
   }  
-  t.rgba = image.NewRGBA(image.Rect(0, 0, t.rdims.Dx, t.rdims.Dy))
+  t.rgba = image.NewRGBA(t.rdims.Dx, t.rdims.Dy)
   drawText(t.font, t.context, t.color, t.rgba, t.text)
 
 

@@ -72,8 +72,6 @@ func main() {
   sys.CreateWindow(10, 10, wdx, wdy)
   ui := gui.Make(gin.In(), wdx, wdy)
   anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx, wdy}), nil)
-  h1 := gui.MakeSingleLineText("standard", "", 1,0.9,0.9,1)
-  h2 := gui.MakeSingleLineText("standard", "", 1,0.9,0.9,1)
   mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
   mappath = path.Clean(mappath)
   level,err := game.LoadLevel(mappath)
@@ -86,22 +84,10 @@ func main() {
 
   frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 1,0,1,1)
   table.InstallWidget(frame_count_widget, nil)
-  table.InstallWidget(h1, nil)
-  table.InstallWidget(h2, nil)
   n := 0
   sys.EnableVSync(true)
 //  ticker := time.Tick(3e7)
 
-  bluepath := filepath.Join(basedir, "sprites", "blue")
-  purplepath := filepath.Join(basedir, "sprites", "purple")
-  guy,err := sprite.LoadSprite(bluepath)
-  if err != nil {
-    panic(err.String())
-  }
-  guy2,err := sprite.LoadSprite(purplepath)
-  if err != nil {
-    panic(err.String())
-  }
 
   // Load weapon files
   weaponpath := filepath.Join(basedir, "weapons", "guns.json")
@@ -119,8 +105,28 @@ func main() {
   rifleman,err := LoadUnit(filepath.Join(basedir, "units", "rifleman.json"))
   if err != nil { panic(err.String()) }
 
-  ent := level.AddEntity(*seal, 1, 2, 0.0075, guy)
-  ent2 := level.AddEntity(*rifleman, 25, 20, 0.0075, guy2)
+  bluepath := filepath.Join(basedir, "sprites", "blue")
+  purplepath := filepath.Join(basedir, "sprites", "purple")
+  var ents []*game.Entity
+  guy,_ := sprite.LoadSprite(bluepath)
+  ents = append(ents, level.AddEntity(*seal, 1, 2, 0.0075, guy))
+  guy,_ = sprite.LoadSprite(bluepath)
+  ents = append(ents, level.AddEntity(*seal, 2, 4, 0.0075, guy))
+  guy,_ = sprite.LoadSprite(bluepath)
+  ents = append(ents, level.AddEntity(*seal, 5, 1, 0.0075, guy))
+  guy,_ = sprite.LoadSprite(purplepath)
+  ents = append(ents, level.AddEntity(*rifleman, 25, 20, 0.0075, guy))
+  guy,_ = sprite.LoadSprite(purplepath)
+  ents = append(ents, level.AddEntity(*rifleman, 25, 29, 0.0075, guy))
+  guy,_ = sprite.LoadSprite(purplepath)
+  ents = append(ents, level.AddEntity(*rifleman, 25, 25, 0.0075, guy))
+
+  var texts []*gui.SingleLineText
+  for i := range ents {
+    texts = append(texts, gui.MakeSingleLineText("standard", "", 1, 1, 1, 1))
+    table.InstallWidget(texts[i], nil)
+  }
+
   level.Setup()
   prev := time.Nanoseconds()
 
@@ -131,8 +137,9 @@ func main() {
     prev = next
 
     frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
-    h1.SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ent.Base.Name, ent.Health, ent.AP))
-    h2.SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ent2.Base.Name, ent2.Health, ent2.AP))
+    for i := range ents {
+      texts[i].SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ents[i].Base.Name, ents[i].Health, ents[i].AP))
+    }
     sys.Think()
     sys.SwapBuffers()
     groups := sys.GetInputEvents()

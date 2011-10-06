@@ -100,7 +100,7 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float64) (*Terrain,
   t.block_size = block_size
   t.angle = angle
 
-  rgba := image.NewRGBA(t.bg.Bounds())
+  rgba := image.NewRGBA(t.bg.Bounds().Dx(), t.bg.Bounds().Dy())
   draw.Draw(rgba, t.bg.Bounds(), t.bg, image.Point{0,0}, draw.Over)
 
   gl.Enable(gl.TEXTURE_2D)

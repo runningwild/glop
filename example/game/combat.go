@@ -2,7 +2,8 @@ package game
 
 import(
   "rand"
-  "exp/regexp"
+  "regexp"
+  "strings"
   "json"
   "fmt"
   "os"
@@ -61,7 +62,11 @@ var weapon_registry map[string]WeaponMaker
 var weapon_specs_registry map[string]Weapon
 func init() {
   weapon_registry = make(map[string]WeaponMaker)
-  weapon_spec_regexp = regexp.MustCompile("\\s*{\\s*\"Instance\"\\s*:\\s*(\\{[^}]*\\})\\s*,\\s*\"Weapon\"\\s*:\\s*({(\\s|\\S)*})\\s*}\\s*$")
+  rstring := "\\s*{\\s*\"Instance\"\\s*:\\s*(\\{[^}]*\\})\\s*,\\s*\"Weapon\"\\s*:\\s*({(\\s|\\S)*})\\s*}\\s*$"
+  rstring = strings.Replace(rstring, "\\s", "[ \t\r\n\f]", -1)
+  rstring = strings.Replace(rstring, "\\S", "[^ \t\r\n\f]", -1)
+  weapon_spec_regexp = regexp.MustCompile(rstring)
+
   weapon_specs_registry = make(map[string]Weapon)
 }
 func RegisterWeapon(base string, maker WeaponMaker) {
