@@ -1,0 +1,16 @@
+{
+  "Name" : "Rifleman",
+  "AP" : 30,
+  "Attack" : 100,
+  "Defense" : 80,
+  "Health" : 90,
+  "Move_cost" : {
+    "brush" : 1,
+    "dirt" : 1,
+    "grass" : 1,
+    "water" : 15
+  },
+  "Weapons" : [
+    "Hunting Rifle"
+  ]
+}

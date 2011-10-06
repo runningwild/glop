@@ -18,7 +18,7 @@
     "Weapon" : {
       "Power" : 25,
       "StaticCost" : 10,
-      "StaticRange" : 35
+      "StaticRange" : 55
     }
   },
   {

@@ -377,9 +377,7 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     ss.state = state_graph
 
     face_count := make(map[int]bool)
-    fmt.Printf("path: %s\n", path)
     walker := func(the_path string, info *os.FileInfo, err os.Error) os.Error {
-      fmt.Printf("The path: %s\n", the_path)
       if the_path == path { return nil }
       if info.IsRegular() { return nil }
       _,final := filepath.Split(the_path)
@@ -400,7 +398,6 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
         valid = false
       }
     }
-    fmt.Printf("Faces: %v\n", face_count)
     if !valid {
       return nil, os.NewError("Sprite facing directories not set up properly")
     }

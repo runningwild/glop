@@ -7,16 +7,15 @@ import (
   "github.com/arbaal/mathgl"
 )
 
-
 // contains the stats used to intialize a unit of this type
 type UnitType struct {
   Name string
 
   Health int
 
-  // map from Terrain to the AP required for this unit to move into that terrain
-  // any Terrain not in this map is considered impassable by this unit
-  Move_cost map[Terrain]int
+  // map from Terrain name to the AP required for this unit to move into that terrain
+  // any Terrain not named in this map is considered impassable by this unit
+  Move_cost map[string]int
 
   AP int
 
@@ -24,14 +23,16 @@ type UnitType struct {
   Attack int
   Defense int
 
-  Weapons []Weapon
+  // List of the names of the weapons this unit comes with
+  Weapons []string
 }
 
 type UnitStats struct {
   // Contains base stats before any modifier for this unit type
-  Base   *UnitType
-  Health int
-  AP     int
+  Base    *UnitType
+  Health  int
+  AP      int
+  Weapons []Weapon
 }
 
 type CosmeticStats struct {

@@ -5,7 +5,5 @@ mkdir -p example/openme
 mv example.exe example/openme/example.exe
 cp ../gos/windows/lib/libglop.dll example/openme/libglop.dll
 cp libs/* example/openme/
-cp -r fonts example/fonts
-cp -r maps example/maps
-cp -r sprites example/sprites
+cp -r data/* example/
 

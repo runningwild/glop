@@ -10,17 +10,6 @@ import(
   "io/ioutil"
 )
 
-var terrains map[string]Terrain
-var weapons map[string]Weapon
-
-type Terrain int
-const(
-  Grass Terrain = iota
-  Dirt
-  Water
-  Brush
-)
-
 type Damage struct {
   Piercing int
   Smashing int
@@ -122,6 +111,9 @@ func LoadWeaponSpecs(spec io.Reader) os.Error {
 
 func MakeWeapon(name string) Weapon {
   weapon,ok := weapon_specs_registry[name]
+  if !ok {
+    panic(fmt.Sprintf("Can't make the weapon '%s' because the spec wasn't loaded.", name))
+  }
   if !ok { return nil }
   return weapon
 }
@@ -138,6 +130,7 @@ func (w StaticRange) InRange(source,target *Entity) bool {
   x2 := int(target.pos.X)
   y2 := int(target.pos.Y)
   dist := maxNormi(x, y, x2, y2)
+  fmt.Printf("Range/Dist : %d/%d -> %t\n", w, dist, int(w) >= dist)
   return int(w) >= dist
 }
 
@@ -180,14 +173,14 @@ type Gun struct {
 }
 func (g *Gun) Damage(source,target *Entity) Resolution {
   dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
-  acc := int(g.StaticRange) - dist
+  acc := 2 * int(g.StaticRange) - dist
   if rand.Intn(acc) == 0 {
     return Resolution {
       Connect : Miss,
     }
   }
 
-  if rand.Intn(target.Base.Defense) > source.Base.Attack + g.Power {
+  if rand.Intn(target.Base.Defense) / 2 > source.Base.Attack {
     return Resolution {
       Connect : Dodge,
     }

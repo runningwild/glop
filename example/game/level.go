@@ -15,6 +15,54 @@ import (
   "fmt"
 )
 
+type Terrain interface {
+  Name() string
+}
+
+type Grass struct {}
+func (t Grass) Name() string {
+  return "grass"
+}
+
+type Dirt struct {}
+func (t Dirt) Name() string {
+  return "dirt"
+}
+
+type Water struct {}
+func (t Water) Name() string {
+  return "water"
+}
+
+type Brush struct {}
+func (t Brush) Name() string {
+  return "brush"
+}
+
+var terrain_registry map[string]Terrain
+func init() {
+  terrain_registry = make(map[string]Terrain)
+  RegisterTerrain(Water{})
+  RegisterTerrain(Dirt{})
+  RegisterTerrain(Grass{})
+  RegisterTerrain(Brush{})
+}
+func RegisterTerrain(t Terrain) {
+  _,ok := terrain_registry[t.Name()]
+  if ok {
+    panic(fmt.Sprintf("Tried to register the terrain '%s' more than once.", t.Name()))
+  }
+  terrain_registry[t.Name()] = t
+}
+func MakeTerrain(name string) Terrain {
+  t,ok := terrain_registry[name]
+  if !ok {
+    panic(fmt.Sprintf("Cannot load the unregistered terrain '%s'.", name))
+  }
+  return t
+}
+
+
 type staticCellData struct {
   Terrain
 }
@@ -48,14 +96,14 @@ func (t *CellData) Render(x,y,z,scale float32) {
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   var r,g,b,a float32
   a = 0.2
-  switch t.Terrain {
-    case Grass:
+  switch t.Terrain.Name() {
+    case "grass":
       r,g,b = 0.1, 0.9, 0.4
-    case Brush:
+    case "brush":
       r,g,b = 0.0, 0.7, 0.2
-    case Water:
+    case "water":
       r,g,b = 0.0, 0.0, 1.0
-    case Dirt:
+    case "dirt":
       r,g,b = 0.6, 0.5, 0.3
     default:
       r,g,b = 1,0,0
@@ -97,7 +145,7 @@ type StaticLevelData struct {
 }
 type unitGraph struct {
   *Level
-  move_cost map[Terrain]int
+  move_cost map[string]int
 }
 func (s *StaticLevelData) NumVertex() int {
   return len(s.grid) * len(s.grid[0])
@@ -114,15 +162,15 @@ func (l unitGraph) costToMove(src,dst int) float64 {
   x,y := l.fromVertex(src)
   x2,y2 := l.fromVertex(dst)
 
-  cost_c,ok := l.move_cost[l.grid[x2][y2].Terrain]
+  cost_c,ok := l.move_cost[l.grid[x2][y2].Terrain.Name()]
   if !ok { return -1 }
   if x == x2 || y == y2 {
     return float64(cost_c)
   }
 
-  cost_a,ok := l.move_cost[l.grid[x][y2].Terrain]
+  cost_a,ok := l.move_cost[l.grid[x][y2].Terrain.Name()]
   if !ok { return - 1 }
-  cost_b,ok := l.move_cost[l.grid[x2][y].Terrain]
+  cost_b,ok := l.move_cost[l.grid[x2][y].Terrain.Name()]
   if !ok { return - 1 }
 
   cost_ab := float64(cost_a + cost_b) / 2
@@ -259,13 +307,13 @@ func (l *Level) maintainCommand() {
 
 func (l *Level) PrepAttack() {
   if l.selected == nil { return }
-  weapon := l.selected.Base.Weapons[0]
+  weapon := l.selected.Weapons[0]
   if weapon.Cost(l.selected) > l.selected.AP { return }
 
   l.in_range = nil
   for i := range l.Entities {
     if l.Entities[i] == l.selected { continue }
-    if weapon.InRange(l.selected, l.Entities[i]) { continue }
+    if !weapon.InRange(l.selected, l.Entities[i]) { continue }
     l.in_range = append(l.in_range, l.toVertex(l.Entities[i].Coords()))
   }
 
@@ -278,13 +326,13 @@ func (l *Level) DoAttack(target *Entity) {
   if l.selected == nil { return }
 
   // First check range
-  weapon := l.selected.Base.Weapons[0]
+  weapon := l.selected.Weapons[0]
   cost := weapon.Cost(l.selected)
   if cost > l.selected.AP { return }
   l.selected.AP -= cost
 
   // TODO: Should probably log a warning, this shouldn't have been able to happen
-  if weapon.InRange(l.selected, target) { return }
+  if !weapon.InRange(l.selected, target) { return }
 
   res := weapon.Damage(l.selected, target)
 
@@ -492,18 +540,7 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   }
   for i := range level.grid {
     for j := range level.grid[i] {
-      switch ldc.Level.Cells[i][j].Terrain {
-        case "grass":
-          level.grid[i][j].Terrain = Grass
-        case "brush":
-          level.grid[i][j].Terrain = Brush
-        case "water":
-          level.grid[i][j].Terrain = Water
-        case "dirt":
-          level.grid[i][j].Terrain = Dirt
-        default:
-          panic("WTF")
-      }
+      level.grid[i][j].Terrain = MakeTerrain(ldc.Level.Cells[i][j].Terrain)
     }
   }
   bg_path := filepath.Join(filepath.Clean(pathname), ldc.Level.Image)
@@ -527,6 +564,9 @@ func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprit
     CosmeticStats : CosmeticStats{
       Move_speed : move_speed,
     },
+  }
+  for _,name := range unit_type.Weapons {
+    ent.Weapons = append(ent.Weapons, MakeWeapon(name))
   }
   l.Entities = append(l.Entities, ent)
   return ent

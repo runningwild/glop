@@ -6,6 +6,7 @@ import (
   "game"
   "json"
   "bytes"
+  "fmt"
 )
 
 const test_json string = `
@@ -49,6 +50,7 @@ func WeaponLoadingSpec(c gospec.Context) {
     },
   }
   data,err := json.Marshal(&ws)
+  fmt.Printf("---\n%s\n---", data)
   c.Assume(err, Equals, nil)
   err = game.LoadWeaponSpecs(bytes.NewBuffer(data))
   c.Assume(err, Equals, nil)

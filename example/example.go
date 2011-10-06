@@ -1,6 +1,7 @@
 package main
 
 import (
+  "json"
   "glop/gos"
   "glop/gin"
   "glop/gui"
@@ -9,6 +10,7 @@ import (
   "game"
   "runtime"
   "fmt"
+  "io/ioutil"
   "os"
   "flag"
   "time"
@@ -25,6 +27,23 @@ func init() {
   sys = system.Make(gos.GetSystemInterface())
 }
 
+func LoadUnit(path string) (*game.UnitType, os.Error) {
+  f,err := os.Open(path)
+  if err != nil {
+    return nil, err
+  }
+  defer f.Close()
+  data,err := ioutil.ReadAll(f)
+  if err != nil {
+    return nil, err
+  }
+  var unit game.UnitType
+  err = json.Unmarshal(data, &unit)
+  if err != nil {
+    return nil, err
+  }
+  return &unit, nil
+}
 
 func main() {
   runtime.LockOSThread()
@@ -84,44 +103,24 @@ func main() {
     panic(err.String())
   }
 
-  seal := game.UnitType {
-    Name : "Navy Seal",
-    Health : 175,
-    Move_cost : map[game.Terrain]int{
-      game.Grass : 2,
-      game.Dirt  : 2,
-      game.Water : 6,
-      game.Brush : 4,
-    },
-    AP : 30,
-    Attack  : 150,
-    Defense : 140,
-    game.Weapons : []game.Weapon {
-      &game.Bayonet {},
-    },
+  // Load weapon files
+  weaponpath := filepath.Join(basedir, "weapons", "guns.json")
+  weapons,err := os.Open(weaponpath)
+  if err != nil {
+    panic(err.String())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.String())
   }
 
-  rifleman := game.UnitType {
-    Name : "Rifleman",
-    Health : 90,
-    Move_cost : map[game.Terrain]int{
-      game.Grass : 1,
-      game.Dirt  : 1,
-      game.Water : 15,
-      game.Brush : 1,
-    },
-    AP : 30,
-    Attack  : 100,
-    Defense : 80,
-    game.Weapons : []game.Weapon {
-      &game.Rifle {
-        Range : 35,
-        Power : 55,
-      },
-    },
-  }
-  ent := level.AddEntity(seal, 1, 2, 0.0075, guy)
-  ent2 := level.AddEntity(rifleman, 25, 20, 0.0075, guy2)
+  seal,err := LoadUnit(filepath.Join(basedir, "units", "seal.json"))
+  if err != nil { panic(err.String()) }
+  rifleman,err := LoadUnit(filepath.Join(basedir, "units", "rifleman.json"))
+  if err != nil { panic(err.String()) }
+
+  ent := level.AddEntity(*seal, 1, 2, 0.0075, guy)
+  ent2 := level.AddEntity(*rifleman, 25, 20, 0.0075, guy2)
   level.Setup()
   prev := time.Nanoseconds()
 
