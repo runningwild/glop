@@ -238,7 +238,7 @@ func (input *Input) registerAxisKey(id KeyId, name string) {
 }
 
 func (input *Input) registerCursorAxisKey(id KeyId, name string, cursor *cursor) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, cursor)
+  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}, cursor : cursor}, id, cursor)
 }
 
 func (input *Input) GetKey(id KeyId) Key {
