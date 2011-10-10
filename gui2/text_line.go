@@ -9,11 +9,13 @@ import (
   "gl"
   "gl/glu"
   "io/ioutil"
-  "os"
 )
 
-func mustLoadFont(filename string) *truetype.Font {
-  data,err := ioutil.ReadFile(filename)
+func MustLoadFontAs(path,name string) {
+  if _,ok := basic_fonts[name]; ok {
+    panic(fmt.Sprintf("Cannot load two fonts with the same name: '%s'.", name))
+  }
+  data,err := ioutil.ReadFile(path)
   if err != nil {
     panic(err.String())
   }
@@ -21,7 +23,7 @@ func mustLoadFont(filename string) *truetype.Font {
   if err != nil {
     panic(err.String())
   }
-  return font
+  basic_fonts[name] = font
 }
 
 func drawText(font *truetype.Font, c *freetype.Context, color image.Color, rgba *image.RGBA, text string) (int,int) {
@@ -46,14 +48,6 @@ var basic_fonts map[string]*truetype.Font
 
 func init() {
   basic_fonts = make(map[string]*truetype.Font)
-}
-
-func LoadFont(name,path string) os.Error {
-  if _,ok := basic_fonts[name]; ok {
-    return os.NewError(fmt.Sprintf("Cannot load two fonts with the same name: '%s'", name))
-  }
-  basic_fonts[name] = mustLoadFont(path)
-  return nil
 }
 
 type TextLine struct {
@@ -83,12 +77,13 @@ func nextPowerOf2(n uint32) uint32 {
 }
 
 func (w *TextLine) figureDims() {
-  w.Dims.Dx, w.Dims.Dy = drawText(w.font, w.context, w.color, image.NewRGBA(1, 1), w.text)
-  w.rdims = Dims{
+  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, w.color, image.NewRGBA(1, 1), w.text)
+  w.Dims = w.rdims
+  texture_dims := Dims{
     Dx : int(nextPowerOf2(uint32(w.Dims.Dx))),
     Dy : int(nextPowerOf2(uint32(w.Dims.Dy))),
-  }  
-  w.rgba = image.NewRGBA(w.rdims.Dx, w.rdims.Dy)
+  }
+  w.rgba = image.NewRGBA(texture_dims.Dx, texture_dims.Dy)
   drawText(w.font, w.context, w.color, w.rgba, w.text)
 
 
@@ -99,7 +94,7 @@ func (w *TextLine) figureDims() {
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, w.rdims.Dx, w.rdims.Dy, gl.RGBA, w.rgba.Pix)
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, w.rgba.Bounds().Dx(), w.rgba.Bounds().Dy(), gl.RGBA, w.rgba.Pix)
   gl.Disable(gl.TEXTURE_2D)
 }
 
@@ -140,6 +135,7 @@ func (w *TextLine) SetText(str string) {
 }
 
 func (w *TextLine) DoThink(_ int64) {
+  w.Dims = w.rdims
   if !w.changed { return }
   w.changed = false
   w.figureDims()
@@ -164,15 +160,16 @@ func (w *TextLine) Draw(region Region) {
   gl.Translated(float64(region.X), float64(region.Y), 0)
   req := w.Rectangle
   req.Constrain(region)
-  if req.Dx * w.Dims.Dy < req.Dy * w.Dims.Dx {
-    req.Dy = int(float64(w.Dims.Dy) / float64(w.Dims.Dx) * float64(req.Dx))
+  if req.Dx * w.Rectangle.Dy < req.Dy * w.Rectangle.Dx {
+    req.Dy = int(float64(w.Rectangle.Dy) / float64(w.Rectangle.Dx) * float64(req.Dx))
   } else {
-    req.Dx = int(float64(w.Dims.Dx) / float64(w.Dims.Dy) * float64(req.Dy))
+    req.Dx = int(float64(w.Rectangle.Dx) / float64(w.Rectangle.Dy) * float64(req.Dy))
   }
+  w.Rectangle = req
   fdx := float64(req.Dx)
   fdy := float64(req.Dy)
-  tx := float64(w.Dims.Dx)/float64(w.rdims.Dx)
-  ty := float64(w.Dims.Dy)/float64(w.rdims.Dy)
+  tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
+  ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,0)
     gl.Vertex2d(0, 0)
