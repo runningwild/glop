@@ -1,6 +1,7 @@
 package gui
 
 import (
+  "fmt"
   "glop/gin"
   "gl"
 )
@@ -53,6 +54,7 @@ func Make(input *gin.Input, dx,dy int) *Gui {
 // This method shouldn't be exported, perhaps we can make it a method on a private
 // member variable
 func (g *Gui) HandleEventGroup(event_group gin.EventGroup) {
+  fmt.Printf("All events\n")
   g.Root.handleEventGroup(event_group)
 }
 func (g *Gui) Think(ms int64) {

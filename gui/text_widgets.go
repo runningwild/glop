@@ -1,6 +1,7 @@
 package gui
 
 import (
+  "glop/gin"
   "fmt"
   "image"
   "image/draw"
@@ -177,3 +178,32 @@ func (t *SingleLineText) Draw(dims Dims) {
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
 }
+
+func MakeTextEntry(font_name,text string, r,g,b,a float64, dx,dy int) *TextEntry {
+  ret := MakeSingleLineText(font_name, text, r,g,b,a)
+  text := &TextEntry{ *ret, 0 }
+  text.mdims.Dx = dx
+  text.mdims.Dx = dy
+}
+type TextEntry struct {
+  SingleLineText
+  cursor_pos int
+  mdims Dims
+}
+
+func (t *SingleLineText) Think(_ int64, _ bool, _ Region, _ map[Widget]Dims) (bool,Dims) {
+
+}
+
+func (t *TextEntry) HandleEventGroup(group gin.EventGroup) (consume bool, give bool, target *Node) {
+  if group.Events[0].Type != gin.Press { return }
+  key := group.Events[0].Key
+  fmt.Printf("Jey id: %d\n", key.Id())
+  if key.Id() >= 'a' && key.Id() <= 'z' {
+    consume = true
+    t.SetText(t.text + string([]byte{byte(key.Id())}))
+  }
+  return
+}
+
+

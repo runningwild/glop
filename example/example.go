@@ -82,8 +82,6 @@ func main() {
 
   table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
-  frame_count_widget := gui.MakeSingleLineText("standard", "Frame", 1,0,1,1)
-  table.InstallWidget(frame_count_widget, nil)
   n := 0
   sys.EnableVSync(true)
 //  ticker := time.Tick(3e7)
@@ -126,7 +124,7 @@ func main() {
     texts = append(texts, gui.MakeSingleLineText("standard", "", 1, 1, 1, 1))
     table.InstallWidget(texts[i], nil)
   }
-
+  table.InstallWidget(gui.MakeTextEntry("standard", "", 1,1,1,1), nil)
   level.Setup()
   prev := time.Nanoseconds()
 
@@ -136,7 +134,6 @@ func main() {
     dt := (next - prev) / 1000000
     prev = next
 
-    frame_count_widget.SetText(fmt.Sprintf("               %d", n/10))
     for i := range ents {
       texts[i].SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ents[i].Base.Name, ents[i].Health, ents[i].AP))
     }

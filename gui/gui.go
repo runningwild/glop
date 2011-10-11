@@ -2,6 +2,7 @@ package gui
 
 import (
   "glop/gin"
+  "fmt"
   "gl"
 )
 
@@ -150,9 +151,11 @@ func (n *Node) handleEventGroup(event_group gin.EventGroup) bool {
     }
   }
   consume,_,_ := n.widget.HandleEventGroup(event_group)
+  fmt.Printf("Consume(%v): %t\n", n, consume)
   if consume { return true }
-  for _,child := range n.children {
-    if child.handleEventGroup(event_group) { return true }
+  for i := range n.children {
+//  for i := len(n.children) - 1; i >= 0; i-- {
+    if n.children[i].handleEventGroup(event_group) { return true }
   }
   return false
 }
