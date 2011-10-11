@@ -275,7 +275,9 @@ type Listener interface {
   EventHandler
   Think(int64)
 }
-
+type EventDispatcher interface {
+  RegisterEventListener(Listener)
+}
 func (input *Input) RegisterEventListener(listener Listener) {
   input.listeners = append(input.listeners, listener)
 }
