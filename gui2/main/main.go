@@ -108,11 +108,11 @@ func main() {
   t := MakeVerticalTable()
 
   gui.MustLoadFontAs("/Library/fonts/Tahoma.ttf", "standard")
-  tw := gui.MakeTextEditLine("standard", "Pumpkin-spice (aɕkᴊƙɪøɘʤ) latte", 1, 1, 1, 1)
+  tw := gui.MakeTextEditLine("standard", "AAAVVV", 1, 1, 1, 1)
   fmt.Printf("tw: %v\n", tw)
 
 
-  N := 10
+  N := 2
   for i := 0; i < N; i++ {
     t.AddWidget(MakeBoxWidget(float64(i) / float64(N)))
     if i == N/2 {

@@ -65,6 +65,7 @@ type TextLine struct {
   texture   gl.Texture
   rgba      *image.RGBA
   color     image.Color
+  scale     float64
 }
 
 func nextPowerOf2(n uint32) uint32 {
@@ -141,23 +142,35 @@ func (w *TextLine) DoThink(_ int64) {
   w.figureDims()
 }
 
-func (w *TextLine) Draw(region Region) {
+func (w *TextLine) preDraw(region Region) {
   gl.PushMatrix()
-  defer gl.PopMatrix()
 
   gl.PushAttrib(gl.TEXTURE_BIT)
-  defer gl.PopAttrib()
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)
 
   gl.PushAttrib(gl.COLOR_BUFFER_BIT)
-  defer gl.PopAttrib()
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
+  gl.Translated(float64(region.X), float64(region.Y), 0)
+}
+
+func (w *TextLine) postDraw(region Region) {
+  gl.PopAttrib()
+  gl.PopAttrib()
+  gl.PopMatrix()
+}
+
+func (w *TextLine) Draw(region Region) {
+  w.preDraw(region)
+  w.coreDraw(region)
+  w.postDraw(region)
+}
+
+func (w *TextLine) coreDraw(region Region) {
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
-  gl.Translated(float64(region.X), float64(region.Y), 0)
   req := w.Rectangle
   req.Constrain(region)
   if req.Dx * w.Rectangle.Dy < req.Dy * w.Rectangle.Dx {
@@ -170,6 +183,7 @@ func (w *TextLine) Draw(region Region) {
   fdy := float64(req.Dy)
   tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
   ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
+  w.scale = float64(w.Rectangle.Dx) / float64(w.rdims.Dx)
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,0)
     gl.Vertex2d(0, 0)

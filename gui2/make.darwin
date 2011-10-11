@@ -1,0 +1,11 @@
+gb -m
+
+rm -rf main.app
+mkdir -p main.app/Contents/MacOS
+mkdir -p main.app/Contents/lib
+
+cp main/main main.app/Contents/MacOS/main
+cp ../gos/darwin/lib/libglop.so main.app/Contents/lib/
+
+rm -f main/main
+
