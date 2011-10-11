@@ -127,10 +127,7 @@ type StandardParent struct {
 func (s *StandardParent) GetChildren() []Widget {
   return s.Children
 }
-func (s *StandardParent) AddWidget(w Widget) {
-  s.Children = append(s.Children, w)
-}
-func (s *StandardParent) RemoveWidget(w Widget) {
+func (s *StandardParent) AddChild(w Widget) {
   s.Children = append(s.Children, w)
 }
 func (s *StandardParent) RemoveChild(w Widget) {
@@ -142,3 +139,54 @@ func (s *StandardParent) RemoveChild(w Widget) {
     }
   }
 }
+
+
+type rootWidget struct {
+  EmbeddedWidget
+  StandardParent
+  Rectangle
+  NonResponder
+  NonThinker
+}
+
+func (r *rootWidget) Draw(region Region) {
+  for i := range r.Children {
+    r.Children[i].Draw(region)
+  }
+}
+
+type Gui struct {
+  root rootWidget
+}
+
+func MakeGui(dispatcher gin.EventDispatcher, dims Dims) *Gui {
+  var g Gui
+  g.root.EmbeddedWidget = &BasicWidget{ CoreWidget : &g.root }
+  g.root.Rectangle = Rectangle{ Dims : dims }
+  dispatcher.RegisterEventListener(&g)
+  return &g
+}
+
+func (g *Gui) Draw() {
+  g.root.Draw(g.root.Bounds())
+}
+
+// TODO: Shouldn't be exposing this
+func (g *Gui) Think(t int64) {
+  g.root.Think(t)
+}
+
+// TODO: Shouldn't be exposing this
+func (g *Gui) HandleEventGroup(gin_group gin.EventGroup) {
+  g.root.Respond(EventGroup{gin_group, false})
+}
+
+func (g *Gui) AddChild(w Widget) {
+  g.root.AddChild(w)
+}
+
+func (g *Gui) RemoveChild(w Widget) {
+  g.root.RemoveChild(w)
+}
+
+

@@ -11,12 +11,9 @@ import(
 )
 
 type VerticalTable struct {
-  gui.BasicWidget
+  gui.EmbeddedWidget
   gui.StandardParent
   gui.Rectangle
-}
-func (w *VerticalTable) HandleEventGroup(gin_group gin.EventGroup) {
-  w.Respond(gui.EventGroup{gin_group, false})
 }
 func (w *VerticalTable) DoThink(t int64) {
   w.Dims = gui.Dims{}
@@ -50,7 +47,7 @@ func (w *VerticalTable) Draw(region gui.Region) {
 }
 func MakeVerticalTable() *VerticalTable {
   var t VerticalTable
-  t.BasicWidget.CoreWidget = &t
+  t.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &t }
   return &t
 }
 
@@ -112,11 +109,11 @@ func main() {
   fmt.Printf("tw: %v\n", tw)
 
 
-  N := 2
+  N := 10
   for i := 0; i < N; i++ {
-    t.AddWidget(MakeBoxWidget(float64(i) / float64(N)))
+    t.AddChild(MakeBoxWidget(float64(i) / float64(N)))
     if i == N/2 {
-      t.AddWidget(tw)
+      t.AddChild(tw)
     }
   }
   m := MakeBoxWidget(1)
@@ -125,13 +122,15 @@ func main() {
   gl.Ortho(0, 800, 0, 600, 1, -1)
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity()
-  gin.In().RegisterEventListener(t)
+  ui := gui.MakeGui(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
+  ui.AddChild(t)
+//  gin.In().RegisterEventListener(t)
   for gin.In().GetKey('q').FramePressCount() == 0 {
     sys.SwapBuffers()
     gl.ClearColor(0, 0, 0, 1)
     gl.Clear(gl.COLOR_BUFFER_BIT)
     sys.Think()
-    t.Draw(gui.Region{ gui.Point{0, 0}, gui.Dims{800, 600}})
+    ui.Draw()
   }
 }
 
