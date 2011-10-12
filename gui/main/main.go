@@ -2,7 +2,7 @@ package main
 
 import(
   "fmt"
-  "glop/gui2"
+  "glop/gui"
   "glop/gos"
   "glop/gin"
   "glop/system"
@@ -108,7 +108,6 @@ func main() {
   tw := gui.MakeTextEditLine("standard", "AAAVVV", 1, 1, 1, 1)
   fmt.Printf("tw: %v\n", tw)
 
-
   N := 10
   for i := 0; i < N; i++ {
     t.AddChild(MakeBoxWidget(float64(i) / float64(N)))
@@ -122,8 +121,12 @@ func main() {
   gl.Ortho(0, 800, 0, 600, 1, -1)
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity()
-  ui := gui.MakeGui(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
-  ui.AddChild(t)
+  ui := gui.Make(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
+  anch := gui.MakeAnchorBox(gui.Dims{ 800, 600 })
+  ui.AddChild(anch)
+  anch.AddChild(MakeBoxWidget(0.3), gui.Anchor{0,0,0,0})
+  anch.AddChild(MakeBoxWidget(0.3), gui.Anchor{1,1,1,1})
+  anch.AddChild(tw, gui.Anchor{0,1,0,1})
 //  gin.In().RegisterEventListener(t)
   for gin.In().GetKey('q').FramePressCount() == 0 {
     sys.SwapBuffers()

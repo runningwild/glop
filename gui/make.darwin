@@ -1,4 +1,4 @@
-gb -m
+gb -mi
 
 rm -rf main.app
 mkdir -p main.app/Contents/MacOS

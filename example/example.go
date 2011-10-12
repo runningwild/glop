@@ -60,27 +60,28 @@ func main() {
 
   basedir := filepath.Join(os.Args[0], "..", "..")
 
-  err := gui.LoadFont("standard", filepath.Join(basedir, *font_path))
-  if err != nil {
-    panic(err.String())
-  }
+  gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
 
   factor := 0.875
   wdx := int(factor * float64(1024))
   wdy := int(factor * float64(768))
 
   sys.CreateWindow(10, 10, wdx, wdy)
-  ui := gui.Make(gin.In(), wdx, wdy)
-  anch := ui.Root.InstallWidget(gui.MakeAnchorBox(gui.Dims{wdx, wdy}), nil)
+  ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
+  anch := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
+  ui.AddChild(anch)
+  
   mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
   mappath = path.Clean(mappath)
   level,err := game.LoadLevel(mappath)
   if err != nil {
     panic(err.String())
   }
-  anch.InstallWidget(level.Terrain, gui.Anchor{0,0,0,0})
+  anch.AddChild(level.Terrain, gui.Anchor{0, 0, 0, 0})
+  anch.AddChild(gui.MakeFrameRateWidget(), gui.Anchor{1, 1, 1, 1})
+  level.Terrain.Move(10,10)
 
-  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
+//  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
   n := 0
   sys.EnableVSync(true)
@@ -119,12 +120,12 @@ func main() {
   guy,_ = sprite.LoadSprite(purplepath)
   ents = append(ents, level.AddEntity(*rifleman, 25, 25, 0.0075, guy))
 
-  var texts []*gui.SingleLineText
-  for i := range ents {
-    texts = append(texts, gui.MakeSingleLineText("standard", "", 1, 1, 1, 1))
-    table.InstallWidget(texts[i], nil)
-  }
-  table.InstallWidget(gui.MakeTextEntry("standard", "", 1,1,1,1), nil)
+//  var texts []*gui.SingleLineText
+//  for i := range ents {
+//    texts = append(texts, gui.MakeSingleLineText("standard", "", 1, 1, 1, 1))
+//    table.InstallWidget(texts[i], nil)
+//  }
+//  table.InstallWidget(gui.MakeTextEntry("standard", "", 1,1,1,1), nil)
   level.Setup()
   prev := time.Nanoseconds()
 
@@ -134,10 +135,11 @@ func main() {
     dt := (next - prev) / 1000000
     prev = next
 
-    for i := range ents {
-      texts[i].SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ents[i].Base.Name, ents[i].Health, ents[i].AP))
-    }
+//    for i := range ents {
+//      texts[i].SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ents[i].Base.Name, ents[i].Health, ents[i].AP))
+//    }
     sys.Think()
+    ui.Draw()
     sys.SwapBuffers()
     groups := sys.GetInputEvents()
     for _,group := range groups {

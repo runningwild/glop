@@ -1,4 +1,4 @@
-package gui
+package guiold
 
 import (
   "glop/gin"

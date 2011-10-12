@@ -1,32 +1,9 @@
 package gui
 
-import (
+import(
   "glop/gin"
-  "fmt"
   "gl"
 )
-
-// The GUI is handled in four steps:
-// 1. Handle Events
-//   As event groups are received from gin they are passed, one by one, towards whatever widget
-//   is in focus.  Each widget that these events are passed through may decide use the events,
-//   for example, a table widget that receives an event saying that the tab key was pressed may
-//   consume this event and change focus from one widget it contains to another.
-//
-// 2. Thinking
-//   Widget.Think() is called for all widgets only after events are processed.  This gives
-//   widgets a chance to take focus based on input other that event groups that are passed
-//   around in step 1.  Care must be taken to ensure that widgets are not competing for focus.
-//   Widgets should figure out their size during Think().  Think is called on the leaf nodes
-//   before the internal nodes so a widget can query its children for their most up-to-date size
-//   during Think().
-//
-// 3. Draw
-//   Widgets are recursively called to draw themselves.
-//   TODO: Figure out how to set the scissor box for all widgets to enforce the size their parent
-//         suggests for them
-
-// Uninstalled widgets will not Think(), and cannot take focus
 
 type Point struct {
   X,Y int
@@ -57,183 +34,189 @@ func (r Region) Add(p Point) Region {
     r.Dims,
   }
 }
-func (r Region) setViewport() {
-  gl.Viewport(r.Point.X, r.Point.Y, r.Dims.Dx, r.Dims.Dy)
+
+func (r Region) PushClipPlanes() {
+  gl.PushAttrib(gl.ENABLE_BIT)
+  gl.Enable(gl.CLIP_PLANE0)
+  gl.Enable(gl.CLIP_PLANE1)
+  gl.Enable(gl.CLIP_PLANE2)
+  gl.Enable(gl.CLIP_PLANE3)
+  var eqs [][4]float64
+  eqs = append(eqs, [4]float64{ 1, 0, 0, -float64(r.X)})
+  eqs = append(eqs, [4]float64{-1, 0, 0, float64(r.X + r.Dx)})
+  eqs = append(eqs, [4]float64{ 0, 1, 0, -float64(r.Y)})
+  eqs = append(eqs, [4]float64{ 0,-1, 0, float64(r.Y + r.Dy)})
+  gl.ClipPlane(gl.CLIP_PLANE0, &eqs[0][0])
+  gl.ClipPlane(gl.CLIP_PLANE1, &eqs[1][0])
+  gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
+  gl.ClipPlane(gl.CLIP_PLANE3, &eqs[3][0])
 }
+func (r Region) PopClipPlanes() {
+  gl.PopAttrib()
+}
+
+//func (r Region) setViewport() {
+//  gl.Viewport(r.Point.X, r.Point.Y, r.Dims.Dx, r.Dims.Dy)
+//}
+
+type Zone interface {
+  Bounds() Region
+  Contains(Point) bool
+}
+
+type EventGroup struct {
+  gin.EventGroup
+  Focus bool
+}
+
 type Widget interface {
-  // Called once per frame.
-  // previous: Regions that this widget was rendered to last frame, useful for detecting clicks.
-  // want_focus: if true the widget will take focus.  Nothing prevents multiple widgets from all
-  //   trying to take focus, so care must be taken to ensure this doesn't happen.
-  // dims: The desired dimensions for this widget to render itself next frame.  Think() is called
-  //   for children before parents, so it is safe for a widget to ask its children what size
-  //   they want to be in order to determine what size it wants to be
-  Think(ms int64, has_focus bool, previous Region, child_dims map[Widget]Dims) (want_focus bool, dims Dims)
-
-  // Called once per frame, after Think().
-  // requested: map from child widget to the dimensions that widget requested during Think()
-  // dims: specifies the dimensions that this widget must constrain itself and all of its
-  // children to.  The regions specified in the return value should assume a region with an
-  // origin of 0,0 and the specified dims, i.e. Region{x:0, y:0, Dims:dims}
-  Layout(dims Dims, requested map[Widget]Dims) map[Widget]Region
-
-  // Draws the widget.  When Draw is called the projection matrix will have been set such that
-  // the widget should draw to the rectangle with its bottom left corner at the origin and with
-  // dimensions specified by dims.  Clipping planes 0-3 will be set to ensure nothing is drawn
-  // outisde of this region.
-  Draw(dims Dims)
-
-  // This method is called for every widget in the path from the root to the widget with focus.
-  // Every widget along the way has a chance to react to the event group before it gets passed
-  // along.
-  // consume: If this is true the event group will not be passed to any more nodes.
-  // give: If this is true focus will be given to the node specified by target, if target is nil
-  //       then focus will be popped.
-  // target: If give is set this node will receive focus and regardless of consume the event
-  // group will not be passed to any more nodes.
-  HandleEventGroup(gin.EventGroup) (consume bool, give bool, target *Node)
-
-  // Any time a new widget is installed in a node, that node's widget will have this method
-  // called with the new widget so that it can keep track of it if it wants.  Params is
-  // passed directly from InstallWidget to here so it may contain any information.
-  AddChild(w Widget, params interface{})
-
-  // Like AddChild, but called when a widget is uninstalled.
-  RemoveChild(w Widget)
+  Zone
+  Think(int64)
+  Respond(EventGroup)
+  Draw(Region)
 }
+type CoreWidget interface {
+  DoThink(int64)
+  DoRespond(EventGroup) bool
+  Zone
 
-type Node struct {
-  widget    Widget
-  parent    *Node
-  children  []*Node
-  requested Dims
-  previous  Region
+  Draw(Region)
+  GetChildren() []Widget
 }
-
-// Returns an array of all of the nodes from the root to this node, in that order.
-func (n *Node) pathFromRoot() []*Node {
-  var path []*Node
-  for p := n; p != nil; p = p.parent {
-    path = append(path, p)
-  }
-  for i := 0; i < len(path)/2; i++ {
-    path[i],path[len(path)-i-1] = path[len(path)-i-1],path[i]
-  }
-  return path
+type EmbeddedWidget interface {
+  Think(int64)
+  Respond(EventGroup)
 }
-
-// Calls Think on all widgets in this node and its descendants.  Think is called first on
-// the leaves, then on the internal nodes.
-func (n *Node) think(ms int64, focus *Focus) Dims {
-//  Think(ms int64, has_focus bool, child_dims map[Widget]Dims) (want_focus bool, dims Dims)
-  child_dims := make(map[Widget]Dims, len(n.children))
-  for _,child := range n.children {
-    child.requested = child.think(ms, focus)
-    child_dims[child.widget] = child.requested
-  }
-  // TODO: perhaps handle the case where multiple widgets try to take focus here?
-  //  maybe it should be an error, or maybe just pick one but not actually let it happened
-  //  until after everything has Think()ed?
-  request_focus, request_dims := n.widget.Think(ms, n == focus.top(), n.previous, child_dims)
-  if request_focus {
-    focus.Take(n)
-  }
-  return request_dims
+type BasicWidget struct {
+  CoreWidget
 }
-
-func (n *Node) handleEventGroup(event_group gin.EventGroup) bool {
+func (w *BasicWidget) Think(t int64) {
+  kids := w.GetChildren()
+  for i := range kids {
+    kids[i].Think(t)
+  }
+  w.DoThink(t)
+}
+func (w *BasicWidget) Respond(event_group EventGroup) {
   cursor := event_group.Events[0].Key.Cursor()
   if cursor != nil {
     var p Point
     p.X, p.Y = cursor.Point()
-    if !p.Inside(n.previous) {
-      return false
+    if !w.Contains(p) {
+      return
     }
   }
-  consume,_,_ := n.widget.HandleEventGroup(event_group)
-  fmt.Printf("Consume(%v): %t\n", n, consume)
-  if consume { return true }
-  for i := range n.children {
-//  for i := len(n.children) - 1; i >= 0; i-- {
-    if n.children[i].handleEventGroup(event_group) { return true }
+  if w.DoRespond(event_group) { return }
+  kids := w.GetChildren()
+  for i := range kids {
+    kids[i].Respond(event_group)
   }
+}
+
+type Rectangle Region
+func (r *Rectangle) Bounds() Region {
+  return Region(*r)
+}
+func (r *Rectangle) Contains(p Point) bool {
+  return p.Inside(Region(*r))
+}
+func (r *Rectangle) Constrain(r2 Region) {
+  if r2.Dx < r.Dx {
+    r.Dx = r2.Dx
+  }
+  if r2.Dy < r.Dy {
+    r.Dy = r2.Dy
+  }
+  r.X = r2.X
+  r.Y = r2.Y
+}
+
+type NonThinker struct {}
+func (n NonThinker) DoThink(int64) {}
+
+type NonResponder struct {}
+func (n NonResponder) DoRespond(EventGroup) bool {
   return false
 }
 
-// TODO: Enforce regions
-func (n *Node) layoutAndDraw(region Region) {
-  n.previous = region
-  region.setViewport()
+type Childless struct {}
+func (c Childless) GetChildren() []Widget { return nil }
 
-  n.widget.Draw(region.Dims)
-
-  child_dims := make(map[Widget]Dims)
-  for _,child := range n.children {
-    child_dims[child.widget] = child.requested
-  }
-  child_regions := n.widget.Layout(region.Dims, child_dims)
-  for _,child := range n.children {
-    child.layoutAndDraw(child_regions[child.widget].Add(region.Point))
-  }
+type StandardParent struct {
+  Children []Widget
 }
-
-func (n *Node) InstallWidget(w Widget, params interface{}) *Node {
-  kid := new(Node)
-  kid.parent = n
-  kid.widget = w
-  n.children = append(n.children, kid)
-  n.widget.AddChild(w, params)
-  return kid
+func (s *StandardParent) GetChildren() []Widget {
+  return s.Children
 }
-func (n *Node) UninstallWidget(w Widget) {
-  cur := 0
-  for i := range n.children {
-    n.children[cur] = n.children[i]
-    if n.children[i].widget == w {
-      n.children[i].parent = nil
-    } else {
-      cur++
+func (s *StandardParent) AddChild(w Widget) {
+  s.Children = append(s.Children, w)
+}
+func (s *StandardParent) RemoveChild(w Widget) {
+  for i := range s.Children {
+    if s.Children[i] == w {
+      s.Children[i] = s.Children[len(s.Children)-1]
+      s.Children = s.Children[0 : len(s.Children)-1]
+      return
     }
   }
-  n.children = n.children[0 : cur]
-  n.widget.RemoveChild(w)
 }
 
-// A Focus object tracks what widget has focus.  The widget with focus is the one that events
-// will be directed to.  Every incoming EventGroup will be sent first to the root widget, then
-// it will pass it to a child widget and so on until it reaches the widget with focus.  There
-// are cases when a widget will want to send events elsewhere, for example consider a table with
-// two text boxes, A and B, A has focus, B does not.  If the user clicks on B the table widget
-// will want to notify B that it should take focus, so it calls focus.Give(B).  This will result
-// in B.TookFocus(event_group) being called, so it knows that it has focus and the event that
-// made this happen.
-type Focus struct {
-  nodes []*Node
+
+type rootWidget struct {
+  EmbeddedWidget
+  StandardParent
+  Rectangle
+  NonResponder
+  NonThinker
 }
 
-func (f *Focus) top() *Node {
-  if len(f.nodes) == 0 {
-    return nil
+func (r *rootWidget) Draw(region Region) {
+  for i := range r.Children {
+    r.Children[i].Draw(region)
   }
-  return f.nodes[0]
 }
 
-// Whatever widget currently has focus loses it, and the widget passed to this function gains it.
-func (f *Focus) Take(n *Node) {
-  if len(f.nodes) == 0 {
-    f.nodes = append(f.nodes, nil)
-  }
-  f.nodes[len(f.nodes)-1] = n
+type Gui struct {
+  root rootWidget
 }
 
-// Whatever widget has focus now loses it, but will regain it when Focus.Pop() is called
-func (f *Focus) Push(n *Node) {
-  f.nodes = append(f.nodes, n)
+func Make(dispatcher gin.EventDispatcher, dims Dims) *Gui {
+  var g Gui
+  g.root.EmbeddedWidget = &BasicWidget{ CoreWidget : &g.root }
+  g.root.Rectangle = Rectangle{ Dims : dims }
+  dispatcher.RegisterEventListener(&g)
+  return &g
 }
 
-func (f *Focus) Pop() {
-  if len(f.nodes) == 0 {
-    panic("Cannot pop an empty Focus stack")
-  }
-  f.nodes = f.nodes[0 : len(f.nodes)-1]
+func (g *Gui) Draw() {
+  gl.MatrixMode(gl.PROJECTION)
+  gl.LoadIdentity();
+  gl.Ortho(float64(g.root.X), float64(g.root.X + g.root.Dx), float64(g.root.Y), float64(g.root.Y + g.root.Dy), 10000, -10000)
+  g.root.Bounds().PushClipPlanes()
+  defer g.root.Bounds().PopClipPlanes()
+  gl.ClearColor(0, 0, 0, 1)
+  gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+  gl.MatrixMode(gl.MODELVIEW)
+  gl.LoadIdentity();
+  g.root.Draw(g.root.Bounds())
 }
+
+// TODO: Shouldn't be exposing this
+func (g *Gui) Think(t int64) {
+  g.root.Think(t)
+}
+
+// TODO: Shouldn't be exposing this
+func (g *Gui) HandleEventGroup(gin_group gin.EventGroup) {
+  g.root.Respond(EventGroup{gin_group, false})
+}
+
+func (g *Gui) AddChild(w Widget) {
+  g.root.AddChild(w)
+}
+
+func (g *Gui) RemoveChild(w Widget) {
+  g.root.RemoveChild(w)
+}
+
+

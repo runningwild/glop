@@ -152,8 +152,6 @@ func (w *TextLine) preDraw(region Region) {
   gl.PushAttrib(gl.COLOR_BUFFER_BIT)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-  gl.Translated(float64(region.X), float64(region.Y), 0)
 }
 
 func (w *TextLine) postDraw(region Region) {
@@ -179,20 +177,18 @@ func (w *TextLine) coreDraw(region Region) {
     req.Dx = int(float64(w.Rectangle.Dx) / float64(w.Rectangle.Dy) * float64(req.Dy))
   }
   w.Rectangle = req
-  fdx := float64(req.Dx)
-  fdy := float64(req.Dy)
   tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
   ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
   w.scale = float64(w.Rectangle.Dx) / float64(w.rdims.Dx)
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,0)
-    gl.Vertex2d(0, 0)
+    gl.Vertex2i(req.X,          req.Y)
     gl.TexCoord2d(0,-ty)
-    gl.Vertex2d(0, fdy)
+    gl.Vertex2i(req.X,          req.Y + req.Dy)
     gl.TexCoord2d(tx,-ty)
-    gl.Vertex2d(fdx, fdy)
+    gl.Vertex2i(req.X + req.Dx, req.Y + req.Dy)
     gl.TexCoord2d(tx,0)
-    gl.Vertex2d(fdx, 0)
+    gl.Vertex2i(req.X + req.Dx, req.Y)
   gl.End()
 }
 
