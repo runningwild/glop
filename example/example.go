@@ -79,13 +79,16 @@ func main() {
   }
   anch.AddChild(level.Terrain, gui.Anchor{0, 0, 0, 0})
   anch.AddChild(gui.MakeFrameRateWidget(), gui.Anchor{1, 1, 1, 1})
-  level.Terrain.Move(10,10)
+//  level.Terrain.Move(10,10)
 
 //  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
   n := 0
+
+  // TODO: Would be better to only be vsynced, but apparently it can turn itself off
+  // when the window disappears, so we need a safety net to slow it down if necessary
   sys.EnableVSync(true)
-//  ticker := time.Tick(3e7)
+  ticker := time.Tick(10e6)
 
 
   // Load weapon files
@@ -141,13 +144,14 @@ func main() {
     sys.Think()
     ui.Draw()
     sys.SwapBuffers()
+    <-ticker
     groups := sys.GetInputEvents()
     for _,group := range groups {
       if found,_ := group.FindEvent('q'); found {
         return
       }
     }
-    
+
     kw := gin.In().GetKey('w')
     ka := gin.In().GetKey('a')
     ks := gin.In().GetKey('s')

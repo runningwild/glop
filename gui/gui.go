@@ -191,7 +191,13 @@ func Make(dispatcher gin.EventDispatcher, dims Dims) *Gui {
 func (g *Gui) Draw() {
   gl.MatrixMode(gl.PROJECTION)
   gl.LoadIdentity();
-  gl.Ortho(float64(g.root.X), float64(g.root.X + g.root.Dx), float64(g.root.Y), float64(g.root.Y + g.root.Dy), 10000, -10000)
+  gl.Ortho(float64(g.root.X), float64(g.root.X + g.root.Dx), float64(g.root.Y), float64(g.root.Y + g.root.Dy), 1000, -1000)
+  var r Region
+  dd := 100
+  r.X = g.root.X + dd*3
+  r.Y = g.root.Y + dd*3
+  r.Dx = g.root.X + g.root.Dx - 4*dd
+  r.Dy = g.root.Y + g.root.Dy - 4*dd
   g.root.Bounds().PushClipPlanes()
   defer g.root.Bounds().PopClipPlanes()
   gl.ClearColor(0, 0, 0, 1)
@@ -199,6 +205,7 @@ func (g *Gui) Draw() {
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity();
   g.root.Draw(g.root.Bounds())
+//  g.root.Draw(g.root.Bounds())
 }
 
 // TODO: Shouldn't be exposing this
