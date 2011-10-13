@@ -66,6 +66,6 @@ func (w *AnchorBox) Draw(region Region) {
     }
     child_dims.X = xoff
     child_dims.Y = yoff
-    widget.Draw(region)
+    widget.Draw(child_dims)
   }
 }

@@ -35,12 +35,10 @@ func (r Region) Add(p Point) Region {
   }
 }
 
-func (r Region) PushClipPlanes() {
-  gl.PushAttrib(gl.ENABLE_BIT)
-  gl.Enable(gl.CLIP_PLANE0)
-  gl.Enable(gl.CLIP_PLANE1)
-  gl.Enable(gl.CLIP_PLANE2)
-  gl.Enable(gl.CLIP_PLANE3)
+// Need a global stack of regions because opengl only handles pushing/popping
+// the state of the enable bits for each clip plane, not the planes themselves
+var clippers []Region
+func (r Region) setClipPlanes() {
   var eqs [][4]float64
   eqs = append(eqs, [4]float64{ 1, 0, 0, -float64(r.X)})
   eqs = append(eqs, [4]float64{-1, 0, 0, float64(r.X + r.Dx)})
@@ -51,9 +49,28 @@ func (r Region) PushClipPlanes() {
   gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
   gl.ClipPlane(gl.CLIP_PLANE3, &eqs[3][0])
 }
-func (r Region) PopClipPlanes() {
-  gl.PopAttrib()
+func (r Region) PushClipPlanes() {
+  if len(clippers) == 0 {
+    gl.Enable(gl.CLIP_PLANE0)
+    gl.Enable(gl.CLIP_PLANE1)
+    gl.Enable(gl.CLIP_PLANE2)
+    gl.Enable(gl.CLIP_PLANE3)
+  }
+  r.setClipPlanes()
+  clippers = append(clippers, r)
 }
+func (r Region) PopClipPlanes() {
+  clippers = clippers[0 : len(clippers) - 1]
+  if len(clippers) == 0 {
+    gl.Disable(gl.CLIP_PLANE0)
+    gl.Disable(gl.CLIP_PLANE1)
+    gl.Disable(gl.CLIP_PLANE2)
+    gl.Disable(gl.CLIP_PLANE3)
+  } else {
+    clippers[len(clippers) - 1].setClipPlanes()
+  }
+}
+
 
 //func (r Region) setViewport() {
 //  gl.Viewport(r.Point.X, r.Point.Y, r.Dims.Dx, r.Dims.Dy)
@@ -192,20 +209,11 @@ func (g *Gui) Draw() {
   gl.MatrixMode(gl.PROJECTION)
   gl.LoadIdentity();
   gl.Ortho(float64(g.root.X), float64(g.root.X + g.root.Dx), float64(g.root.Y), float64(g.root.Y + g.root.Dy), 1000, -1000)
-  var r Region
-  dd := 100
-  r.X = g.root.X + dd*3
-  r.Y = g.root.Y + dd*3
-  r.Dx = g.root.X + g.root.Dx - 4*dd
-  r.Dy = g.root.Y + g.root.Dy - 4*dd
-  g.root.Bounds().PushClipPlanes()
-  defer g.root.Bounds().PopClipPlanes()
   gl.ClearColor(0, 0, 0, 1)
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity();
   g.root.Draw(g.root.Bounds())
-//  g.root.Draw(g.root.Bounds())
 }
 
 // TODO: Shouldn't be exposing this
