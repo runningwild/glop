@@ -3,6 +3,7 @@ package game
 import (
   "math"
   "fmt"
+  "glop/gui"
   "glop/sprite"
   "github.com/arbaal/mathgl"
 )
@@ -38,6 +39,40 @@ type UnitStats struct {
 type CosmeticStats struct {
   // in board coordinates per ms
   Move_speed float32
+}
+
+type EntityStatsWindow struct {
+  gui.EmbeddedWidget
+  gui.Rectangle
+  gui.NonResponder
+  gui.NonThinker
+
+  table *gui.HorizontalTable
+  ent   *Entity
+}
+func (e *Entity) MakeStatsWindow() *EntityStatsWindow {
+  var esw EntityStatsWindow
+  esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
+  esw.ent = e
+  esw.Dx = 200
+  esw.Dy = 100
+
+  esw.table = gui.MakeHorizontalTable()
+  esw.table.AddChild(gui.MakeTextLine("standard", "Fixed", 1, 1, 1, 1), true)
+  vert := gui.MakeVerticalTable()
+  vert.AddChild(gui.MakeTextLine("standard", "F00", 1, 1, 1, 1), true)
+  vert.AddChild(gui.MakeTextLine("standard", "B@r", 1, 1, 1, 1), true)
+  vert.AddChild(gui.MakeTextLine("standard", "Wingerdinger", 1, 1, 1, 1), true)
+  esw.table.AddChild(vert, false)
+
+  return &esw
+}
+func (w *EntityStatsWindow) GetChildren() []gui.Widget {
+  return []gui.Widget{ w.table }
+}
+func (w *EntityStatsWindow) Draw(region gui.Region) {
+  w.Rectangle.Constrain(region)
+  w.table.Draw(w.Bounds())
 }
 
 type Entity struct {

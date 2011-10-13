@@ -68,17 +68,18 @@ func main() {
 
   sys.CreateWindow(10, 10, wdx, wdy)
   ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
-  anch := gui.MakeAnchorBox(gui.Dims{wdx, wdy})
-  ui.AddChild(anch)
-  
+  table := gui.MakeVerticalTable()
+  ui.AddChild(table)
+
   mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
   mappath = path.Clean(mappath)
   level,err := game.LoadLevel(mappath)
   if err != nil {
     panic(err.String())
   }
-  anch.AddChild(level.Terrain, gui.Anchor{0, 0, 0, 0})
-  anch.AddChild(gui.MakeFrameRateWidget(), gui.Anchor{1, 1, 1, 1})
+  info_bar := gui.MakeHorizontalTable()
+  table.AddChild(info_bar, true)
+  table.AddChild(level.Terrain, false)
 //  level.Terrain.Move(10,10)
 
 //  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
@@ -122,6 +123,8 @@ func main() {
   ents = append(ents, level.AddEntity(*rifleman, 25, 29, 0.0075, guy))
   guy,_ = sprite.LoadSprite(purplepath)
   ents = append(ents, level.AddEntity(*rifleman, 25, 25, 0.0075, guy))
+  info_bar.AddChild(ents[0].MakeStatsWindow(), true)
+  info_bar.AddChild(ents[1].MakeStatsWindow(), true)
 
 //  var texts []*gui.SingleLineText
 //  for i := range ents {
