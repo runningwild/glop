@@ -45,27 +45,53 @@ type EntityStatsWindow struct {
   gui.EmbeddedWidget
   gui.Rectangle
   gui.NonResponder
-  gui.NonThinker
 
-  table *gui.HorizontalTable
-  ent   *Entity
+  ent    *Entity
+  table  *gui.HorizontalTable
+  image  *gui.ImageBox
+  name   *gui.TextLine
+  health *gui.TextLine
+  ap     *gui.TextLine
 }
-func (e *Entity) MakeStatsWindow() *EntityStatsWindow {
+func MakeStatsWindow() *EntityStatsWindow {
   var esw EntityStatsWindow
   esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
-  esw.ent = e
-  esw.Dx = 200
+  esw.Dx = 350
   esw.Dy = 100
 
   esw.table = gui.MakeHorizontalTable()
-  esw.table.AddChild(gui.MakeTextLine("standard", "Fixed", 1, 1, 1, 1), true)
+  esw.image = gui.MakeImageBox()
+  esw.table.AddChild(esw.image, true)
+
+  esw.name = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
+  esw.health = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
+  esw.ap = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
   vert := gui.MakeVerticalTable()
-  vert.AddChild(gui.MakeTextLine("standard", "F00", 1, 1, 1, 1), true)
-  vert.AddChild(gui.MakeTextLine("standard", "B@r", 1, 1, 1, 1), true)
-  vert.AddChild(gui.MakeTextLine("standard", "Wingerdinger", 1, 1, 1, 1), true)
+  vert.AddChild(esw.name, true)
+  vert.AddChild(esw.health, true)
+  vert.AddChild(esw.ap, true)
   esw.table.AddChild(vert, false)
 
   return &esw
+}
+func (w *EntityStatsWindow) DoThink(_ int64) {
+  if w.ent == nil { return }
+  w.health.SetText(fmt.Sprintf("Health: %d / %d", w.ent.Health, w.ent.Base.Health))
+  w.ap.SetText(fmt.Sprintf("Ap: %d / %d", w.ent.AP, w.ent.Base.AP))
+}
+func (w *EntityStatsWindow) SetEntity(e *Entity) {
+  if e == w.ent { return }
+  w.ent = e
+  if w.ent == nil {
+    w.health.SetText("")
+    w.ap.SetText("")
+    w.name.SetText("")
+    w.image.UnsetImage()
+  } else {
+    thumb := e.s.Thumbnail()
+    w.image.SetImageByTexture(thumb.Texture(), thumb.Dx(), thumb.Dy())
+    w.name.SetText(e.Base.Name)
+  }
 }
 func (w *EntityStatsWindow) GetChildren() []gui.Widget {
   return []gui.Widget{ w.table }

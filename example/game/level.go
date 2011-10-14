@@ -242,6 +242,7 @@ type Level struct {
   Entities []*Entity
 
   selected *Entity
+  hovered  *Entity
 
   // window coords of the mouse
   winx,winy int
@@ -262,7 +263,12 @@ type Level struct {
   // ATTACK data
   in_range []int
 }
-
+func (l *Level) GetSelected() *Entity {
+  return l.selected
+}
+func (l *Level) GetHovered() *Entity {
+  return l.hovered
+}
 func (l *Level) Round() {
   for i := range l.Entities {
     l.Entities[i].OnRound()
@@ -431,6 +437,13 @@ func (l *Level) Think(dt int64) {
     cell := l.grid[mx][my]
     cell.highlight = MouseOver
     l.Terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
+    l.hovered = nil
+    for i := range l.Entities {
+      x,y := l.Entities[i].Coords()
+      if x == mx && y == my {
+        l.hovered = l.Entities[i]
+      }
+    }
   }
 
   // Highlight selected entity

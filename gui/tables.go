@@ -51,21 +51,23 @@ func (w *VerticalTable) Draw(region Region) {
       fill_requested += w.children[i].Bounds().Dy
     }
   }
-  y := region.Y
+  y := region.Y + region.Dy
   for i := range w.children {
     req := w.children[i].Bounds()
     if w.fixed[i] {
+      if fixed_requested == 0 { continue }
       req.Dy = (req.Dy * fixed_available) / fixed_requested
     } else {
+      if fill_requested == 0 { continue }
       req.Dy = (req.Dy * fill_available) / fill_requested
     }
     if req.Dx > region.Dx {
       req.Dx = region.Dx
     }
     req.X = region.X
-    req.Y = y
+    req.Y = y - req.Dy
     w.children[i].Draw(req)
-    y += req.Dy
+    y -= req.Dy
   }
   w.Rectangle.Dims = region.Dims
   w.Rectangle.Point = region.Point
@@ -116,8 +118,10 @@ func (w *HorizontalTable) Draw(region Region) {
   for i := range w.children {
     req := w.children[i].Bounds()
     if w.fixed[i] {
+      if fixed_requested == 0 { continue }
       req.Dx = (req.Dx * fixed_available) / fixed_requested
     } else {
+      if fill_requested == 0 { continue }
       req.Dx = (req.Dx * fill_available) / fill_requested
     }
     if req.Dy > region.Dy {
