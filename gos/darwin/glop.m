@@ -380,11 +380,12 @@ void GetMousePos(int* x, int* y) {
 
 void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy) {
   NSWindow* window = (NSWindow*)_window;
+  NSRect view = [[window contentView] frame];
   NSRect rect = [window frame];
   *x = rect.origin.x;
   *y = rect.origin.y;
-  *dx = rect.size.width;
-  *dy = rect.size.height;
+  *dx = view.size.width;
+  *dy = view.size.height;
 }
 
 void EnableVSync(void* _context, int set_vsync) {
