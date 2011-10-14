@@ -299,6 +299,9 @@ type sharedSprite struct {
 
   // maps a command to the node ids of any node that comes immediately after that command
   cmd_target map[string][]int
+
+  // Optional thumbnail
+  thumb *Thumbnail
 }
 
 type Sprite struct {
@@ -326,6 +329,10 @@ type Sprite struct {
   path []int
 
   pending_cmds []string
+}
+
+func (s *Sprite) Thumbnail() *Thumbnail {
+  return s.thumb
 }
 
 func (s *Sprite) Render(x,y,z,scale float32) {
@@ -390,6 +397,47 @@ func LoadSprite(path string) (*Sprite, os.Error) {
   return spriteManager.LoadSprite(path)
 }
 
+type Thumbnail struct {
+  texture gl.Texture
+  image.Rectangle
+}
+func (t *Thumbnail) Texture() gl.Texture {
+  return t.texture
+}
+
+
+func loadThumbnail(path string) *Thumbnail {
+  in,err := os.Open(path)
+  if err != nil { return nil }
+  img,_,err := image.Decode(in)
+  if err != nil { return nil }
+
+  var thumb Thumbnail
+  thumb.Rectangle = img.Bounds()
+  canvas := image.NewRGBA(img.Bounds().Dx(), img.Bounds().Dy())
+  for y := 0; y < canvas.Bounds().Dy(); y++ {
+    for x := 0; x < canvas.Bounds().Dx(); x++ {
+      r,g,b,a := img.At(x,y).RGBA()
+      base := 4*x + canvas.Stride*y
+      canvas.Pix[base]   = uint8(r)
+      canvas.Pix[base+1] = uint8(g)
+      canvas.Pix[base+2] = uint8(b)
+      canvas.Pix[base+3] = uint8(a)
+    }
+  }
+
+  thumb.texture = gl.GenTexture()
+  gl.Enable(gl.TEXTURE_2D)
+  thumb.texture.Bind(gl.TEXTURE_2D)
+  gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, img.Bounds().Dx(), img.Bounds().Dy(), gl.RGBA, canvas.Pix)
+  return &thumb
+}
+
 func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
   if _,ok := sm.loaded_sprites[path]; !ok {
     ss := new(sharedSprite)
@@ -399,6 +447,8 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     if err != nil { return nil,err }
     state_graph,err := LoadGraph(state_path)
     if err != nil { return nil,err }
+    ss.thumb = loadThumbnail(filepath.Join(path, "thumb.png"))
+
     ProcessAnimWithState(anim_graph, state_graph)
     image_names := make(map[string]bool)
     for _,n := range anim_graph.nodes {
