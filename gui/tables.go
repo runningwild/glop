@@ -17,27 +17,31 @@ type VerticalTable struct {
   NonResponder
   Rectangle
   tableBase
+  max_height int
 }
 
-func MakeVerticalTable() *VerticalTable {
+func MakeVerticalTable(max_height int) *VerticalTable {
   var table VerticalTable
   table.EmbeddedWidget = &BasicWidget{ CoreWidget : &table }
+  table.max_height = max_height
   return &table
 }
 func (w *VerticalTable) DoThink(t int64) {
-  w.Dims = Dims{}
+  w.Dims = Dims{ Dy : w.max_height }
   for i := range w.children {
     if w.children[i].Bounds().Dx > w.Dims.Dx {
       w.Dims.Dx = w.children[i].Bounds().Dx
-    }
-    if w.fixed[i] {
-      w.Dims.Dy += w.children[i].Bounds().Dy
     }
   }
 }
 func (w *VerticalTable) Draw(region Region) {
   fixed_available := region.Dy
-  fixed_requested := w.Dy
+  fixed_requested := 0
+  for i := range w.children {
+    if w.fixed[i] {
+      fixed_requested += w.children[i].Bounds().Dy
+    }
+  }
   fill_available := fixed_available - fixed_requested
   if fixed_available > fixed_requested {
     fixed_available = fixed_requested
@@ -80,27 +84,31 @@ type HorizontalTable struct {
   NonResponder
   Rectangle
   tableBase
+  max_width int
 }
 
-func MakeHorizontalTable() *HorizontalTable {
+func MakeHorizontalTable(max_width int) *HorizontalTable {
   var table HorizontalTable
   table.EmbeddedWidget = &BasicWidget{ CoreWidget : &table }
+  table.max_width = max_width
   return &table
 }
 func (w *HorizontalTable) DoThink(t int64) {
-  w.Dims = Dims{}
+  w.Dims = Dims{ Dx : w.max_width }
   for i := range w.children {
     if w.children[i].Bounds().Dy > w.Dims.Dy {
       w.Dims.Dy = w.children[i].Bounds().Dy
-    }
-    if w.fixed[i] {
-      w.Dims.Dx += w.children[i].Bounds().Dx
     }
   }
 }
 func (w *HorizontalTable) Draw(region Region) {
   fixed_available := region.Dx
-  fixed_requested := w.Dx
+  fixed_requested := 0
+  for i := range w.children {
+    if w.fixed[i] {
+      fixed_requested += w.children[i].Bounds().Dx
+    }
+  }
   fill_available := fixed_available - fixed_requested
   if fixed_available > fixed_requested {
     fixed_available = fixed_requested
