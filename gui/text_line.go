@@ -54,7 +54,7 @@ type TextLine struct {
   BasicWidget
   Childless
   NonResponder
-  Rectangle
+  BasicZone
   text      string
   changed   bool
   rdims     Dims
@@ -79,10 +79,9 @@ func nextPowerOf2(n uint32) uint32 {
 
 func (w *TextLine) figureDims() {
   w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, w.color, image.NewRGBA(1, 1), w.text)
-  w.Dims = w.rdims
   texture_dims := Dims{
-    Dx : int(nextPowerOf2(uint32(w.Dims.Dx))),
-    Dy : int(nextPowerOf2(uint32(w.Dims.Dy))),
+    Dx : int(nextPowerOf2(uint32(w.rdims.Dx))),
+    Dy : int(nextPowerOf2(uint32(w.rdims.Dy))),
   }
   w.rgba = image.NewRGBA(texture_dims.Dx, texture_dims.Dy)
   drawText(w.font, w.context, w.color, w.rgba, w.text)
@@ -116,6 +115,7 @@ func MakeTextLine(font_name,text string, r,g,b,a float64) *TextLine {
   w.texture = gl.GenTexture()
   w.SetColor(r, g, b, a)
   w.figureDims()
+  w.Request_dims = Dims{ 200, 50 }
   return &w
 }
 
@@ -136,7 +136,6 @@ func (w *TextLine) SetText(str string) {
 }
 
 func (w *TextLine) DoThink(_ int64) {
-  w.Dims = w.rdims
   if !w.changed { return }
   w.changed = false
   w.figureDims()
@@ -167,28 +166,33 @@ func (w *TextLine) Draw(region Region) {
 }
 
 func (w *TextLine) coreDraw(region Region) {
+  region.PushClipPlanes()
+  defer region.PopClipPlanes()
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
-  req := w.Rectangle
-  req.Constrain(region)
-  if req.Dx * w.Rectangle.Dy < req.Dy * w.Rectangle.Dx {
-    req.Dy = int(float64(w.Rectangle.Dy) / float64(w.Rectangle.Dx) * float64(req.Dx))
+  req := w.Request_dims
+  if req.Dx > region.Dx { req.Dx = region.Dx }
+  if req.Dy > region.Dy { req.Dy = region.Dy }
+  if req.Dx * region.Dy < req.Dy * region.Dx {
+    req.Dy = (region.Dy * req.Dx) / region.Dx
   } else {
-    req.Dx = int(float64(w.Rectangle.Dx) / float64(w.Rectangle.Dy) * float64(req.Dy))
+    req.Dx = (region.Dx * req.Dy) / region.Dy
   }
-  w.Rectangle = req
+  w.Render_region.Dims = req
+  w.Render_region.Point = region.Point
   tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
   ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
-  w.scale = float64(w.Rectangle.Dx) / float64(w.rdims.Dx)
+  w.scale = float64(w.Render_region.Dx) / float64(w.rdims.Dx)
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,0)
-    gl.Vertex2i(req.X,          req.Y)
+    gl.Vertex2i(region.X,          region.Y)
     gl.TexCoord2d(0,-ty)
-    gl.Vertex2i(req.X,          req.Y + req.Dy)
+    gl.Vertex2i(region.X,          region.Y + w.rdims.Dy)
     gl.TexCoord2d(tx,-ty)
-    gl.Vertex2i(req.X + req.Dx, req.Y + req.Dy)
+    gl.Vertex2i(region.X + w.rdims.Dx, region.Y + w.rdims.Dy)
     gl.TexCoord2d(tx,0)
-    gl.Vertex2i(req.X + req.Dx, req.Y)
+    gl.Vertex2i(region.X + w.rdims.Dx, region.Y)
   gl.End()
+  fmt.Printf("text %v\n", w.Render_region)
 }
 

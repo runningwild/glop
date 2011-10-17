@@ -236,8 +236,19 @@ type Level struct {
   // unset when the cache is cleared, lets Think() know it has to refil the cache
   cached bool
 
+  // The single gui element containing all other elements related to the
+  // game
+  game_gui *gui.HorizontalTable
+
   // The gui element rendering the terrain and all of the other drawables
   Terrain *gui.Terrain
+
+  // The gui element that shows all editor related stuff
+  editor_panel *gui.VerticalTable
+
+  // The gui elements that show entity information
+  selected_gui *EntityStatsWindow
+  targeted_gui *EntityStatsWindow
 
   Entities []*Entity
 
@@ -452,6 +463,8 @@ func (l *Level) Think(dt int64) {
     cell.highlight = Reachable
     l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
   }
+  l.selected_gui.SetEntity(l.selected)
+  l.targeted_gui.SetEntity(l.hovered)
 
   l.cached = true
 }
@@ -522,12 +535,36 @@ type levelDataCell struct {
   Terrain string
 }
 type levelData struct {
+  // TOOD: Need to track the file this came from so we can copy it when
+  // we save
   Image string
+
   Cells [][]levelDataCell
 }
 
 type levelDataContainer struct {
   Level levelData
+}
+
+func (l *Level) SaveLevel(pathname string) os.Error {
+  out,err := os.Create(pathname)
+  if err != nil { return nil }
+  defer out.Close()
+  var ldc levelDataContainer
+  ldc.Level.Image = "fudgecake.png"
+  ldc.Level.Cells = make([][]levelDataCell, len(l.grid))
+  for i := range ldc.Level.Cells {
+    ldc.Level.Cells[i] = make([]levelDataCell, len(l.grid[0]))
+  }
+  for i := range ldc.Level.Cells {
+    for j := range ldc.Level.Cells[i] {
+      ldc.Level.Cells[i][j].Terrain = l.grid[i][j].Name()
+    }
+  }
+  data,err := json.Marshal(&ldc)
+  if err != nil { return err }
+  _,err = out.Write(data)
+  return err
 }
 
 func LoadLevel(pathname string) (*Level, os.Error) {
@@ -563,7 +600,25 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   }
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
+
+  level.game_gui = gui.MakeHorizontalTable()
+  game_only_gui := gui.MakeVerticalTable()
+  level.selected_gui = MakeStatsWindow()
+  level.targeted_gui = MakeStatsWindow()
+  level.editor_panel = gui.MakeVerticalTable()
+  level.editor_panel.AddChild(gui.MakeTextLine("standard", "Editor!!!", 1, 1, 1, 1))
+    entity_guis := gui.MakeHorizontalTable()
+  entity_guis.AddChild(level.selected_gui)
+  entity_guis.AddChild(level.targeted_gui)
+  game_only_gui.AddChild(level.Terrain)
+  game_only_gui.AddChild(entity_guis)
+  level.game_gui.AddChild(game_only_gui)
+  level.game_gui.AddChild(level.editor_panel)
   return &level, nil
+}
+
+func (l *Level) GetGui() gui.Widget {
+  return l.game_gui
 }
 
 func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprite *sprite.Sprite) *Entity  {

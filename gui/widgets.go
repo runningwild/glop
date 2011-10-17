@@ -24,14 +24,14 @@ type AnchorBox struct {
   EmbeddedWidget
   NonResponder
   NonThinker
-  Rectangle
+  BasicZone
   children []Widget
   anchors  []Anchor
 }
 func MakeAnchorBox(dims Dims) *AnchorBox {
   var box AnchorBox
   box.EmbeddedWidget = &BasicWidget{ CoreWidget : &box }
-  box.Dims = dims
+  box.Request_dims = dims
   return &box
 }
 func (w *AnchorBox) AddChild(widget Widget, anchor Anchor) {
@@ -53,29 +53,31 @@ func (w *AnchorBox) GetChildren() []Widget {
   return w.children
 }
 func (w *AnchorBox) Draw(region Region) {
+  w.Render_region = region
   for i := range w.children {
     widget := w.children[i]
     anchor := w.anchors[i]
-    child_dims := widget.Bounds()
-    xoff := int(anchor.Bx * float64(region.Dx) - anchor.Wx * float64(child_dims.Dx) + 0.5)
-    yoff := int(anchor.By * float64(region.Dy) - anchor.Wy * float64(child_dims.Dy) + 0.5)
+    var child_region Region
+    child_region.Dims = widget.Requested()
+    xoff := int(anchor.Bx * float64(region.Dx) - anchor.Wx * float64(child_region.Dx) + 0.5)
+    yoff := int(anchor.By * float64(region.Dy) - anchor.Wy * float64(child_region.Dy) + 0.5)
     if xoff < 0 {
-      child_dims.Dx += xoff
+      child_region.Dx += xoff
       xoff = 0
     }
     if yoff < 0 {
-      child_dims.Dy += yoff
+      child_region.Dy += yoff
       yoff = 0
     }
-    if xoff + child_dims.Dx > w.Dims.Dx {
-      child_dims.Dx -= (xoff + child_dims.Dx) - w.Dims.Dx
+    if xoff + child_region.Dx > w.Render_region.Dx {
+      child_region.Dx -= (xoff + child_region.Dx) - w.Render_region.Dx
     }
-    if yoff + child_dims.Dy > w.Dims.Dy {
-      child_dims.Dy -= (yoff + child_dims.Dy) - w.Dims.Dy
+    if yoff + child_region.Dy > w.Render_region.Dy {
+      child_region.Dy -= (yoff + child_region.Dy) - w.Render_region.Dy
     }
-    child_dims.X = xoff
-    child_dims.Y = yoff
-    widget.Draw(child_dims)
+    child_region.X = xoff
+    child_region.Y = yoff
+    widget.Draw(child_region)
   }
 }
 
@@ -83,7 +85,7 @@ type ImageBox struct {
   EmbeddedWidget
   NonResponder
   NonThinker
-  Rectangle
+  BasicZone
   Childless
 
   active  bool
@@ -105,8 +107,8 @@ func (w *ImageBox) UnsetImage() {
 }
 func (w *ImageBox) SetImageByTexture(texture gl.Texture, dx,dy int) {
   w.texture = texture
-  w.Dims.Dx = dx
-  w.Dims.Dy = dy
+  w.Request_dims.Dx = dx
+  w.Request_dims.Dy = dy
   w.active = true
 }
 func (w *ImageBox) SetImage(path string) {
@@ -123,8 +125,8 @@ func (w *ImageBox) SetImage(path string) {
     return
   }
 
-  w.Dx = img.Bounds().Dx()
-  w.Dy = img.Bounds().Dy()
+  w.Request_dims.Dx = img.Bounds().Dx()
+  w.Request_dims.Dy = img.Bounds().Dy()
   canvas := image.NewRGBA(img.Bounds().Dx(), img.Bounds().Dy())
   for y := 0; y < canvas.Bounds().Dy(); y++ {
     for x := 0; x < canvas.Bounds().Dx(); x++ {
@@ -150,6 +152,7 @@ func (w *ImageBox) SetImage(path string) {
   w.active = true
 }
 func (w *ImageBox) Draw(region Region) {
+  w.Render_region = region
   if !w.active { return }
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)

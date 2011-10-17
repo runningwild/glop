@@ -25,12 +25,6 @@ func MakeTextEditLine(font_name,text string, r,g,b,a float64) *TextEditLine {
   return &w
 }
 
-//func (w *TextEditLine) DoThink(_ int64) {
-//  if !w.changed { return }
-//  w.changed = false
-//  w.figureDims()
-//}
-
 func (w *TextEditLine) findIndexAtOffset(offset int) int {
   reader := strings.NewReader(w.text)
   n := -1
@@ -98,7 +92,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) bool {
     w.cursor_moved = true
   } else if key_id == 304 {
     x,_ := event.Key.Cursor().Point()
-    cx := w.Rectangle.X
+    cx := w.TextLine.Render_region.X
     w.cursor_index = w.findIndexAtOffset(x - cx)
     w.cursor_moved = true
   }
@@ -112,7 +106,7 @@ func (w *TextEditLine) Draw(region Region) {
   gl.Color3d(1, 0, 0)
   gl.Begin(gl.LINES)
     gl.Vertex2d(w.cursor_pos, 0)
-    gl.Vertex2d(w.cursor_pos, float64(w.Rectangle.Dy))
+    gl.Vertex2d(w.cursor_pos, float64(region.Dy))
   gl.End()
   w.TextLine.postDraw(region)
 }

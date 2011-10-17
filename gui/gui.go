@@ -77,8 +77,19 @@ func (r Region) PopClipPlanes() {
 //}
 
 type Zone interface {
-  Bounds() Region
-  Contains(Point) bool
+  // Returns the dimensions that this Widget would like available to
+  // render itself.  A Widget should only update the value it returns from
+  // this method when its Think() method is called.
+  Requested() Dims
+
+  // Returns ex,ey, where ex and ey indicate whether this Widget is
+  // capable of expanding along the X and Y axes, respectively.
+  Expandable() (bool,bool)
+
+  // Returns the region that this Widget used to render itself the last
+  // time it was rendered.  Should be completely contained within the
+  // region that was passed to it on its last call to Render.
+  Rendered() Region
 }
 
 type EventGroup struct {
@@ -119,7 +130,7 @@ func (w *BasicWidget) Respond(event_group EventGroup) {
   if cursor != nil {
     var p Point
     p.X, p.Y = cursor.Point()
-    if !w.Contains(p) {
+    if !p.Inside(w.Rendered()) {
       return
     }
   }
@@ -130,22 +141,20 @@ func (w *BasicWidget) Respond(event_group EventGroup) {
   }
 }
 
-type Rectangle Region
-func (r *Rectangle) Bounds() Region {
-  return Region(*r)
+type BasicZone struct {
+  Request_dims  Dims
+  Render_region Region
+  Ex,Ey         bool
 }
-func (r *Rectangle) Contains(p Point) bool {
-  return p.Inside(Region(*r))
+
+func (bz *BasicZone) Requested() Dims {
+  return bz.Request_dims
 }
-func (r *Rectangle) Constrain(r2 Region) {
-  if r2.Dx < r.Dx {
-    r.Dx = r2.Dx
-  }
-  if r2.Dy < r.Dy {
-    r.Dy = r2.Dy
-  }
-  r.X = r2.X
-  r.Y = r2.Y
+func (bz *BasicZone) Rendered() Region {
+  return bz.Render_region
+}
+func (bz *BasicZone) Expandable() (bool,bool) {
+  return bz.Ex, bz.Ey
 }
 
 type NonThinker struct {}
@@ -182,12 +191,13 @@ func (s *StandardParent) RemoveChild(w Widget) {
 type rootWidget struct {
   EmbeddedWidget
   StandardParent
-  Rectangle
+  BasicZone
   NonResponder
   NonThinker
 }
 
 func (r *rootWidget) Draw(region Region) {
+  r.Render_region = region
   for i := range r.Children {
     r.Children[i].Draw(region)
   }
@@ -200,7 +210,8 @@ type Gui struct {
 func Make(dispatcher gin.EventDispatcher, dims Dims) *Gui {
   var g Gui
   g.root.EmbeddedWidget = &BasicWidget{ CoreWidget : &g.root }
-  g.root.Rectangle = Rectangle{ Dims : dims }
+  g.root.Request_dims = dims
+  g.root.Render_region.Dims = dims
   dispatcher.RegisterEventListener(&g)
   return &g
 }
@@ -208,12 +219,13 @@ func Make(dispatcher gin.EventDispatcher, dims Dims) *Gui {
 func (g *Gui) Draw() {
   gl.MatrixMode(gl.PROJECTION)
   gl.LoadIdentity();
-  gl.Ortho(float64(g.root.X), float64(g.root.X + g.root.Dx), float64(g.root.Y), float64(g.root.Y + g.root.Dy), 1000, -1000)
+  region := g.root.Render_region
+  gl.Ortho(float64(region.X), float64(region.X + region.Dx), float64(region.Y), float64(region.Y + region.Dy), 1000, -1000)
   gl.ClearColor(0, 0, 0, 1)
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity();
-  g.root.Draw(g.root.Bounds())
+  g.root.Draw(region)
 }
 
 // TODO: Shouldn't be exposing this

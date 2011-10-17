@@ -36,7 +36,8 @@ type cell struct {
 type Terrain struct {
   Childless
   EmbeddedWidget
-  Rectangle
+  BasicZone
+  NonThinker
 
 
   // Length of the side of block in the source image.
@@ -69,9 +70,6 @@ type Terrain struct {
   // All drawables that will be drawn on the surface of the terrain
   flattened_drawables []sprite.ZDrawable
   flattened_positions []mathgl.Vec3
-
-  // Region that the terrain was displayed in last frame
-  prev Region
 
   // Don't need to keep the image around once it's loaded into texture memory,
   // only need to keep around the dimensions
@@ -128,14 +126,16 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
   t.zoom = 1.0
 
   t.makeMat()
-  t.Dims.Dx = t.bg.Bounds().Dx()
-  t.Dims.Dy = t.bg.Bounds().Dy()
+  t.Request_dims.Dx = 100
+  t.Request_dims.Dy = 100
+  t.Ex = true
+  t.Ey = true
   return &t, nil
 }
 
 func (t *Terrain) makeMat() {
   var m mathgl.Mat4
-  t.mat.Translation(float32(t.prev.Dx/2 + t.prev.X), float32(t.prev.Dy/2 + t.prev.Y), 0)
+  t.mat.Translation(float32(t.Render_region.Dx/2 + t.Render_region.X), float32(t.Render_region.Dy/2 + t.Render_region.Y), 0)
   m.RotationZ(45 * math.Pi / 180)
   t.mat.Multiply(&m)
   m.RotationAxisAngle(mathgl.Vec3{ X : -1, Y : 1}, -float32(t.angle) * math.Pi / 180)
@@ -165,7 +165,7 @@ func (t *Terrain) WindowToBoard(wx,wy int) (float32, float32) {
 }
 
 func (t *Terrain) modelviewToBoard(mx,my float32) (float32,float32) {
-  mz := (my - float32(t.prev.Y + t.prev.Dy/2)) * float32(math.Tan(float64(t.angle * math.Pi / 180)))
+  mz := (my - float32(t.Render_region.Y + t.Render_region.Dy/2)) * float32(math.Tan(float64(t.angle * math.Pi / 180)))
   v := mathgl.Vec4{ X : mx, Y : my, Z : mz, W : 1 }
   v.Transform(&t.imat)
   return v.X / float32(t.block_size), v.Y / float32(t.block_size)
@@ -206,13 +206,11 @@ func (t *Terrain) Zoom(dz float64) {
   t.makeMat()
 }
 
-func (t *Terrain) DoThink(_ int64) {}
-
 func (t *Terrain) Draw(region Region) {
   region.PushClipPlanes()
   defer region.PopClipPlanes()
-  if t.prev.X != region.X || t.prev.Y != region.Y || t.prev.Dx != region.Dx || t.prev.Dy != region.Dy {
-    t.prev = region
+  if t.Render_region.X != region.X || t.Render_region.Y != region.Y || t.Render_region.Dx != region.Dx || t.Render_region.Dy != region.Dy {
+    t.Render_region = region
     t.makeMat()
   }
   gl.MatrixMode(gl.MODELVIEW)

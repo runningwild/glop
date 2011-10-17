@@ -43,7 +43,7 @@ type CosmeticStats struct {
 
 type EntityStatsWindow struct {
   gui.EmbeddedWidget
-  gui.Rectangle
+  gui.BasicZone
   gui.NonResponder
 
   ent    *Entity
@@ -56,21 +56,22 @@ type EntityStatsWindow struct {
 func MakeStatsWindow() *EntityStatsWindow {
   var esw EntityStatsWindow
   esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
-  esw.Dx = 350
-  esw.Dy = 100
+  esw.Request_dims.Dx = 350
+  esw.Request_dims.Dy = 130
 
   esw.table = gui.MakeHorizontalTable()
   esw.image = gui.MakeImageBox()
-  esw.table.AddChild(esw.image, true)
+  esw.table.AddChild(esw.image)
 
   esw.name = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
   esw.health = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
   esw.ap = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
   vert := gui.MakeVerticalTable()
-  vert.AddChild(esw.name, true)
-  vert.AddChild(esw.health, true)
-  vert.AddChild(esw.ap, true)
-  esw.table.AddChild(vert, false)
+//  vert.AddChild(esw.name, true)
+//  vert.AddChild(esw.health, true)
+vert.AddChild(gui.MakeTextLine("standard", "adf", 1, 1, 1, 1))
+//  vert.AddChild(esw.ap, true)
+  esw.table.AddChild(vert)
 
   return &esw
 }
@@ -97,8 +98,7 @@ func (w *EntityStatsWindow) GetChildren() []gui.Widget {
   return []gui.Widget{ w.table }
 }
 func (w *EntityStatsWindow) Draw(region gui.Region) {
-  w.Rectangle.Constrain(region)
-  w.table.Draw(w.Bounds())
+  w.table.Draw(region)
 }
 
 type Entity struct {

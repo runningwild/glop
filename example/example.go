@@ -62,15 +62,15 @@ func main() {
 
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
 
-  factor := 0.99
+  factor := 1.0
   wdx := int(factor * float64(1024))
   wdy := int(factor * float64(768))
 
-  sys.CreateWindow(10, 10, wdx, wdy)
+  sys.CreateWindow(0, 0, wdx, wdy)
   _,_,wdx,wdy = sys.GetWindowDims()
   ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
-  table := gui.MakeVerticalTable()
-  ui.AddChild(table)
+//  table := gui.MakeVerticalTable()
+//  ui.AddChild(table)
 
   mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
   mappath = path.Clean(mappath)
@@ -78,9 +78,11 @@ func main() {
   if err != nil {
     panic(err.String())
   }
-  info_bar := gui.MakeHorizontalTable()
-  table.AddChild(level.Terrain, false)
-  table.AddChild(info_bar, true)
+  err = level.SaveLevel("/Users/runningwild/code/go-glop/example/fudgecake.json")
+  if err != nil {
+    panic(err.String())
+  }
+  ui.AddChild(level.GetGui())
 //  level.Terrain.Move(10,10)
 
 //  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
@@ -124,11 +126,6 @@ func main() {
   ents = append(ents, level.AddEntity(*rifleman, 25, 29, 0.0075, guy))
   guy,_ = sprite.LoadSprite(purplepath)
   ents = append(ents, level.AddEntity(*rifleman, 25, 25, 0.0075, guy))
-  selected := game.MakeStatsWindow()
-  targeted := game.MakeStatsWindow()
-  info_bar.AddChild(selected, true)
-  info_bar.AddChild(targeted, true)
-  selected.SetEntity(ents[0])
 
 //  var texts []*gui.SingleLineText
 //  for i := range ents {
@@ -167,8 +164,6 @@ func main() {
     dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
     dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
     level.Terrain.Move(dx, dy)
-    selected.SetEntity(level.GetSelected())
-    targeted.SetEntity(level.GetHovered())
     zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
     if gin.In().GetKey('m').FramePressCount() > 0 {
       level.PrepMove()
