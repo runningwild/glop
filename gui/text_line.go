@@ -115,7 +115,7 @@ func MakeTextLine(font_name,text string, r,g,b,a float64) *TextLine {
   w.texture = gl.GenTexture()
   w.SetColor(r, g, b, a)
   w.figureDims()
-  w.Request_dims = Dims{ 200, 50 }
+  w.Request_dims = Dims{ 300, 50 }
   return &w
 }
 
@@ -160,14 +160,14 @@ func (w *TextLine) postDraw(region Region) {
 }
 
 func (w *TextLine) Draw(region Region) {
+  region.PushClipPlanes()
+  defer region.PopClipPlanes()
   w.preDraw(region)
   w.coreDraw(region)
   w.postDraw(region)
 }
 
 func (w *TextLine) coreDraw(region Region) {
-  region.PushClipPlanes()
-  defer region.PopClipPlanes()
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   req := w.Request_dims
@@ -182,7 +182,7 @@ func (w *TextLine) coreDraw(region Region) {
   w.Render_region.Point = region.Point
   tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
   ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
-  w.scale = float64(w.Render_region.Dx) / float64(w.rdims.Dx)
+//  w.scale = float64(w.Render_region.Dx) / float64(w.rdims.Dx)
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,0)
     gl.Vertex2i(region.X,          region.Y)
@@ -193,6 +193,5 @@ func (w *TextLine) coreDraw(region Region) {
     gl.TexCoord2d(tx,0)
     gl.Vertex2i(region.X + w.rdims.Dx, region.Y)
   gl.End()
-  fmt.Printf("text %v\n", w.Render_region)
 }
 

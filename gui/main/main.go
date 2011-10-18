@@ -35,11 +35,12 @@ func (w *BoxWidget) Draw(region gui.Region) {
 func (w *BoxWidget) DoThink(t int64) {
   w.on = w.on >> 1
 }
-func (w *BoxWidget) DoRespond(event_group gui.EventGroup) bool {
+func (w *BoxWidget) DoRespond(event_group gui.EventGroup) (consume,take_focus bool) {
   if event_group.Events[0].Key.Cursor() != nil {
     w.on = 512-1
+    consume = true
   }
-  return false
+  return
 }
 func MakeColorBoxWidget(dx,dy int, r,g,b,a float64) *BoxWidget {
   var bw BoxWidget
@@ -83,15 +84,10 @@ func main() {
   gl.LoadIdentity()
   ui := gui.Make(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
   table := gui.MakeVerticalTable()
-  s1 := gui.MakeHorizontalTable()
-  s1.AddChild(MakeColorBoxWidget(121, 12, 1, 0, 0, 1))
-  s1.AddChild(MakeExpandoBox(121, 12, 0, 0, 1, 1))
-  table.AddChild(MakeColorBoxWidget(300, 100, 1,0,0,1))
-  table.AddChild(MakeColorBoxWidget(100, 100, 0,1,0,1))
-  table.AddChild(MakeColorBoxWidget(100, 100, 0,0,1,1))
-  table.AddChild(MakeExpandoBox(10, 100, 1,1,1,1))
-  table.AddChild(s1)
-  table.AddChild(gui.MakeTextEditLine("standard", "Foo", 1, 1, 0, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
   ui.AddChild(table)
 //  gin.In().RegisterEventListener(t)
   for gin.In().GetKey('q').FramePressCount() == 0 {

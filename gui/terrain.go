@@ -293,10 +293,10 @@ func (t *Terrain) SetEventHandler(handler gin.EventHandler) {
   t.handler = handler
 }
 
-func (t *Terrain) DoRespond(event_group EventGroup) bool {
+func (t *Terrain) DoRespond(event_group EventGroup) (bool,bool) {
   if t.handler != nil {
     t.handler.HandleEventGroup(event_group.EventGroup)
   }
-  return false
+  return false,false
 }
 

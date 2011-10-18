@@ -100,12 +100,19 @@ type EventGroup struct {
 type Widget interface {
   Zone
   Think(int64)
-  Respond(EventGroup)
+
+  // Returns true if this widget or any of its children consumed the
+  // event group
+  Respond(*Gui,EventGroup) bool
+
   Draw(Region)
 }
 type CoreWidget interface {
   DoThink(int64)
-  DoRespond(EventGroup) bool
+
+  // If take_focus is true, then the EventGroup will be consumed,
+  // regardless of the value of consume
+  DoRespond(EventGroup) (consume,take_focus bool)
   Zone
 
   Draw(Region)
@@ -113,7 +120,7 @@ type CoreWidget interface {
 }
 type EmbeddedWidget interface {
   Think(int64)
-  Respond(EventGroup)
+  Respond(*Gui, EventGroup) (consume bool)
 }
 type BasicWidget struct {
   CoreWidget
@@ -125,20 +132,25 @@ func (w *BasicWidget) Think(t int64) {
   }
   w.DoThink(t)
 }
-func (w *BasicWidget) Respond(event_group EventGroup) {
+func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
   cursor := event_group.Events[0].Key.Cursor()
   if cursor != nil {
     var p Point
     p.X, p.Y = cursor.Point()
     if !p.Inside(w.Rendered()) {
-      return
+      return false
     }
   }
-  if w.DoRespond(event_group) { return }
+  consume,take_focus := w.DoRespond(event_group)
+  if take_focus {
+    gui.TakeFocus(w)
+  }
+  if take_focus || consume { return true }
   kids := w.GetChildren()
   for i := range kids {
-    kids[i].Respond(event_group)
+    if kids[i].Respond(gui, event_group) { return true }
   }
+  return false
 }
 
 type BasicZone struct {
@@ -161,8 +173,8 @@ type NonThinker struct {}
 func (n NonThinker) DoThink(int64) {}
 
 type NonResponder struct {}
-func (n NonResponder) DoRespond(EventGroup) bool {
-  return false
+func (n NonResponder) DoRespond(EventGroup) (bool,bool) {
+  return false,false
 }
 
 type Childless struct {}
@@ -204,7 +216,10 @@ func (r *rootWidget) Draw(region Region) {
 }
 
 type Gui struct {
-  root rootWidget
+  root  rootWidget
+
+  // Stack of widgets that have focus
+  focus []Widget
 }
 
 func Make(dispatcher gin.EventDispatcher, dims Dims) *Gui {
@@ -235,7 +250,14 @@ func (g *Gui) Think(t int64) {
 
 // TODO: Shouldn't be exposing this
 func (g *Gui) HandleEventGroup(gin_group gin.EventGroup) {
-  g.root.Respond(EventGroup{gin_group, false})
+  event_group := EventGroup{gin_group, false}
+  if len(g.focus) > 0 {
+    event_group.Focus = true
+    consume := g.focus[len(g.focus)-1].Respond(g, event_group)
+    if consume { return }
+    event_group.Focus = false
+  }
+  g.root.Respond(g, event_group)
 }
 
 func (g *Gui) AddChild(w Widget) {
@@ -246,4 +268,9 @@ func (g *Gui) RemoveChild(w Widget) {
   g.root.RemoveChild(w)
 }
 
-
+func (g *Gui) TakeFocus(w Widget) {
+  if len(g.focus) == 0 {
+    g.focus = append(g.focus, nil)
+  }
+  g.focus[len(g.focus)-1] = w
+}
