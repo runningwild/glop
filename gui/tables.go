@@ -102,10 +102,12 @@ func (w *HorizontalTable) Draw(region Region) {
   child_region.X = region.X
   for _,child := range w.Children {
     child_region.Dims = child.Requested()
-    child_region.Dims.Dx *= region.Dx
-    child_region.Dims.Dx /= w.Request_dims.Dx
     if ex,_ := child.Expandable(); ex && fill_request > 0 {
       child_region.Dx += (child_region.Dx * fill_available) / fill_request
+    }
+    if region.Dx < w.Request_dims.Dx {
+      child_region.Dims.Dx *= region.Dx
+      child_region.Dims.Dx /= w.Request_dims.Dx
     }
     if child_region.Dy > region.Dy {
       child_region.Dy = region.Dy
