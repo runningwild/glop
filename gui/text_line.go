@@ -98,7 +98,7 @@ func (w *TextLine) figureDims() {
   gl.Disable(gl.TEXTURE_2D)
 }
 
-func MakeTextLine(font_name,text string, r,g,b,a float64) *TextLine {
+func MakeTextLine(font_name,text string, width int, r,g,b,a float64) *TextLine {
   var w TextLine
   w.BasicWidget.CoreWidget = &w
   font,ok := basic_fonts[font_name]
@@ -115,7 +115,7 @@ func MakeTextLine(font_name,text string, r,g,b,a float64) *TextLine {
   w.texture = gl.GenTexture()
   w.SetColor(r, g, b, a)
   w.figureDims()
-  w.Request_dims = Dims{ 300, 50 }
+  w.Request_dims = Dims{ width, 50 }
   return &w
 }
 

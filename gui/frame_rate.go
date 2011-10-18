@@ -12,7 +12,7 @@ type FrameRateWidget struct {
 
 func MakeFrameRateWidget() *FrameRateWidget {
   var w FrameRateWidget
-  w.TextLine = *MakeTextLine("standard", "0", 1,1,1,1)
+  w.TextLine = *MakeTextLine("standard", "0", 100, 1,1,1,1)
   w.BasicWidget.CoreWidget = &w
   return &w
 }

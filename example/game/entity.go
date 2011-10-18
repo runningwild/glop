@@ -63,22 +63,21 @@ func MakeStatsWindow() *EntityStatsWindow {
   esw.image = gui.MakeImageBox()
   esw.table.AddChild(esw.image)
 
-  esw.name = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
-  esw.health = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
-  esw.ap = gui.MakeTextLine("standard", "", 1, 1, 1, 1)
+  esw.name = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
+  esw.health = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
+  esw.ap = gui.MakeTextLine("standard", "", 1, 275, 1, 1, 1)
   vert := gui.MakeVerticalTable()
-//  vert.AddChild(esw.name, true)
-//  vert.AddChild(esw.health, true)
-vert.AddChild(gui.MakeTextLine("standard", "adf", 1, 1, 1, 1))
-//  vert.AddChild(esw.ap, true)
+  vert.AddChild(esw.name)
+  vert.AddChild(esw.health)
+  vert.AddChild(esw.ap)
   esw.table.AddChild(vert)
 
   return &esw
 }
 func (w *EntityStatsWindow) DoThink(_ int64) {
   if w.ent == nil { return }
-  w.health.SetText(fmt.Sprintf("Health: %d / %d", w.ent.Health, w.ent.Base.Health))
-  w.ap.SetText(fmt.Sprintf("Ap: %d / %d", w.ent.AP, w.ent.Base.AP))
+  w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.Health, w.ent.Base.Health))
+  w.ap.SetText(fmt.Sprintf("Ap: %d/%d", w.ent.AP, w.ent.Base.AP))
 }
 func (w *EntityStatsWindow) SetEntity(e *Entity) {
   if e == w.ent { return }

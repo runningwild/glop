@@ -11,9 +11,9 @@ import(
 )
 
 type BoxWidget struct {
+  gui.CollapsableZone
   gui.EmbeddedWidget
   gui.Childless
-  gui.BasicZone
   r,g,b,a float64
   on int
 }
@@ -75,8 +75,6 @@ func main() {
 
   fmt.Printf("")
   gui.MustLoadFontAs("/Library/fonts/Tahoma.ttf", "standard")
-  tw := gui.MakeTextEditLine("standard", "AAAVVV", 1, 1, 1, 1)
-  fmt.Printf("tw: %v\n", tw)
 
   gl.MatrixMode(gl.PROJECTION)
   gl.Ortho(0, 800, 0, 600, 1, -1)
@@ -84,14 +82,22 @@ func main() {
   gl.LoadIdentity()
   ui := gui.Make(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
   table := gui.MakeVerticalTable()
-  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
-  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
-  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
-  table.AddChild(gui.MakeTextEditLine("standard", "", 1, 1, 1, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
+  box := MakeExpandoBox(100, 100, 0, 1, 1, 1)
+  table.AddChild(box)
+  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
+  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
   ui.AddChild(table)
 //  gin.In().RegisterEventListener(t)
   for gin.In().GetKey('q').FramePressCount() == 0 {
     sys.SwapBuffers()
+    if gin.In().GetKey('w').FramePressCount() > 0 {
+      box.Collapsed = true
+    }
+    if gin.In().GetKey('e').FramePressCount() > 0 {
+      box.Collapsed = false
+    }
     gl.ClearColor(0, 0, 0, 1)
     gl.Clear(gl.COLOR_BUFFER_BIT)
     sys.Think()

@@ -2,6 +2,7 @@ package gui
 
 import (
   "glop/gin"
+  "fmt"
   "freetype-go.googlecode.com/hg/freetype"
   "gl"
 )
@@ -13,9 +14,9 @@ type TextEditLine struct {
   cursor_moved bool
 }
 
-func MakeTextEditLine(font_name,text string, r,g,b,a float64) *TextEditLine {
+func MakeTextEditLine(font_name,text string, width int, r,g,b,a float64) *TextEditLine {
   var w TextEditLine
-  w.TextLine = *MakeTextLine(font_name, text, r,g,b,a)
+  w.TextLine = *MakeTextLine(font_name, text, width, r,g,b,a)
   w.BasicWidget.CoreWidget = &w
 
   w.scale = 1.0
@@ -28,7 +29,7 @@ func (w *TextEditLine) findIndexAtOffset(offset int) int {
   low := 0
   high := 1
   var low_off,high_off float64
-  for high <= len(w.text) && high_off < float64(offset) {
+  for high < len(w.text) && high_off < float64(offset) {
     low = high
     low_off = high_off
     high++
@@ -81,6 +82,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,take_focus boo
         w.cursor_moved = true
       }
     } else if key_id > 0 && key_id <= 127  && event.Type == gin.Press {
+      fmt.Printf("%d %d\n", len(w.text), w.cursor_index)
       w.SetText(w.text[0:w.cursor_index] + string([]byte{byte(key_id)}) + w.text[w.cursor_index:])
       w.changed = true
       w.cursor_index++
