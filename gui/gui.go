@@ -159,14 +159,39 @@ type BasicZone struct {
   Ex,Ey         bool
 }
 
-func (bz *BasicZone) Requested() Dims {
+func (bz BasicZone) Requested() Dims {
   return bz.Request_dims
 }
-func (bz *BasicZone) Rendered() Region {
+func (bz BasicZone) Rendered() Region {
   return bz.Render_region
 }
-func (bz *BasicZone) Expandable() (bool,bool) {
+func (bz BasicZone) Expandable() (bool,bool) {
   return bz.Ex, bz.Ey
+}
+
+type CollapsableZone struct {
+  Collapsed     bool
+  Request_dims  Dims
+  Render_region Region
+  Ex,Ey         bool
+}
+func (cz CollapsableZone) Requested() Dims {
+  if cz.Collapsed {
+    return Dims{}
+  }
+  return cz.Request_dims
+}
+func (cz CollapsableZone) Rendered() Region {
+  if cz.Collapsed {
+    return Region{ Point : cz.Render_region.Point }
+  }
+  return cz.Render_region
+}
+func (cz *CollapsableZone) Expandable() (bool,bool) {
+  if cz.Collapsed {
+    return false, false
+  }
+  return cz.Ex, cz.Ey
 }
 
 type NonThinker struct {}
