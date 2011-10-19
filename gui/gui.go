@@ -229,6 +229,15 @@ func (n NonResponder) DoRespond(EventGroup) (bool,bool) {
 type Childless struct {}
 func (c Childless) GetChildren() []Widget { return nil }
 
+// Wrappers are used to wrap existing widgets inside another widget to add some
+// specific behavior (like making it hideable).  This can also be done by creating
+// a new widget and embedding the appropriate structs, but sometimes this is more
+// convenient.
+type Wrapper struct {
+  Child Widget
+}
+func (w Wrapper) GetChildren() []Widget { return []Widget{ w.Child } }
+
 type StandardParent struct {
   Children []Widget
 }

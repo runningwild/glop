@@ -240,11 +240,11 @@ type Level struct {
   // game
   game_gui *gui.HorizontalTable
 
+  // The editor gui is in a separate collapsable widget
+  editor_gui *gui.CollapseWrapper
+
   // The gui element rendering the terrain and all of the other drawables
   Terrain *gui.Terrain
-
-  // The gui element that shows all editor related stuff
-  editor_panel *gui.VerticalTable
 
   // The gui elements that show entity information
   selected_gui *EntityStatsWindow
@@ -605,23 +605,28 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   game_only_gui := gui.MakeVerticalTable()
   level.selected_gui = MakeStatsWindow()
   level.targeted_gui = MakeStatsWindow()
-  level.editor_panel = gui.MakeVerticalTable()
-  level.editor_panel.AddChild(gui.MakeTextLine("standard", "Editor!!!", 250, 1, 1, 1, 1))
+  editor_panel := gui.MakeVerticalTable()
+  editor_panel.AddChild(gui.MakeTextLine("standard", "Editor!!!", 250, 1, 1, 1, 1))
   filename_widget := gui.MakeTextEditLine("standard", "Filename", 250, 1, 1, 1, 1)
-  level.editor_panel.AddChild(filename_widget)
-  level.editor_panel.AddChild(gui.MakeButton("standard", "Click Me!", 150, 1, 1, 0, 1, func(int64) { level.SaveLevel(filename_widget.GetText()) }))
+  editor_panel.AddChild(filename_widget)
+  editor_panel.AddChild(gui.MakeButton("standard", "Click Me!", 150, 1, 1, 0, 1, func(int64) { level.SaveLevel(filename_widget.GetText()) }))
+  level.editor_gui = gui.MakeCollapseWrapper(editor_panel)
   entity_guis := gui.MakeHorizontalTable()
   entity_guis.AddChild(level.selected_gui)
   entity_guis.AddChild(level.targeted_gui)
   game_only_gui.AddChild(level.Terrain)
   game_only_gui.AddChild(entity_guis)
   level.game_gui.AddChild(game_only_gui)
-  level.game_gui.AddChild(level.editor_panel)
+  level.game_gui.AddChild(level.editor_gui)
   return &level, nil
 }
 
 func (l *Level) GetGui() gui.Widget {
   return l.game_gui
+}
+
+func (l *Level) ToggleEditor() {
+  l.editor_gui.Collapsed = !l.editor_gui.Collapsed
 }
 
 func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprite *sprite.Sprite) *Entity  {

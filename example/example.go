@@ -175,6 +175,9 @@ func main() {
       if gin.In().GetKey('o').FramePressCount() > 0 {
         level.Round()
       }
+      if gin.In().GetKey('e').FramePressCount() % 2 == 1 {
+        level.ToggleEditor()
+      }
       level.Terrain.Zoom(zoom * 0.0025)
     }
     level.Think(dt)

@@ -169,3 +169,31 @@ func (w *ImageBox) Draw(region Region) {
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
 }
+
+type CollapseWrapper struct {
+  EmbeddedWidget
+  Wrapper
+  CollapsableZone
+  NonResponder
+}
+
+func MakeCollapseWrapper(w Widget) *CollapseWrapper {
+  var cw CollapseWrapper
+  cw.EmbeddedWidget = &BasicWidget{ CoreWidget : &cw }
+  cw.Child = w
+  return &cw
+}
+
+func (w *CollapseWrapper) DoThink(int64, bool) {
+  w.Request_dims = w.Child.Requested()
+  w.Render_region = w.Child.Rendered()
+}
+
+func (w *CollapseWrapper) Draw(region Region) {
+  if w.Collapsed {
+    w.Render_region = Region{}
+    return
+  }
+  w.Child.Draw(region)
+  w.Render_region = region
+}
