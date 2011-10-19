@@ -194,6 +194,20 @@ func (cz *CollapsableZone) Expandable() (bool,bool) {
   return cz.Ex, cz.Ey
 }
 
+// Embed a Clickable object to run a specified function when the widget
+// is clicked and run a specified function.
+type Clickable struct {
+  on_click func(int64)
+}
+func (c Clickable) DoRespond(event_group EventGroup) (bool, bool) {
+  event := event_group.Events[0]
+  if event.Type == gin.Press && event.Key.Id() == 304 {
+    c.on_click(event_group.Timestamp)
+    return true, false
+  }
+  return false, false
+}
+
 type NonThinker struct {}
 func (n NonThinker) DoThink(int64) {}
 

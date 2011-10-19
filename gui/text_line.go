@@ -98,6 +98,19 @@ func (w *TextLine) figureDims() {
   gl.Disable(gl.TEXTURE_2D)
 }
 
+type Button struct {
+  *TextLine
+  Clickable
+}
+
+func MakeButton(font_name,text string, width int, r,g,b,a float64, f func(int64)) *Button {
+  var btn Button
+  btn.TextLine = MakeTextLine(font_name, text, width, r, g, b, a)
+  btn.TextLine.CoreWidget = &btn
+  btn.on_click = f
+  return &btn
+}
+
 func MakeTextLine(font_name,text string, width int, r,g,b,a float64) *TextLine {
   var w TextLine
   w.BasicWidget.CoreWidget = &w
