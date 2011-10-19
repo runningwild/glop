@@ -156,25 +156,27 @@ func main() {
       }
     }
 
-    kw := gin.In().GetKey('w')
-    ka := gin.In().GetKey('a')
-    ks := gin.In().GetKey('s')
-    kd := gin.In().GetKey('d')
-    m_factor := 0.0075
-    dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
-    dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
-    level.Terrain.Move(dx, dy)
-    zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
-    if gin.In().GetKey('m').FramePressCount() > 0 {
-      level.PrepMove()
+    if ui.FocusWidget() == nil {
+      kw := gin.In().GetKey('w')
+      ka := gin.In().GetKey('a')
+      ks := gin.In().GetKey('s')
+      kd := gin.In().GetKey('d')
+      m_factor := 0.0075
+      dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
+      dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
+      level.Terrain.Move(dx, dy)
+      zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
+      if gin.In().GetKey('m').FramePressCount() > 0 {
+        level.PrepMove()
+      }
+      if gin.In().GetKey('k').FramePressCount() > 0 {
+        level.PrepAttack()
+      }
+      if gin.In().GetKey('o').FramePressCount() > 0 {
+        level.Round()
+      }
+      level.Terrain.Zoom(zoom * 0.0025)
     }
-    if gin.In().GetKey('k').FramePressCount() > 0 {
-      level.PrepAttack()
-    }
-    if gin.In().GetKey('o').FramePressCount() > 0 {
-      level.Round()
-    }
-    level.Terrain.Zoom(zoom * 0.0025)
     level.Think(dt)
   }
 

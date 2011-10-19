@@ -57,7 +57,7 @@ func MakeStatsWindow() *EntityStatsWindow {
   var esw EntityStatsWindow
   esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
   esw.Request_dims.Dx = 350
-  esw.Request_dims.Dy = 130
+  esw.Request_dims.Dy = 100
 
   esw.table = gui.MakeHorizontalTable()
   esw.image = gui.MakeImageBox()
@@ -65,7 +65,7 @@ func MakeStatsWindow() *EntityStatsWindow {
 
   esw.name = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
   esw.health = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
-  esw.ap = gui.MakeTextLine("standard", "", 1, 275, 1, 1, 1)
+  esw.ap = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
   vert := gui.MakeVerticalTable()
   vert.AddChild(esw.name)
   vert.AddChild(esw.health)

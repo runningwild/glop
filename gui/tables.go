@@ -115,7 +115,7 @@ func (w *HorizontalTable) Draw(region Region) {
     if _,ey := child.Expandable(); child_region.Dy < region.Dy && ey {
       child_region.Dy = region.Dy
     }
-    child_region.Y = region.Y
+    child_region.Y = region.Y + region.Dy - child_region.Dy
     child.Draw(child_region)
     child_region.X += child_region.Dx
   }

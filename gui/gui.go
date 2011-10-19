@@ -110,9 +110,9 @@ type Widget interface {
 type CoreWidget interface {
   DoThink(int64)
 
-  // If take_focus is true, then the EventGroup will be consumed,
+  // If change_focus is true, then the EventGroup will be consumed,
   // regardless of the value of consume
-  DoRespond(EventGroup) (consume,take_focus bool)
+  DoRespond(EventGroup) (consume,change_focus bool)
   Zone
 
   Draw(Region)
@@ -141,11 +141,18 @@ func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
       return false
     }
   }
-  consume,take_focus := w.DoRespond(event_group)
-  if take_focus {
-    gui.TakeFocus(w)
+  consume,change_focus := w.DoRespond(event_group)
+
+  if change_focus {
+    if event_group.Focus {
+      gui.DropFocus()
+    } else {
+      gui.TakeFocus(w)
+    }
+    return true
   }
-  if take_focus || consume { return true }
+  if consume { return true }
+
   kids := w.GetChildren()
   for i := range kids {
     if kids[i].Respond(gui, event_group) { return true }
@@ -312,4 +319,13 @@ func (g *Gui) TakeFocus(w Widget) {
     g.focus = append(g.focus, nil)
   }
   g.focus[len(g.focus)-1] = w
+}
+
+func (g *Gui) DropFocus() {
+  g.focus = g.focus[0 : len(g.focus) - 1]
+}
+
+func (g *Gui) FocusWidget() Widget {
+  if len(g.focus) == 0 { return nil }
+  return g.focus[len(g.focus) - 1]
 }

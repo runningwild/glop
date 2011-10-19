@@ -62,11 +62,15 @@ func (w *TextEditLine) DoThink(t int64) {
   }
 }
 
-func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,take_focus bool) {
+func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,change_focus bool) {
   event := event_group.Events[0]
   if event.Type != gin.Press { return }
   key_id := event.Key.Id()
   if event_group.Focus {
+    if key_id == 27 {
+      change_focus = true
+      return
+    }
     if key_id == 8 {
       if len(w.text) > 0 && w.cursor_index > 0 {
         var pre,post string
@@ -95,7 +99,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,take_focus boo
     }
     consume = true
   } else {
-    take_focus = event.Key.Id() == 304
+    change_focus = event.Key.Id() == 304
   }
   return
 }

@@ -141,6 +141,10 @@ func (w *TextLine) SetColor(r,g,b,a float64) {
   }
 }
 
+func (w *TextLine) GetText() string {
+  return w.text
+}
+
 func (w *TextLine) SetText(str string) {
   if w.text != str {
     w.text = str
