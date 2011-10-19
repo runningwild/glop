@@ -12,7 +12,7 @@ func MakeVerticalTable() *VerticalTable {
   table.EmbeddedWidget = &BasicWidget{ CoreWidget : &table }
   return &table
 }
-func (w *VerticalTable) DoThink(t int64) {
+func (w *VerticalTable) DoThink(int64, bool) {
   w.Request_dims = Dims{}
   w.Ex = false
   w.Ey = false
@@ -73,7 +73,7 @@ func MakeHorizontalTable() *HorizontalTable {
   table.EmbeddedWidget = &BasicWidget{ CoreWidget : &table }
   return &table
 }
-func (w *HorizontalTable) DoThink(t int64) {
+func (w *HorizontalTable) DoThink(int64, bool) {
   w.Request_dims = Dims{}
   w.Ex = false
   w.Ey = false

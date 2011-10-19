@@ -99,7 +99,10 @@ type EventGroup struct {
 
 type Widget interface {
   Zone
-  Think(int64)
+
+  // Called regularly with a timestamp and a function that checkes whether a Widget is
+  // the widget that currently has focus
+  Think(*Gui, int64)
 
   // Returns true if this widget or any of its children consumed the
   // event group
@@ -108,7 +111,7 @@ type Widget interface {
   Draw(Region)
 }
 type CoreWidget interface {
-  DoThink(int64)
+  DoThink(int64, bool)
 
   // If change_focus is true, then the EventGroup will be consumed,
   // regardless of the value of consume
@@ -119,18 +122,18 @@ type CoreWidget interface {
   GetChildren() []Widget
 }
 type EmbeddedWidget interface {
-  Think(int64)
+  Think(*Gui, int64)
   Respond(*Gui, EventGroup) (consume bool)
 }
 type BasicWidget struct {
   CoreWidget
 }
-func (w *BasicWidget) Think(t int64) {
+func (w *BasicWidget) Think(gui *Gui, t int64) {
   kids := w.GetChildren()
   for i := range kids {
-    kids[i].Think(t)
+    kids[i].Think(gui, t)
   }
-  w.DoThink(t)
+  w.DoThink(t, w == gui.FocusWidget())
 }
 func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
   cursor := event_group.Events[0].Key.Cursor()
@@ -216,7 +219,7 @@ func (c Clickable) DoRespond(event_group EventGroup) (bool, bool) {
 }
 
 type NonThinker struct {}
-func (n NonThinker) DoThink(int64) {}
+func (n NonThinker) DoThink(int64,bool) {}
 
 type NonResponder struct {}
 func (n NonResponder) DoRespond(EventGroup) (bool,bool) {
@@ -291,7 +294,7 @@ func (g *Gui) Draw() {
 
 // TODO: Shouldn't be exposing this
 func (g *Gui) Think(t int64) {
-  g.root.Think(t)
+  g.root.Think(g, t)
 }
 
 // TODO: Shouldn't be exposing this

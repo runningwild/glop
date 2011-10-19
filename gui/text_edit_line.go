@@ -2,16 +2,21 @@ package gui
 
 import (
   "glop/gin"
-  "fmt"
   "freetype-go.googlecode.com/hg/freetype"
   "gl"
 )
 
+type cursor struct {
+  index  int      // Index before which the cursor is placed
+  pos    float64  // position of the cursor in pixels from the left hand side
+  moved  bool     // whether or not the cursor has been moved recently
+  on     bool     // whether or not the curosr is showing
+  period int64    // how fast the cursor should blink
+  start  int64    // last time cursor.on was set to true
+}
 type TextEditLine struct {
   TextLine
-  cursor_index int
-  cursor_pos   float64
-  cursor_moved bool
+  cursor cursor
 }
 
 func MakeTextEditLine(font_name,text string, width int, r,g,b,a float64) *TextEditLine {
@@ -20,8 +25,9 @@ func MakeTextEditLine(font_name,text string, width int, r,g,b,a float64) *TextEd
   w.BasicWidget.CoreWidget = &w
 
   w.scale = 1.0
-  w.cursor_index = len(w.text)
-  w.cursor_pos = w.findOffsetAtIndex(w.cursor_index)
+  w.cursor.index = len(w.text)
+  w.cursor.pos = w.findOffsetAtIndex(w.cursor.index)
+  w.cursor.period = 500  // half a second
   return &w
 }
 
@@ -53,12 +59,23 @@ func (w *TextEditLine) findOffsetAtIndex(index int) float64 {
   return float64(adv.X >> 8) * w.scale
 }
 
-func (w *TextEditLine) DoThink(t int64) {
+func (w *TextEditLine) DoThink(t int64, focus bool) {
   changed := w.changed
-  w.TextLine.DoThink(t)
-  if w.cursor_moved || changed {
-    w.cursor_pos = w.findOffsetAtIndex(w.cursor_index)
-    w.cursor_moved = false
+  w.TextLine.DoThink(t, false)
+  if focus && w.cursor.start == 0 {
+    w.cursor.start = t
+    w.cursor.on = true
+  }
+  if !focus {
+    w.cursor.start = 0
+    w.cursor.on = false
+  }
+  if w.cursor.start > 0 {
+    w.cursor.on = ((t - w.cursor.start) / w.cursor.period) % 2 == 0
+  }
+  if w.cursor.moved || changed {
+    w.cursor.pos = w.findOffsetAtIndex(w.cursor.index)
+    w.cursor.moved = false
   }
 }
 
@@ -72,30 +89,29 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,change_focus b
       return
     }
     if key_id == 8 {
-      if len(w.text) > 0 && w.cursor_index > 0 {
+      if len(w.text) > 0 && w.cursor.index > 0 {
         var pre,post string
-        if w.cursor_index > 0 {
-          pre = w.text[0 : w.cursor_index - 1]
+        if w.cursor.index > 0 {
+          pre = w.text[0 : w.cursor.index - 1]
         }
-        if w.cursor_index < len(w.text) {
-          post = w.text[w.cursor_index : ]
+        if w.cursor.index < len(w.text) {
+          post = w.text[w.cursor.index : ]
         }
         w.SetText(pre + post)
         w.changed = true
-        w.cursor_index--
-        w.cursor_moved = true
+        w.cursor.index--
+        w.cursor.moved = true
       }
     } else if key_id > 0 && key_id <= 127  && event.Type == gin.Press {
-      fmt.Printf("%d %d\n", len(w.text), w.cursor_index)
-      w.SetText(w.text[0:w.cursor_index] + string([]byte{byte(key_id)}) + w.text[w.cursor_index:])
+      w.SetText(w.text[0:w.cursor.index] + string([]byte{byte(key_id)}) + w.text[w.cursor.index:])
       w.changed = true
-      w.cursor_index++
-      w.cursor_moved = true
+      w.cursor.index++
+      w.cursor.moved = true
     } else if key_id == 304 {
       x,_ := event.Key.Cursor().Point()
       cx := w.TextLine.Render_region.X
-      w.cursor_index = w.findIndexAtOffset(x - cx)
-      w.cursor_moved = true
+      w.cursor.index = w.findIndexAtOffset(x - cx)
+      w.cursor.moved = true
     }
     consume = true
   } else {
@@ -107,6 +123,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,change_focus b
 func (w *TextEditLine) Draw(region Region) {
   region.PushClipPlanes()
   defer region.PopClipPlanes()
+  gl.Disable(gl.TEXTURE_2D)
   gl.Color4d(0.3, 0.3, 0.3, 0.9)
   gl.Begin(gl.QUADS)
     gl.Vertex2i(region.X+1, region.Y+1)
@@ -117,10 +134,14 @@ func (w *TextEditLine) Draw(region Region) {
   w.TextLine.preDraw(region)
   w.TextLine.coreDraw(region)
   gl.Disable(gl.TEXTURE_2D)
-  gl.Color3d(1, 0, 0)
+  if w.cursor.on {
+    gl.Color3d(1, 0.3, 0)
+  } else {
+    gl.Color3d(0.5, 0.3, 0)
+  }
   gl.Begin(gl.LINES)
-    gl.Vertex2i(region.X + int(w.cursor_pos), region.Y)
-    gl.Vertex2i(region.X + int(w.cursor_pos), region.Y + region.Dy)
+    gl.Vertex2i(region.X + int(w.cursor.pos), region.Y)
+    gl.Vertex2i(region.X + int(w.cursor.pos), region.Y + region.Dy)
   gl.End()
   w.TextLine.postDraw(region)
 }

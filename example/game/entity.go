@@ -74,7 +74,7 @@ func MakeStatsWindow() *EntityStatsWindow {
 
   return &esw
 }
-func (w *EntityStatsWindow) DoThink(_ int64) {
+func (w *EntityStatsWindow) DoThink(int64, bool) {
   if w.ent == nil { return }
   w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.Health, w.ent.Base.Health))
   w.ap.SetText(fmt.Sprintf("Ap: %d/%d", w.ent.AP, w.ent.Base.AP))

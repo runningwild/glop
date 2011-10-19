@@ -17,7 +17,7 @@ func MakeFrameRateWidget() *FrameRateWidget {
   return &w
 }
 
-func (w *FrameRateWidget) DoThink(t int64) {
+func (w *FrameRateWidget) DoThink(t int64, _ bool) {
   now := time.Nanoseconds()
   w.frame_times = append(w.frame_times, now)
   prev := now - 1e9
@@ -27,5 +27,5 @@ func (w *FrameRateWidget) DoThink(t int64) {
   }
   rate := len(w.frame_times) - index + 1
   w.SetText(fmt.Sprintf("%d", rate))
-  w.TextLine.DoThink(t)
+  w.TextLine.DoThink(t, false)
 }

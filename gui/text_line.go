@@ -152,7 +152,7 @@ func (w *TextLine) SetText(str string) {
   }
 }
 
-func (w *TextLine) DoThink(_ int64) {
+func (w *TextLine) DoThink(int64, bool) {
   if !w.changed { return }
   w.changed = false
   w.figureDims()
