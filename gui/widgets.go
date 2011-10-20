@@ -235,7 +235,9 @@ func MakeSelectTextBox(options []string, width int) *SelectTextBox {
   stb.VerticalTable = *MakeVerticalTable()
   stb.EmbeddedWidget = &BasicWidget{ CoreWidget : &stb }
   for i := range options {
-    stb.VerticalTable.AddChild(makeSelectTextOption(options[i], width))
+    option := makeSelectTextOption(options[i], width)
+    stb.VerticalTable.AddChild(option)
+    option.SetColor(0.6, 0.4, 0.4, 1)
   }
   stb.selected = -1
   return &stb
@@ -249,9 +251,35 @@ func (w *SelectTextBox) GetSelectedIndex() int {
   return w.selected
 }
 
+func (w *SelectTextBox) SetSelectedIndex(index int) {
+  w.selectIndex(index)
+}
+
 func (w *SelectTextBox) GetSelectedOption() string {
   if w.selected == -1 { return "" }
   return w.Children[w.selected].(*SelectTextOption).GetText()
+}
+
+func (w *SelectTextBox) SetSelectedOption(option string) {
+  for i := range w.Children {
+    if w.Children[i].(*SelectTextOption).GetText() == option {
+      w.selectIndex(i)
+      return
+    }
+  }
+  w.selectIndex(-1)
+}
+
+func (w *SelectTextBox) selectIndex(index int) {
+  if w.selected >= 0 {
+    w.Children[w.selected].(*SelectTextOption).SetColor(0.6, 0.4, 0.4, 1)
+  }
+  if index < 0 || index >= len(w.Children) {
+    index = -1
+  } else {
+    w.Children[index].(*SelectTextOption).SetColor(0.9, 1, 0.9, 1)
+  }
+  w.selected = index
 }
 
 func (w *SelectTextBox) DoRespond(event_group EventGroup) (consume,change_focus bool) {
@@ -261,11 +289,7 @@ func (w *SelectTextBox) DoRespond(event_group EventGroup) (consume,change_focus 
   p := Point{ x, y }
   for i := range w.Children {
     if p.Inside(w.Children[i].Rendered()) {
-      if w.selected >= 0 {
-        w.Children[w.selected].(*SelectTextOption).SetColor(1, 1, 1, 1)
-      }
-      w.Children[i].(*SelectTextOption).SetColor(1, 0, 0, 1)
-      w.selected = i
+      w.selectIndex(i)
       break
     }
   }

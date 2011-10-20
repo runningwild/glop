@@ -13,6 +13,7 @@ import (
   "io/ioutil"
   "os"
   "fmt"
+  "sort"
 )
 
 type Terrain interface {
@@ -60,6 +61,14 @@ func MakeTerrain(name string) Terrain {
     panic(fmt.Sprintf("Cannot load the unregistered terrain '%s'.", name))
   }
   return t
+}
+func GetRegisteredTerrains() []string {
+  var terrains []string
+  for t,_ := range terrain_registry {
+    terrains = append(terrains, t)
+  }
+  sort.Strings(terrains)
+  return terrains
 }
 
 
@@ -233,7 +242,8 @@ const (
 type Level struct {
   StaticLevelData
 
-  editor *Editor
+  editor     *Editor
+  editor_gui *gui.CollapseWrapper
 
   // unset when the cache is cleared, lets Think() know it has to refil the cache
   cached bool
@@ -416,6 +426,7 @@ func (l *Level) DoMove(click_x,click_y int) {
 }
 
 func (l *Level) Think(dt int64) {
+  l.editor.Think()
   // Draw all sprites
   for i := range l.Entities {
     e := l.Entities[i]
@@ -466,65 +477,78 @@ func (l *Level) Think(dt int64) {
   l.cached = true
 }
 
-func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
-  x,y := gin.In().GetKey(gin.MouseLButton).Cursor().Point()
-  l.winx = x
-  l.winy = y
-  bx,by := l.Terrain.WindowToBoard(x, y)
+func (l *Level) handleClickInEditMode(click mathgl.Vec2) {
+  l.editor.SelectCell(&l.grid[int(click.X)][int(click.Y)])
+}
 
-  if found,event := event_group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
-    click := mathgl.Vec2{ bx, by }
-
-    var ent *Entity
-    var dist float32 = float32(math.Inf(1))
-    for i := range l.Entities {
-      var cc mathgl.Vec2
-      cc.Assign(&click)
-      cc.Subtract(&mathgl.Vec2{ l.Entities[i].pos.X + 0.5, l.Entities[i].pos.Y + 0.5 })
-      dx := cc.X
-      if dx < 0 { dx = -dx }
-      dy := cc.Y
-      if dy < 0 { dy = -dy }
-      d := float32(math.Fmax(float64(dx), float64(dy)))
-      if d < dist {
-        dist = d
-        ent = l.Entities[i]
-      }
+func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
+  var ent *Entity
+  var dist float32 = float32(math.Inf(1))
+  for i := range l.Entities {
+    var cc mathgl.Vec2
+    cc.Assign(&click)
+    cc.Subtract(&mathgl.Vec2{ l.Entities[i].pos.X + 0.5, l.Entities[i].pos.Y + 0.5 })
+    dx := cc.X
+    if dx < 0 { dx = -dx }
+    dy := cc.Y
+    if dy < 0 { dy = -dy }
+    d := float32(math.Fmax(float64(dx), float64(dy)))
+    if d < dist {
+      dist = d
+      ent = l.Entities[i]
     }
+  }
 
-    if l.selected == nil && dist < 3 {
-      l.selected = ent
-      l.clearCache()
-      l.command = NoCommand
-      return
-    }
-
-    var target *Entity
-    if l.selected != nil && dist < 0.5 {
-      target = ent
-    }
-
-    switch l.command {
-      case Move:
-        if target == nil {
-          l.DoMove(int(bx), int(by))
-        }
-
-      case Attack:
-        if target != nil {
-          l.DoAttack(target)
-          target = nil
-        }
-
-      case NoCommand:
-      default:
-    }
-
-    if target != nil {
-      l.selected = target
-    }
+  if l.selected == nil && dist < 3 {
+    l.selected = ent
     l.clearCache()
     l.command = NoCommand
+    return
+  }
+
+  var target *Entity
+  if l.selected != nil && dist < 0.5 {
+    target = ent
+  }
+
+  switch l.command {
+    case Move:
+      if target == nil {
+        l.DoMove(int(click.X), int(click.Y))
+      }
+
+    case Attack:
+      if target != nil {
+        l.DoAttack(target)
+        target = nil
+      }
+
+    case NoCommand:
+    default:
+  }
+
+  if target != nil {
+    l.selected = target
+  }
+  l.clearCache()
+  l.command = NoCommand
+}
+
+func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
+  cursor := event_group.Events[0].Key.Cursor()
+  if cursor == nil { return }
+  l.winx, l.winy = cursor.Point()
+  found,event := event_group.FindEvent(gin.MouseLButton)
+  if !found || event.Type != gin.Press { return }
+  bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
+  click := mathgl.Vec2{ bx, by }
+  if bx < 0 || by < 0 || int(bx) >= len(l.grid) || int(by) >= len(l.grid[0]) {
+    return
+  }
+  if !l.editor_gui.Collapsed {
+    l.handleClickInEditMode(click)
+  } else {
+    l.handleClickInGameMode(click)
   }
 }
 
@@ -609,7 +633,8 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   game_only_gui.AddChild(level.Terrain)
   game_only_gui.AddChild(entity_guis)
   level.game_gui.AddChild(game_only_gui)
-  level.game_gui.AddChild(level.editor.GetGui())
+  level.editor_gui = gui.MakeCollapseWrapper(level.editor.GetGui())
+  level.game_gui.AddChild(level.editor_gui)
   return &level, nil
 }
 
@@ -618,7 +643,7 @@ func (l *Level) GetGui() gui.Widget {
 }
 
 func (l *Level) ToggleEditor() {
-  l.editor.ToggleGui()
+  l.editor_gui.Collapsed = !l.editor_gui.Collapsed
 }
 
 func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprite *sprite.Sprite) *Entity  {
