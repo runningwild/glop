@@ -38,7 +38,7 @@ func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
   // Currently we don't have a way to register derived keys with cursor
   // association, but if one of the bindings includes a key with such an
   // association any event handler will be able to get at this data.
-  input.registerKey(dk, dk.id, nil)
+  input.registerKey(dk, dk.id, "")
 
   for _,binding := range bindings {
     input.registerDependence(dk, binding.PrimaryKey)

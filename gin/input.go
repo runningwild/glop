@@ -123,7 +123,9 @@ type Input struct {
   // NOTE: Currently the only cursor supported is the mouse
   // Map from KeyId to the cursor associated with that key.  All KeyIds should be registered
   // in this map and will map to nil if they are not cursor keys.
-  cursors map[KeyId]*cursor
+  cursor_keys map[KeyId]*cursor
+
+  cursors map[string]*cursor
 }
 
 // The standard input object
@@ -146,7 +148,8 @@ func Make() *Input {
   input.all_keys = make([]Key, 0, 512)
   input.key_map = make(map[KeyId]Key, 512)
   input.dep_map = make(map[KeyId][]Key, 16)
-  input.cursors = make(map[KeyId]*cursor, 512)
+  input.cursor_keys = make(map[KeyId]*cursor, 512)
+  input.cursors = make(map[string]*cursor, 2)
 
   for c := 'a'; c <= 'z'; c++ {
     input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
@@ -216,14 +219,14 @@ func Make() *Input {
   input.registerNaturalKey(KeyPageUp, "KeyPageUp")
   input.registerNaturalKey(KeyPageDown, "KeyPageDown")
 
-  mouse := &cursor{ name : "Mouse" }
-  input.registerCursorAxisKey(MouseXAxis, "MouseXAxis", mouse)
-  input.registerCursorAxisKey(MouseYAxis, "MouseYAxis", mouse)
-  input.registerCursorKey(MouseWheelUp, "MouseWheelUp", mouse)
-  input.registerCursorKey(MouseWheelDown, "MouseWheelDown", mouse)
-  input.registerCursorKey(MouseLButton, "MouseLButton", mouse)
-  input.registerCursorKey(MouseRButton, "MouseRButton", mouse)
-  input.registerCursorKey(MouseMButton, "MouseMButton", mouse)
+  input.registerCursor("Mouse")
+  input.registerCursorAxisKey(MouseXAxis, "MouseXAxis", "Mouse")
+  input.registerCursorAxisKey(MouseYAxis, "MouseYAxis", "Mouse")
+  input.registerCursorKey(MouseWheelUp, "MouseWheelUp", "Mouse")
+  input.registerCursorKey(MouseWheelDown, "MouseWheelDown", "Mouse")
+  input.registerCursorKey(MouseLButton, "MouseLButton", "Mouse")
+  input.registerCursorKey(MouseRButton, "MouseRButton", "Mouse")
+  input.registerCursorKey(MouseMButton, "MouseMButton", "Mouse")
 
   return input
 }
@@ -280,7 +283,10 @@ func (eg *EventGroup) FindEvent(id KeyId) (bool, Event) {
   return false, Event{}
 }
 
-func (input *Input) registerKey(key Key, id KeyId, cursor* cursor) {
+func (input *Input) registerCursor(name string) {
+  input.cursors[name] = &cursor{ name : name }
+}
+func (input *Input) registerKey(key Key, id KeyId, cursor_name string) {
   if id <= 0 {
     panic(fmt.Sprintf("Cannot register a key with id %d, ids must be greater than 0.", id))
   }
@@ -288,26 +294,38 @@ func (input *Input) registerKey(key Key, id KeyId, cursor* cursor) {
     panic(fmt.Sprintf("Cannot register key '%v' with id %d, '%v' is already registered with that id.", key, id, prev))
   }
   input.key_map[id] = key
-  input.cursors[id] = cursor
+  if cursor_name != "" {
+    input.cursor_keys[id] = input.cursors[cursor_name]
+  } else {
+    input.cursor_keys[id] = nil
+  }
   input.all_keys = append(input.all_keys, key)
 }
 
 func (input *Input) registerNaturalKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id, nil)
+  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id, "")
 }
 
-func (input *Input) registerCursorKey(id KeyId, name string, cursor *cursor) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}, cursor : cursor}, id, cursor)
+func (input *Input) registerCursorKey(id KeyId, name string, cursor_name string) {
+  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}, cursor : input.cursors[cursor_name]}, id, cursor_name)
 }
 
 func (input *Input) registerAxisKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, nil)
+  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, "")
 }
 
-func (input *Input) registerCursorAxisKey(id KeyId, name string, cursor *cursor) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}, cursor : cursor}, id, cursor)
+func (input *Input) registerCursorAxisKey(id KeyId, name string, cursor_name string) {
+  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}, cursor : input.cursors[cursor_name]}, id, cursor_name)
 }
 
+func (input *Input) GetCursor(name string) Cursor {
+  cursor,ok := input.cursors[name]
+  if !ok {
+    panic(fmt.Sprintf("No cursor registered with name == '%s'.", name))
+    return nil
+  }
+  return cursor
+}
 func (input *Input) GetKey(id KeyId) Key {
   key,ok := input.key_map[id]
   if !ok {
@@ -372,10 +390,10 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
 
     // Sets the cursor position if this is a cursor based event.
     // TODO: Currently only the mouse is supported as a cursor, but if we want to support
-    //       joysticks as cursors, since they don't naturally have a position associated
-    //       with them, we will need to somehow associate cursors with axes and treat the
+    //       joysticks as cursor_keys, since they don't naturally have a position associated
+    //       with them, we will need to somehow associate cursor_keys with axes and treat the
     //       mouse and joysticks separately.
-    if cursor := input.cursors[os_event.KeyId]; cursor != nil {
+    if cursor := input.cursor_keys[os_event.KeyId]; cursor != nil {
       cursor.X = os_event.X
       cursor.Y = os_event.Y
     }
