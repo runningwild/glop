@@ -212,27 +212,13 @@ func (w *CollapseWrapper) Draw(region Region) {
 
 type SelectTextOption struct {
   TextLine
-  r,g,b,a     float64
-  rh,gh,bh,ah float64
 }
 
-func makeSelectTextOption(text string, width int, r,g,b,a, rh,gh,bh,ah float64) *SelectTextOption {
+func makeSelectTextOption(text string, width int) *SelectTextOption {
   var sto SelectTextOption
-  sto.TextLine = *MakeTextLine("standard", text, width, r, g, b, a)
-  sto.r, sto.g, sto.b, sto.a = r, g, b, a
-  sto.rh, sto.gh, sto.bh, sto.ah = rh, gh, bh, ah
+  sto.TextLine = *MakeTextLine("standard", text, width, 1, 1, 1, 1)
   sto.EmbeddedWidget = &BasicWidget{ CoreWidget : &sto }
   return &sto
-}
-
-func (w *SelectTextOption) DoThink(int64,bool) {
-  x,y := gin.In().GetCursor("Mouse").Point()
-  p := Point{ x, y }
-  if p.Inside(w.Render_region) {
-    w.SetColor(w.rh, w.gh, w.bh, w.ah)
-  } else {
-    w.SetColor(w.r, w.g, w.b, w.a)
-  }
 }
 
 func (w *SelectTextOption) Draw(region Region) {
@@ -241,7 +227,6 @@ func (w *SelectTextOption) Draw(region Region) {
 
 type SelectTextBox struct {
   VerticalTable
-  options  []string
   selected int
 }
 
@@ -250,8 +235,9 @@ func MakeSelectTextBox(options []string, width int) *SelectTextBox {
   stb.VerticalTable = *MakeVerticalTable()
   stb.EmbeddedWidget = &BasicWidget{ CoreWidget : &stb }
   for i := range options {
-    stb.VerticalTable.AddChild(makeSelectTextOption(options[i], width, 1, 1, 1, 1, 1, 0, 0, 1))
+    stb.VerticalTable.AddChild(makeSelectTextOption(options[i], width))
   }
+  stb.selected = -1
   return &stb
 }
 
@@ -259,14 +245,26 @@ func (w *SelectTextBox) String() string {
   return "select text box"
 }
 
+func (w *SelectTextBox) GetSelectedIndex() int {
+  return w.selected
+}
+
+func (w *SelectTextBox) GetSelectedOption() string {
+  if w.selected == -1 { return "" }
+  return w.Children[w.selected].(*SelectTextOption).GetText()
+}
+
 func (w *SelectTextBox) DoRespond(event_group EventGroup) (consume,change_focus bool) {
   if event_group.Events[0].Type != gin.Press { return }
   if event_group.Events[0].Key.Id() != gin.MouseLButton { return }
   x,y := event_group.Events[0].Key.Cursor().Point()
   p := Point{ x, y }
-  w.selected = -1
   for i := range w.Children {
-    if p.Inside(w.Rendered()) {
+    if p.Inside(w.Children[i].Rendered()) {
+      if w.selected >= 0 {
+        w.Children[w.selected].(*SelectTextOption).SetColor(1, 1, 1, 1)
+      }
+      w.Children[i].(*SelectTextOption).SetColor(1, 0, 0, 1)
       w.selected = i
       break
     }
