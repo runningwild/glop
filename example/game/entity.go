@@ -74,6 +74,9 @@ func MakeStatsWindow() *EntityStatsWindow {
 
   return &esw
 }
+func (w *EntityStatsWindow) String() string {
+  return "entity state window"
+}
 func (w *EntityStatsWindow) DoThink(int64, bool) {
   if w.ent == nil { return }
   w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.Health, w.ent.Base.Health))

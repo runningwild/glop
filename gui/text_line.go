@@ -68,6 +68,10 @@ type TextLine struct {
   scale     float64
 }
 
+func (w *TextLine) String() string {
+  return "text line"
+}
+
 func nextPowerOf2(n uint32) uint32 {
   if n == 0 { return 1 }
   for i := uint(0); i < 32; i++ {

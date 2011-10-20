@@ -233,15 +233,14 @@ const (
 type Level struct {
   StaticLevelData
 
+  editor *Editor
+
   // unset when the cache is cleared, lets Think() know it has to refil the cache
   cached bool
 
   // The single gui element containing all other elements related to the
   // game
   game_gui *gui.HorizontalTable
-
-  // The editor gui is in a separate collapsable widget
-  editor_gui *gui.CollapseWrapper
 
   // The gui element rendering the terrain and all of the other drawables
   Terrain *gui.Terrain
@@ -268,8 +267,6 @@ type Level struct {
   // If a unit is selected this will hold the list of cells that are reachable
   // from that unit's position within its allotted AP
   reachable []int
-
-
 
   // ATTACK data
   in_range []int
@@ -601,23 +598,18 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
 
+  level.editor = MakeEditor()
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
   level.selected_gui = MakeStatsWindow()
   level.targeted_gui = MakeStatsWindow()
-  editor_panel := gui.MakeVerticalTable()
-  editor_panel.AddChild(gui.MakeTextLine("standard", "Editor!!!", 250, 1, 1, 1, 1))
-  filename_widget := gui.MakeTextEditLine("standard", "Filename", 250, 1, 1, 1, 1)
-  editor_panel.AddChild(filename_widget)
-  editor_panel.AddChild(gui.MakeButton("standard", "Click Me!", 150, 1, 1, 0, 1, func(int64) { level.SaveLevel(filename_widget.GetText()) }))
-  level.editor_gui = gui.MakeCollapseWrapper(editor_panel)
   entity_guis := gui.MakeHorizontalTable()
   entity_guis.AddChild(level.selected_gui)
   entity_guis.AddChild(level.targeted_gui)
   game_only_gui.AddChild(level.Terrain)
   game_only_gui.AddChild(entity_guis)
   level.game_gui.AddChild(game_only_gui)
-  level.game_gui.AddChild(level.editor_gui)
+  level.game_gui.AddChild(level.editor.GetGui())
   return &level, nil
 }
 
@@ -626,7 +618,7 @@ func (l *Level) GetGui() gui.Widget {
 }
 
 func (l *Level) ToggleEditor() {
-  l.editor_gui.Collapsed = !l.editor_gui.Collapsed
+  l.editor.ToggleGui()
 }
 
 func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprite *sprite.Sprite) *Entity  {

@@ -109,6 +109,8 @@ type Widget interface {
   Respond(*Gui,EventGroup) bool
 
   Draw(Region)
+
+  String() string
 }
 type CoreWidget interface {
   DoThink(int64, bool)
@@ -161,6 +163,9 @@ func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
     if kids[i].Respond(gui, event_group) { return true }
   }
   return false
+}
+func (w *BasicWidget) String() string {
+  return "basic widget"
 }
 
 type BasicZone struct {
@@ -237,6 +242,9 @@ type Wrapper struct {
   Child Widget
 }
 func (w Wrapper) GetChildren() []Widget { return []Widget{ w.Child } }
+func (w Wrapper) Draw(region Region) {
+  w.Child.Draw(region)
+}
 
 type StandardParent struct {
   Children []Widget
@@ -264,6 +272,10 @@ type rootWidget struct {
   BasicZone
   NonResponder
   NonThinker
+}
+
+func (r *rootWidget) String() string {
+  return "root"
 }
 
 func (r *rootWidget) Draw(region Region) {

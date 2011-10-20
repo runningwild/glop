@@ -77,6 +77,10 @@ type Terrain struct {
   texture gl.Texture
 }
 
+func (t *Terrain) String() string {
+  return "terrain"
+}
+
 func (t *Terrain) AddUprightDrawable(x,y float32, zd sprite.ZDrawable) {
   t.upright_drawables = append(t.upright_drawables, zd)
   t.upright_positions = append(t.upright_positions, mathgl.Vec3{ x, y, 0 })

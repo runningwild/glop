@@ -34,6 +34,9 @@ func MakeAnchorBox(dims Dims) *AnchorBox {
   box.Request_dims = dims
   return &box
 }
+func (w *AnchorBox) String() string {
+  return "anchor box"
+}
 func (w *AnchorBox) AddChild(widget Widget, anchor Anchor) {
   w.children = append(w.children, widget)
   w.anchors = append(w.anchors, anchor)
@@ -96,6 +99,9 @@ func MakeImageBox() *ImageBox {
   ib.EmbeddedWidget = &BasicWidget{ CoreWidget : &ib }
   runtime.SetFinalizer(&ib, freeTexture)
   return &ib
+}
+func (w *ImageBox) String() string {
+  return "image box"
 }
 func freeTexture(w *ImageBox) {
   if w.active {
@@ -184,6 +190,11 @@ func MakeCollapseWrapper(w Widget) *CollapseWrapper {
   return &cw
 }
 
+func (w *CollapseWrapper) String() string {
+  return "collapse wrapper"
+}
+
+
 func (w *CollapseWrapper) DoThink(int64, bool) {
   w.Request_dims = w.Child.Requested()
   w.Render_region = w.Child.Rendered()
@@ -197,3 +208,35 @@ func (w *CollapseWrapper) Draw(region Region) {
   w.Child.Draw(region)
   w.Render_region = region
 }
+
+type SelectTextBox struct {
+  EmbeddedWidget
+  Wrapper
+  BasicZone
+  NonThinker
+  NonResponder
+  options  []string
+  selected int
+}
+
+func MakeSelectTextBox(options []string, width int) *SelectTextBox {
+  var stb SelectTextBox
+  stb.EmbeddedWidget = &BasicWidget{ CoreWidget : &stb }
+  v := MakeVerticalTable()
+  for i := range options {
+    v.AddChild(MakeTextLine("standard", options[i], width, 1, 1, 1, 1))
+  }
+  stb.Child = v
+  return &stb
+}
+
+func (w *SelectTextBox) String() string {
+  return "select text box"
+}
+
+func (w *SelectTextBox) DoThink(int64, bool) {
+  w.Request_dims = w.Child.Requested()
+  w.Render_region = w.Child.Rendered()
+}
+
+
