@@ -88,11 +88,11 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,change_focus b
   if event.Type != gin.Press { return }
   key_id := event.Key.Id()
   if event_group.Focus {
-    if key_id == 27 {
+    if key_id == gin.Escape {
       change_focus = true
       return
     }
-    if key_id == 8 {
+    if key_id == gin.Backspace {
       if len(w.text) > 0 && w.cursor.index > 0 {
         var pre,post string
         if w.cursor.index > 0 {
@@ -111,7 +111,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,change_focus b
       w.changed = true
       w.cursor.index++
       w.cursor.moved = true
-    } else if key_id == 304 {
+    } else if key_id == gin.MouseLButton {
       x,_ := event.Key.Cursor().Point()
       cx := w.TextLine.Render_region.X
       w.cursor.index = w.findIndexAtOffset(x - cx)
@@ -119,7 +119,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume,change_focus b
     }
     consume = true
   } else {
-    change_focus = event.Key.Id() == 304
+    change_focus = event.Key.Id() == gin.MouseLButton
   }
   return
 }

@@ -4,6 +4,73 @@ import (
   "fmt"
 )
 
+const (
+  Space = 32
+  Backspace = 8
+  Tab = 9
+  Return = 13
+  Escape = 27
+  F1 = 129
+  F2 = 130
+  F3 = 131
+  F4 = 132
+  F5 = 133
+  F6 = 134
+  F7 = 135
+  F8 = 136
+  F9 = 137
+  F10 = 138
+  F11 = 139
+  F12 = 140
+  CapsLock = 150
+  NumLock = 151
+  ScrollLock = 152
+  PrintScreen = 153
+  Pause = 154
+  LeftShift = 155
+  RightShift = 156
+  LeftControl = 157
+  RightControl = 158
+  LeftAlt = 159
+  RightAlt = 160
+  LeftGui = 161
+  RightGui = 162
+  Right = 166
+  Left = 167
+  Up = 168
+  Down = 169
+  KeyPadDivide = 170
+  KeyPadMultiply = 171
+  KeyPadSubtract = 172
+  KeyPadAdd = 173
+  KeyPadEnter = 174
+  KeyPadDecimal = 175
+  KeyPadEquals = 176
+  KeyPad0 = 177
+  KeyPad1 = 178
+  KeyPad2 = 179
+  KeyPad3 = 180
+  KeyPad4 = 181
+  KeyPad5 = 182
+  KeyPad6 = 183
+  KeyPad7 = 184
+  KeyPad8 = 185
+  KeyPad9 = 186
+  KeyDelete = 190
+  KeyHome = 191
+  KeyInsert = 192
+  KeyEnd = 193
+  KeyPageUp = 194
+  KeyPageDown = 195
+  MouseXAxis = 300
+  MouseYAxis = 301
+  MouseWheelUp = 302
+  MouseWheelDown = 303
+  MouseLButton = 304
+  MouseRButton = 305
+  MouseMButton = 306
+)
+
 type Cursor interface {
   Name() string
   Point() (int,int)
@@ -91,72 +158,72 @@ func Make() *Input {
   for _,key := range ascii_keys {
     input.registerNaturalKey(KeyId(key), fmt.Sprintf("%c", key))
   }
-  input.registerNaturalKey(32, "Space")
-  input.registerNaturalKey(8, "Backspace")
-  input.registerNaturalKey(9, "Tab")
-  input.registerNaturalKey(13, "Return")
-  input.registerNaturalKey(27, "Escape")
-  input.registerNaturalKey(129, "F1")
-  input.registerNaturalKey(130, "F2")
-  input.registerNaturalKey(131, "F3")
-  input.registerNaturalKey(132, "F4")
-  input.registerNaturalKey(133, "F5")
-  input.registerNaturalKey(134, "F6")
-  input.registerNaturalKey(135, "F7")
-  input.registerNaturalKey(136, "F8")
-  input.registerNaturalKey(137, "F9")
-  input.registerNaturalKey(138, "F10")
-  input.registerNaturalKey(139, "F11")
-  input.registerNaturalKey(140, "F12")
-  input.registerNaturalKey(150, "CapsLock")
-  input.registerNaturalKey(151, "NumLock")
-  input.registerNaturalKey(152, "ScrollLock")
-  input.registerNaturalKey(153, "PrintScreen")
-  input.registerNaturalKey(154, "Pause")
-  input.registerNaturalKey(155, "LeftShift")
-  input.registerNaturalKey(156, "RightShift")
-  input.registerNaturalKey(157, "LeftControl")
-  input.registerNaturalKey(158, "RightControl")
-  input.registerNaturalKey(159, "LeftAlt")
-  input.registerNaturalKey(160, "RightAlt")
-  input.registerNaturalKey(161, "LeftGui")
-  input.registerNaturalKey(162, "RightGui")
-  input.registerNaturalKey(166, "Right")
-  input.registerNaturalKey(167, "Left")
-  input.registerNaturalKey(168, "Up")
-  input.registerNaturalKey(169, "Down")
-  input.registerNaturalKey(170, "KeyPadDivide")
-  input.registerNaturalKey(171, "KeyPadMultiply")
-  input.registerNaturalKey(172, "KeyPadSubtract")
-  input.registerNaturalKey(173, "KeyPadAdd")
-  input.registerNaturalKey(174, "KeyPadEnter")
-  input.registerNaturalKey(175, "KeyPadDecimal")
-  input.registerNaturalKey(176, "KeyPadEquals")
-  input.registerNaturalKey(177, "KeyPad0")
-  input.registerNaturalKey(178, "KeyPad1")
-  input.registerNaturalKey(179, "KeyPad2")
-  input.registerNaturalKey(180, "KeyPad3")
-  input.registerNaturalKey(181, "KeyPad4")
-  input.registerNaturalKey(182, "KeyPad5")
-  input.registerNaturalKey(183, "KeyPad6")
-  input.registerNaturalKey(184, "KeyPad7")
-  input.registerNaturalKey(185, "KeyPad8")
-  input.registerNaturalKey(186, "KeyPad9")
-  input.registerNaturalKey(190, "KeyDelete")
-  input.registerNaturalKey(191, "KeyHome")
-  input.registerNaturalKey(192, "KeyInsert")
-  input.registerNaturalKey(193, "KeyEnd")
-  input.registerNaturalKey(194, "KeyPageUp")
-  input.registerNaturalKey(195, "KeyPageDown")
+  input.registerNaturalKey(Space, "Space")
+  input.registerNaturalKey(Backspace, "Backspace")
+  input.registerNaturalKey(Tab, "Tab")
+  input.registerNaturalKey(Return, "Return")
+  input.registerNaturalKey(Escape, "Escape")
+  input.registerNaturalKey(F1, "F1")
+  input.registerNaturalKey(F2, "F2")
+  input.registerNaturalKey(F3, "F3")
+  input.registerNaturalKey(F4, "F4")
+  input.registerNaturalKey(F5, "F5")
+  input.registerNaturalKey(F6, "F6")
+  input.registerNaturalKey(F7, "F7")
+  input.registerNaturalKey(F8, "F8")
+  input.registerNaturalKey(F9, "F9")
+  input.registerNaturalKey(F10, "F10")
+  input.registerNaturalKey(F11, "F11")
+  input.registerNaturalKey(F12, "F12")
+  input.registerNaturalKey(CapsLock, "CapsLock")
+  input.registerNaturalKey(NumLock, "NumLock")
+  input.registerNaturalKey(ScrollLock, "ScrollLock")
+  input.registerNaturalKey(PrintScreen, "PrintScreen")
+  input.registerNaturalKey(Pause, "Pause")
+  input.registerNaturalKey(LeftShift, "LeftShift")
+  input.registerNaturalKey(RightShift, "RightShift")
+  input.registerNaturalKey(LeftControl, "LeftControl")
+  input.registerNaturalKey(RightControl, "RightControl")
+  input.registerNaturalKey(LeftAlt, "LeftAlt")
+  input.registerNaturalKey(RightAlt, "RightAlt")
+  input.registerNaturalKey(LeftGui, "LeftGui")
+  input.registerNaturalKey(RightGui, "RightGui")
+  input.registerNaturalKey(Right, "Right")
+  input.registerNaturalKey(Left, "Left")
+  input.registerNaturalKey(Up, "Up")
+  input.registerNaturalKey(Down, "Down")
+  input.registerNaturalKey(KeyPadDivide, "KeyPadDivide")
+  input.registerNaturalKey(KeyPadMultiply, "KeyPadMultiply")
+  input.registerNaturalKey(KeyPadSubtract, "KeyPadSubtract")
+  input.registerNaturalKey(KeyPadAdd, "KeyPadAdd")
+  input.registerNaturalKey(KeyPadEnter, "KeyPadEnter")
+  input.registerNaturalKey(KeyPadDecimal, "KeyPadDecimal")
+  input.registerNaturalKey(KeyPadEquals, "KeyPadEquals")
+  input.registerNaturalKey(KeyPad0, "KeyPad0")
+  input.registerNaturalKey(KeyPad1, "KeyPad1")
+  input.registerNaturalKey(KeyPad2, "KeyPad2")
+  input.registerNaturalKey(KeyPad3, "KeyPad3")
+  input.registerNaturalKey(KeyPad4, "KeyPad4")
+  input.registerNaturalKey(KeyPad5, "KeyPad5")
+  input.registerNaturalKey(KeyPad6, "KeyPad6")
+  input.registerNaturalKey(KeyPad7, "KeyPad7")
+  input.registerNaturalKey(KeyPad8, "KeyPad8")
+  input.registerNaturalKey(KeyPad9, "KeyPad9")
+  input.registerNaturalKey(KeyDelete, "KeyDelete")
+  input.registerNaturalKey(KeyHome, "KeyHome")
+  input.registerNaturalKey(KeyInsert, "KeyInsert")
+  input.registerNaturalKey(KeyEnd, "KeyEnd")
+  input.registerNaturalKey(KeyPageUp, "KeyPageUp")
+  input.registerNaturalKey(KeyPageDown, "KeyPageDown")
 
   mouse := &cursor{ name : "Mouse" }
-  input.registerCursorAxisKey(300, "MouseXAxis", mouse)
-  input.registerCursorAxisKey(301, "MouseYAxis", mouse)
-  input.registerCursorKey(302, "MouseWheelUp", mouse)
-  input.registerCursorKey(303, "MouseWheelDown", mouse)
-  input.registerCursorKey(304, "MouseLButton", mouse)
-  input.registerCursorKey(305, "MouseRButton", mouse)
-  input.registerCursorKey(306, "MouseMButton", mouse)
+  input.registerCursorAxisKey(MouseXAxis, "MouseXAxis", mouse)
+  input.registerCursorAxisKey(MouseYAxis, "MouseYAxis", mouse)
+  input.registerCursorKey(MouseWheelUp, "MouseWheelUp", mouse)
+  input.registerCursorKey(MouseWheelDown, "MouseWheelDown", mouse)
+  input.registerCursorKey(MouseLButton, "MouseLButton", mouse)
+  input.registerCursorKey(MouseRButton, "MouseRButton", mouse)
+  input.registerCursorKey(MouseMButton, "MouseMButton", mouse)
 
   return input
 }

@@ -216,7 +216,7 @@ type Clickable struct {
 }
 func (c Clickable) DoRespond(event_group EventGroup) (bool, bool) {
   event := event_group.Events[0]
-  if event.Type == gin.Press && event.Key.Id() == 304 {
+  if event.Type == gin.Press && event.Key.Id() == gin.MouseLButton {
     c.on_click(event_group.Timestamp)
     return true, false
   }

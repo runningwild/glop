@@ -467,12 +467,12 @@ func (l *Level) Think(dt int64) {
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
-  x,y := gin.In().GetKey(304).Cursor().Point()
+  x,y := gin.In().GetKey(gin.MouseLButton).Cursor().Point()
   l.winx = x
   l.winy = y
   bx,by := l.Terrain.WindowToBoard(x, y)
 
-  if found,event := event_group.FindEvent(304); found && event.Type == gin.Press {
+  if found,event := event_group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
     click := mathgl.Vec2{ bx, by }
 
     var ent *Entity
