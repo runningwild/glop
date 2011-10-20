@@ -8,6 +8,7 @@ import (
   "gl"
   "gl/glu"
   "runtime"
+  "glop/gin"
 )
 
 // An Anchor specifies where a widget should be positioned withing an AnchorBox
@@ -209,24 +210,48 @@ func (w *CollapseWrapper) Draw(region Region) {
   w.Render_region = region
 }
 
+type SelectTextOption struct {
+  TextLine
+  r,g,b,a     float64
+  rh,gh,bh,ah float64
+}
+
+func makeSelectTextOption(text string, width int, r,g,b,a, rh,gh,bh,ah float64) *SelectTextOption {
+  var sto SelectTextOption
+  sto.TextLine = *MakeTextLine("standard", text, width, r, g, b, a)
+  sto.r, sto.g, sto.b, sto.a = r, g, b, a
+  sto.rh, sto.gh, sto.bh, sto.ah = rh, gh, bh, ah
+  sto.EmbeddedWidget = &BasicWidget{ CoreWidget : &sto }
+  return &sto
+}
+
+func (w *SelectTextOption) DoThink(int64,bool) {
+  x,y := gin.In().GetCursor("Mouse").Point()
+  p := Point{ x, y }
+  if p.Inside(w.Render_region) {
+    w.SetColor(w.rh, w.gh, w.bh, w.ah)
+  } else {
+    w.SetColor(w.r, w.g, w.b, w.a)
+  }
+}
+
+func (w *SelectTextOption) Draw(region Region) {
+  w.TextLine.Draw(region)
+}
+
 type SelectTextBox struct {
-  EmbeddedWidget
-  Wrapper
-  BasicZone
-  NonThinker
-  NonResponder
+  VerticalTable
   options  []string
   selected int
 }
 
 func MakeSelectTextBox(options []string, width int) *SelectTextBox {
   var stb SelectTextBox
+  stb.VerticalTable = *MakeVerticalTable()
   stb.EmbeddedWidget = &BasicWidget{ CoreWidget : &stb }
-  v := MakeVerticalTable()
   for i := range options {
-    v.AddChild(MakeTextLine("standard", options[i], width, 1, 1, 1, 1))
+    stb.VerticalTable.AddChild(makeSelectTextOption(options[i], width, 1, 1, 1, 1, 1, 0, 0, 1))
   }
-  stb.Child = v
   return &stb
 }
 
@@ -234,9 +259,19 @@ func (w *SelectTextBox) String() string {
   return "select text box"
 }
 
-func (w *SelectTextBox) DoThink(int64, bool) {
-  w.Request_dims = w.Child.Requested()
-  w.Render_region = w.Child.Rendered()
+func (w *SelectTextBox) DoRespond(event_group EventGroup) (consume,change_focus bool) {
+  if event_group.Events[0].Type != gin.Press { return }
+  if event_group.Events[0].Key.Id() != gin.MouseLButton { return }
+  x,y := event_group.Events[0].Key.Cursor().Point()
+  p := Point{ x, y }
+  w.selected = -1
+  for i := range w.Children {
+    if p.Inside(w.Rendered()) {
+      w.selected = i
+      break
+    }
+  }
+  return
 }
 
 

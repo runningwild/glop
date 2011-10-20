@@ -51,7 +51,7 @@ func init() {
 }
 
 type TextLine struct {
-  BasicWidget
+  EmbeddedWidget
   Childless
   NonResponder
   BasicZone
@@ -82,13 +82,16 @@ func nextPowerOf2(n uint32) uint32 {
 }
 
 func (w *TextLine) figureDims() {
-  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, w.color, image.NewRGBA(1, 1), w.text)
+  // Always draw the text as white on a transparent background so that we can change
+  // the color easily through opengl
+  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, image.RGBAColor{ 255, 255, 255, 255 }, image.NewRGBA(1, 1), w.text)
+
   texture_dims := Dims{
     Dx : int(nextPowerOf2(uint32(w.rdims.Dx))),
     Dy : int(nextPowerOf2(uint32(w.rdims.Dy))),
   }
   w.rgba = image.NewRGBA(texture_dims.Dx, texture_dims.Dy)
-  drawText(w.font, w.context, w.color, w.rgba, w.text)
+  drawText(w.font, w.context, image.RGBAColor{ 255, 255, 255, 255 }, w.rgba, w.text)
 
 
   gl.Enable(gl.TEXTURE_2D)
@@ -110,14 +113,14 @@ type Button struct {
 func MakeButton(font_name,text string, width int, r,g,b,a float64, f func(int64)) *Button {
   var btn Button
   btn.TextLine = MakeTextLine(font_name, text, width, r, g, b, a)
-  btn.TextLine.CoreWidget = &btn
+  btn.TextLine.EmbeddedWidget = &BasicWidget{ CoreWidget : &btn }
   btn.on_click = f
   return &btn
 }
 
 func MakeTextLine(font_name,text string, width int, r,g,b,a float64) *TextLine {
   var w TextLine
-  w.BasicWidget.CoreWidget = &w
+  w.EmbeddedWidget = &BasicWidget{ CoreWidget : &w }
   font,ok := basic_fonts[font_name]
   if !ok {
     panic(fmt.Sprintf("Unable to find a font registered as '%s'.", font_name))
@@ -204,6 +207,10 @@ func (w *TextLine) coreDraw(region Region) {
   tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
   ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
 //  w.scale = float64(w.Render_region.Dx) / float64(w.rdims.Dx)
+  {
+    r,g,b,a := w.color.RGBA()
+    gl.Color4d(float64(r) / 65535, float64(g) / 65535, float64(b) / 65535, float64(a) / 65535)
+  }
   gl.Begin(gl.QUADS)
     gl.TexCoord2d(0,0)
     gl.Vertex2i(region.X,          region.Y)

@@ -26,7 +26,7 @@ func (w *TextEditLine) String() string {
 func MakeTextEditLine(font_name,text string, width int, r,g,b,a float64) *TextEditLine {
   var w TextEditLine
   w.TextLine = *MakeTextLine(font_name, text, width, r,g,b,a)
-  w.BasicWidget.CoreWidget = &w
+  w.EmbeddedWidget = &BasicWidget{ CoreWidget : &w }
 
   w.scale = 1.0
   w.cursor.index = len(w.text)
