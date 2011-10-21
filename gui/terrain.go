@@ -73,7 +73,7 @@ type Terrain struct {
 
   // Don't need to keep the image around once it's loaded into texture memory,
   // only need to keep around the dimensions
-  bg      image.Image
+  bg_dims Dims
   texture gl.Texture
 }
 
@@ -103,7 +103,7 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
     return nil, err
   }
   defer f.Close()
-  t.bg,_,err = image.Decode(f)
+  bg,_,err := image.Decode(f)
   if err != nil {
     return nil, err
   }
@@ -111,8 +111,10 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
   t.block_size = block_size
   t.angle = angle
 
-  rgba := image.NewRGBA(t.bg.Bounds().Dx(), t.bg.Bounds().Dy())
-  draw.Draw(rgba, t.bg.Bounds(), t.bg, image.Point{0,0}, draw.Over)
+  t.bg_dims.Dx = bg.Bounds().Dx()
+  t.bg_dims.Dy = bg.Bounds().Dy()
+  rgba := image.NewRGBA(t.bg_dims.Dx, t.bg_dims.Dy)
+  draw.Draw(rgba, bg.Bounds(), bg, image.Point{0,0}, draw.Over)
 
   gl.Enable(gl.TEXTURE_2D)
   t.texture = gl.GenTexture()
@@ -122,7 +124,7 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.bg.Bounds().Dx(), t.bg.Bounds().Dy(), gl.RGBA, rgba.Pix)
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.bg_dims.Dx, t.bg_dims.Dy, gl.RGBA, rgba.Pix)
 
   if err != nil {
     return nil,err
@@ -196,8 +198,8 @@ func (t *Terrain) Move(dx,dy float64) {
   dx,dy = dy+dx, dy-dx
   t.fx += float32(dx) / t.zoom
   t.fy += float32(dy) / t.zoom
-  t.fx = clamp(t.fx, 0, float32(t.bg.Bounds().Dx() / t.block_size))
-  t.fy = clamp(t.fy, 0, float32(t.bg.Bounds().Dy() / t.block_size))
+  t.fx = clamp(t.fx, 0, float32(t.bg_dims.Dx / t.block_size))
+  t.fy = clamp(t.fy, 0, float32(t.bg_dims.Dy / t.block_size))
   t.makeMat()
 }
 
@@ -229,8 +231,8 @@ func (t *Terrain) Draw(region Region) {
   gl.Color3d(1, 0, 0)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-  fdx := float32(t.bg.Bounds().Dx())
-  fdy := float32(t.bg.Bounds().Dy())
+  fdx := float32(t.bg_dims.Dx)
+  fdy := float32(t.bg_dims.Dy)
 
   // Draw a simple border around the terrain
   gl.Color4d(1,.3,.3,1)
@@ -259,13 +261,13 @@ func (t *Terrain) Draw(region Region) {
   gl.Disable(gl.TEXTURE_2D)
   gl.Color4f(0,0,0, 0.5)
   gl.Begin(gl.LINES)
-  for i := float32(0); i < float32(t.bg.Bounds().Dx()); i += float32(t.block_size) {
+  for i := float32(0); i < float32(t.bg_dims.Dx); i += float32(t.block_size) {
     gl.Vertex2f(i, 0)
-    gl.Vertex2f(i, float32(t.bg.Bounds().Dy()))
+    gl.Vertex2f(i, float32(t.bg_dims.Dy))
   }
-  for j := float32(0); j < float32(t.bg.Bounds().Dy()); j += float32(t.block_size) {
+  for j := float32(0); j < float32(t.bg_dims.Dy); j += float32(t.block_size) {
     gl.Vertex2f(0, j)
-    gl.Vertex2f(float32(t.bg.Bounds().Dx()), j)
+    gl.Vertex2f(float32(t.bg_dims.Dx), j)
   }
   gl.End()
 
