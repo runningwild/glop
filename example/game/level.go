@@ -9,7 +9,9 @@ import (
   "math"
   "github.com/arbaal/mathgl"
   "json"
+  "path"
   "path/filepath"
+  "io"
   "io/ioutil"
   "os"
   "fmt"
@@ -84,18 +86,24 @@ type CellData struct {
   cachedCellData
 }
 
-type Highlight int
+type Highlight uint32
 const (
-  None Highlight = iota
+  None Highlight = 1 << iota
   Reachable
   Attackable
+
   MouseOver
-//  Impassable
+
+  Selected
+  MaxHighlights
 //  OutOfRange
 )
+const game_highlights =  MouseOver
+const combat_highlights = Reachable | Attackable
+const editor_highlights = Selected
 
-func (t *CellData) Clear() {
-  t.cachedCellData = cachedCellData{}
+func (t *CellData) Clear(mask Highlight) {
+  t.cachedCellData.highlight &= ^mask
 }
 
 func (t *CellData) Render(x,y,z,scale float32) {
@@ -127,17 +135,7 @@ func (t *CellData) Render(x,y,z,scale float32) {
     gl.Vertex3f(x+scale, y, z)
   gl.End()
 
-  if t.highlight != None {
-    switch t.highlight {
-      case Reachable:
-        r,g,b,a = 0, 0.2, 0.9, 0.3
-      case Attackable:
-        r,g,b,a = 0.7, 0.2, 0.2, 0.9
-      case MouseOver:
-        r,g,b,a = 0.1, 0.9, 0.2, 0.4
-      default:
-        panic("Unknown highlight")
-    }
+  draw_quad := func() {
     gl.Color4f(r, g, b, a)
     gl.Begin(gl.QUADS)
       gl.Vertex3f(x, y, z)
@@ -145,6 +143,25 @@ func (t *CellData) Render(x,y,z,scale float32) {
       gl.Vertex3f(x+scale, y+scale, z)
       gl.Vertex3f(x+scale, y, z)
     gl.End()
+  }
+
+  if t.highlight != None {
+    if t.highlight & Reachable != 0 {
+      r,g,b,a = 0, 0.2, 0.9, 0.3
+      draw_quad()
+    }
+    if t.highlight & Attackable != 0 {
+      r,g,b,a = 0.7, 0.2, 0.2, 0.9
+      draw_quad()
+    }
+    if t.highlight & MouseOver != 0 {
+      r,g,b,a = 0.1, 0.9, 0.2, 0.4
+      draw_quad()
+    }
+    if t.highlight & Selected != 0 {
+      r,g,b,a = 0.0, 0.7, 0.4, 0.5
+      draw_quad()
+    }
   }
 }
 
@@ -241,6 +258,7 @@ const (
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
+  directory string
 
   editor     *Editor
   editor_gui *gui.CollapseWrapper
@@ -299,11 +317,11 @@ func (l *Level) Setup() {
   }
 }
 
-func (l *Level) clearCache() {
+func (l *Level) clearCache(mask Highlight) {
   if !l.cached { return }
   for i := range l.grid {
     for j := range l.grid[i] {
-      l.grid[i][j].Clear()
+      l.grid[i][j].Clear(mask)
     }
   }
   l.cached = false
@@ -314,13 +332,15 @@ func (l *Level) maintainCommand() {
     case Move:
     for _,v := range l.reachable {
       x,y := l.fromVertex(v)
-      l.grid[x][y].highlight = Reachable
+      l.grid[x][y].highlight &= ^combat_highlights
+      l.grid[x][y].highlight |= Reachable
     }
 
     case Attack:
     for _,v := range l.in_range {
       x,y := l.fromVertex(v)
-      l.grid[x][y].highlight = Attackable
+      l.grid[x][y].highlight &= ^combat_highlights
+      l.grid[x][y].highlight |= Attackable
     }
 
     case NoCommand:
@@ -344,7 +364,7 @@ func (l *Level) PrepAttack() {
   if len(l.in_range) == 0 { return }
 
   l.command = Attack
-  l.clearCache()
+  l.clearCache(combat_highlights)
 }
 func (l *Level) DoAttack(target *Entity) {
   if l.selected == nil { return }
@@ -387,7 +407,7 @@ func (l *Level) DoAttack(target *Entity) {
     target.s.Command("undamaged")
   }
 
-  l.clearCache()
+  l.clearCache(combat_highlights)
   l.command = NoCommand
 }
 func (l *Level) PrepMove() {
@@ -401,7 +421,7 @@ func (l *Level) PrepMove() {
   if len(l.reachable) == 0 { return }
 
   l.command = Move
-  l.clearCache()
+  l.clearCache(game_highlights)
 }
 
 func (l *Level) DoMove(click_x,click_y int) {
@@ -421,12 +441,12 @@ func (l *Level) DoMove(click_x,click_y int) {
     l.selected.path = append(l.selected.path, [2]int{x,y})
   }
 
-  l.clearCache()
+  l.clearCache(game_highlights)
   l.command = NoCommand
 }
 
 func (l *Level) Think(dt int64) {
-  l.editor.Think()
+  l.clearCache(MouseOver)
   // Draw all sprites
   for i := range l.Entities {
     e := l.Entities[i]
@@ -434,12 +454,13 @@ func (l *Level) Think(dt int64) {
     pby := int(e.pos.Y)
     e.Think(dt)
     if pbx != int(e.pos.X) || pby != int(e.pos.Y) {
-      l.clearCache()
+      l.clearCache(game_highlights)
     }
     l.Terrain.AddUprightDrawable(e.pos.X + 0.25, e.pos.Y + 0.25, e.s)
   }
 
   l.maintainCommand()
+  l.editor.Think()
 
   // Draw tiles
   for i := range l.grid {
@@ -453,9 +474,9 @@ func (l *Level) Think(dt int64) {
   mx := int(bx)
   my := int(by)
   if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
-    cell := l.grid[mx][my]
-    cell.highlight = MouseOver
-    l.Terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
+    cell := &l.grid[mx][my]
+    cell.highlight |= MouseOver
+//    l.Terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
     l.hovered = nil
     for i := range l.Entities {
       x,y := l.Entities[i].Coords()
@@ -467,18 +488,14 @@ func (l *Level) Think(dt int64) {
 
   // Highlight selected entity
   if l.selected != nil {
-    cell := l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
-    cell.highlight = Reachable
-    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
+    cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
+    cell.highlight |= Reachable
+//    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
   }
   l.selected_gui.SetEntity(l.selected)
   l.targeted_gui.SetEntity(l.hovered)
 
   l.cached = true
-}
-
-func (l *Level) handleClickInEditMode(click mathgl.Vec2) {
-  l.editor.SelectCell(&l.grid[int(click.X)][int(click.Y)])
 }
 
 func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
@@ -501,7 +518,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
 
   if l.selected == nil && dist < 3 {
     l.selected = ent
-    l.clearCache()
+    l.clearCache(game_highlights)
     l.command = NoCommand
     return
   }
@@ -530,7 +547,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
   if target != nil {
     l.selected = target
   }
-  l.clearCache()
+  l.clearCache(game_highlights)
   l.command = NoCommand
 }
 
@@ -538,18 +555,20 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
   cursor := event_group.Events[0].Key.Cursor()
   if cursor == nil { return }
   l.winx, l.winy = cursor.Point()
-  found,event := event_group.FindEvent(gin.MouseLButton)
-  if !found || event.Type != gin.Press { return }
   bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
-  click := mathgl.Vec2{ bx, by }
   if bx < 0 || by < 0 || int(bx) >= len(l.grid) || int(by) >= len(l.grid[0]) {
     return
   }
+
   if !l.editor_gui.Collapsed {
-    l.handleClickInEditMode(click)
-  } else {
-    l.handleClickInGameMode(click)
+    l.editor.HandleEventGroup(event_group, int(bx), int(by))
+    return
   }
+
+  found,event := event_group.FindEvent(gin.MouseLButton)
+  if !found || event.Type != gin.Press { return }
+  click := mathgl.Vec2{ bx, by }
+  l.handleClickInGameMode(click)
 }
 
 type levelDataCell struct {
@@ -565,6 +584,28 @@ type levelData struct {
 
 type levelDataContainer struct {
   Level levelData
+}
+
+func (sld *StaticLevelData) makeLevelDataContainer() *levelDataContainer {
+  var ldc levelDataContainer
+  ldc.Level.Image = "fudgecake.png"
+  ldc.Level.Cells = make([][]levelDataCell, len(sld.grid))
+  for i := range ldc.Level.Cells {
+    ldc.Level.Cells[i] = make([]levelDataCell, len(sld.grid[0]))
+  }
+  for i := range ldc.Level.Cells {
+    for j := range ldc.Level.Cells[i] {
+      ldc.Level.Cells[i][j].Terrain = sld.grid[i][j].Name()
+    }
+  }
+  return &ldc
+}
+
+func (ldc *levelDataContainer) Write(out io.Writer) os.Error {
+  data,err := json.Marshal(&ldc)
+  if err != nil { return err }
+  _,err = out.Write(data)
+  return err
 }
 
 func (l *Level) SaveLevel(pathname string) os.Error {
@@ -602,6 +643,17 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   json.Unmarshal(data, &ldc)
 
   var level Level
+
+  // level.directory should be the directory that contains the level, but the
+  // level itself, pathname, is a directory, so we have to properly strip that
+  // out.
+  base := path.Base(pathname)
+  if base == "" {
+    level.directory = pathname
+  } else {
+    level.directory = pathname[0 : len(pathname) - len(base) - 1]
+  }
+
   dx := len(ldc.Level.Cells)
   dy := len(ldc.Level.Cells[0])
   all_cells := make([]CellData, dx*dy)
@@ -622,7 +674,7 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
 
-  level.editor = MakeEditor()
+  level.editor = MakeEditor(&level.StaticLevelData, level.directory)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
   level.selected_gui = MakeStatsWindow()

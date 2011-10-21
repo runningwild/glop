@@ -78,10 +78,6 @@ func main() {
   if err != nil {
     panic(err.String())
   }
-  err = level.SaveLevel("/Users/runningwild/code/go-glop/example/fudgecake.json")
-  if err != nil {
-    panic(err.String())
-  }
   ui.AddChild(level.GetGui())
 //  level.Terrain.Move(10,10)
 
