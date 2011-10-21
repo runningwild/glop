@@ -239,7 +239,10 @@ int* getInputStateVal(int flag) {
         AddEvent(&key_event);
       }
     }
-  } else if ([event type] == NSMouseMoved) {
+  } else if ([event type] == NSMouseMoved ||
+             [event type] == NSLeftMouseDragged ||
+             [event type] == NSRightMouseDragged ||
+             [event type] == NSOtherMouseDragged) {
     // TODO: It looks like OSX will only give us one MouseMoved event per Think, it
     // must be modifyin whatever MouseMoved event is in the queue as new MouseMoved
     // events come in.  To get better resolution we need to find the cursor position

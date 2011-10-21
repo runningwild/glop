@@ -17,6 +17,9 @@ type BoxWidget struct {
   r,g,b,a float64
   on int
 }
+func (w *BoxWidget) String() string {
+  return "box widget"
+}
 func (w *BoxWidget) Draw(region gui.Region) {
   w.Render_region = region
   if w.on > 0 {
@@ -32,7 +35,7 @@ func (w *BoxWidget) Draw(region gui.Region) {
     gl.Vertex2i(region.X+region.Dx, region.Y)
   gl.End()
 }
-func (w *BoxWidget) DoThink(t int64) {
+func (w *BoxWidget) DoThink(t int64, _ bool) {
   w.on = w.on >> 1
 }
 func (w *BoxWidget) DoRespond(event_group gui.EventGroup) (consume,take_focus bool) {
@@ -52,6 +55,9 @@ func MakeColorBoxWidget(dx,dy int, r,g,b,a float64) *BoxWidget {
 
 type ExpandoBox struct {
   *BoxWidget
+}
+func (w *ExpandoBox) String() string {
+  return "expando box"
 }
 func MakeExpandoBox(dx,dy int, r,g,b,a float64) *ExpandoBox {
   var ex ExpandoBox
