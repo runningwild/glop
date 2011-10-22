@@ -1,6 +1,17 @@
 #ifndef __GLOP_H__
 #define __GLOP_H__
 
+typedef struct {
+  short index;
+  short device;
+  float press_amt;
+  long long timestamp;
+  int cursor_x;
+  int cursor_y;
+  int num_lock;
+  int caps_lock;
+} GlopKeyEvent;
+
 void GlopInit();
 void* GlopCreateWindow(
     void* title,
