@@ -69,6 +69,9 @@ const (
   MouseLButton = 304
   MouseRButton = 305
   MouseMButton = 306
+
+  // standard derived keys start here
+  EitherShift = 1000 + iota
 )
 
 type Cursor interface {
@@ -228,6 +231,7 @@ func Make() *Input {
   input.registerCursorKey(MouseRButton, "MouseRButton", "Mouse")
   input.registerCursorKey(MouseMButton, "MouseMButton", "Mouse")
 
+  input.bindDerivedKeyWithId("EitherShift", EitherShift, input.MakeBinding(LeftShift, nil, nil), input.MakeBinding(RightShift, nil, nil))
   return input
 }
 

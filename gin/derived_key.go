@@ -23,11 +23,14 @@ func (input *Input) registerDependence(derived Key, dep KeyId) {
   input.dep_map[dep] = list
 }
 
-
 func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
+  return input.bindDerivedKeyWithId(name, genDerivedKeyId(), bindings...)
+}
+
+func (input *Input) bindDerivedKeyWithId(name string, id KeyId, bindings ...Binding) Key {
   dk := &derivedKey {
     keyState : keyState {
-      id : genDerivedKeyId(),
+      id : id,
       name : name,
       aggregator : &standardAggregator{},
     },
