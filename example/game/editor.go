@@ -6,6 +6,7 @@ import (
   "os"
   "fmt"
   "path/filepath"
+  "io/ioutil"
 )
 
 type Editor struct {
@@ -27,37 +28,49 @@ type Editor struct {
   invert bool
 }
 
-func MakeEditor(level_data *StaticLevelData, dir string) *Editor {
+func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   var e Editor
   e.level = level_data
   e.selected = make(map[*CellData]bool, 50)
   e.ui = gui.MakeVerticalTable()
-  e.ui.AddChild(gui.MakeTextLine("standard", "Editor!!!", 250, 1, 1, 1, 1))
-  filename_widget := gui.MakeTextEditLine("standard", "Filename", 250, 1, 1, 1, 1)
+  e.ui.AddChild(gui.MakeTextLine("standard", "The Editor", 250, 1, 1, 1, 1))
+  bg_name_widget := gui.MakeTextEditLine("standard", level_data.bg_path, 250, 1, 1, 1, 1)
+  e.ui.AddChild(bg_name_widget)
+  filename_widget := gui.MakeTextEditLine("standard", filename, 250, 1, 1, 1, 1)
   e.ui.AddChild(filename_widget)
 
   // Save everything to a whole new directory, including the background image
-  e.ui.AddChild(gui.MakeButton("standard", "Click Me!", 150, 1, 1, 0, 1, func(int64) {
-    target := filepath.Join(dir, filename_widget.GetText())
-    err := os.Mkdir(target, 0731)
+  e.ui.AddChild(gui.MakeButton("standard", "Save", 150, 1, 1, 0, 1, func(int64) {
+    ldc := e.level.makeLevelDataContainer()
+    bg_in_path := filepath.Join(dir, ldc.Level.Image)
+    bg_in,err := os.Open(bg_in_path)
     if err != nil {
       fmt.Printf("Err: %s\n", err.String())
       return
     }
-    fmt.Printf("Target: %s\n", target)
+    defer bg_in.Close()
 
-    data_path := filepath.Join(target, "data.json")
+    bg_out_path := filepath.Join(dir, bg_name_widget.GetText())
+    if bg_out_path != bg_in_path {
+      image_data,err := ioutil.ReadAll(bg_in)
+      if err != nil {
+        fmt.Printf("Err: %s\n", err.String())
+        return
+      }
+      err = ioutil.WriteFile(bg_out_path, image_data, 0664)
+    }
+
+    data_path := filepath.Join(dir, filename_widget.GetText())
     data_file,err := os.Create(data_path)
     if err != nil {
       fmt.Printf("Err: %s\n", err.String())
       return
     }
-    err = e.level.makeLevelDataContainer().Write(data_file)
+    err = ldc.Write(data_file)
     if err != nil {
       fmt.Printf("Err: %s\n", err.String())
     }
   }))
-
   terrain_data := gui.MakeVerticalTable()
   e.terrain_parent = gui.MakeCollapseWrapper(terrain_data)
   e.terrain_type = gui.MakeSelectTextBox(GetRegisteredTerrains(), 200)

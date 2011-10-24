@@ -16,6 +16,7 @@ type BoxWidget struct {
   gui.Childless
   r,g,b,a float64
   on int
+  vbo gl.Buffer
 }
 func (w *BoxWidget) String() string {
   return "box widget"
@@ -50,6 +51,8 @@ func MakeColorBoxWidget(dx,dy int, r,g,b,a float64) *BoxWidget {
   bw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &bw }
   bw.Request_dims = gui.Dims{ dx, dy }
   bw.r,bw.g,bw.b,bw.a = r,g,b,a
+  bw.vbo = gl.GenBuffer()
+  bw.vbo.Bind(gl.ARRAY_BUFFER)
   return &bw
 }
 
@@ -88,12 +91,8 @@ func main() {
   gl.LoadIdentity()
   ui := gui.Make(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
   table := gui.MakeVerticalTable()
-  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
-  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
-  box := MakeExpandoBox(100, 100, 0, 1, 1, 1)
+  box := MakeColorBoxWidget(100, 100, 0, 1, 1, 1)
   table.AddChild(box)
-  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
-  table.AddChild(gui.MakeTextEditLine("standard", "", 450, 1, 1, 1, 1))
   ui.AddChild(table)
 //  gin.In().RegisterEventListener(t)
   for gin.In().GetKey('q').FramePressCount() == 0 {

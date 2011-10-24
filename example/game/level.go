@@ -167,7 +167,8 @@ func (t *CellData) Render(x,y,z,scale float32) {
 
 // Contains everything about a level that is stored on disk
 type StaticLevelData struct {
-  grid [][]CellData
+  bg_path string
+  grid    [][]CellData
 }
 type unitGraph struct {
   *Level
@@ -258,7 +259,7 @@ const (
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
-  directory string
+  directory  string
 
   editor     *Editor
   editor_gui *gui.CollapseWrapper
@@ -588,7 +589,7 @@ type levelDataContainer struct {
 
 func (sld *StaticLevelData) makeLevelDataContainer() *levelDataContainer {
   var ldc levelDataContainer
-  ldc.Level.Image = "fudgecake.png"
+  ldc.Level.Image = sld.bg_path
   ldc.Level.Cells = make([][]levelDataCell, len(sld.grid))
   for i := range ldc.Level.Cells {
     ldc.Level.Cells[i] = make([]levelDataCell, len(sld.grid[0]))
@@ -608,12 +609,15 @@ func (ldc *levelDataContainer) Write(out io.Writer) os.Error {
   return err
 }
 
+// TODO: Should save everything to a temporary directory and then copy
+// from there to the appropriate place.  In the event that the save
+// fails we don't want to be left with something inconsistent.
 func (l *Level) SaveLevel(pathname string) os.Error {
   out,err := os.Create(pathname)
   if err != nil { return nil }
   defer out.Close()
   var ldc levelDataContainer
-  ldc.Level.Image = "fudgecake.png"
+  ldc.Level.Image = l.bg_path
   ldc.Level.Cells = make([][]levelDataCell, len(l.grid))
   for i := range ldc.Level.Cells {
     ldc.Level.Cells[i] = make([]levelDataCell, len(l.grid[0]))
@@ -629,8 +633,7 @@ func (l *Level) SaveLevel(pathname string) os.Error {
   return err
 }
 
-func LoadLevel(pathname string) (*Level, os.Error) {
-  datapath := filepath.Join(filepath.Clean(pathname), "data.json")
+func LoadLevel(datapath string) (*Level, os.Error) {
   datafile,err := os.Open(datapath)
   if err != nil {
     return nil, err
@@ -647,11 +650,11 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   // level.directory should be the directory that contains the level, but the
   // level itself, pathname, is a directory, so we have to properly strip that
   // out.
-  base := path.Base(pathname)
+  base := path.Base(datapath)
   if base == "" {
-    level.directory = pathname
+    level.directory = datapath
   } else {
-    level.directory = pathname[0 : len(pathname) - len(base) - 1]
+    level.directory = datapath[0 : len(datapath) - len(base) - 1]
   }
 
   dx := len(ldc.Level.Cells)
@@ -666,7 +669,8 @@ func LoadLevel(pathname string) (*Level, os.Error) {
       level.grid[i][j].Terrain = MakeTerrain(ldc.Level.Cells[i][j].Terrain)
     }
   }
-  bg_path := filepath.Join(filepath.Clean(pathname), ldc.Level.Image)
+  level.bg_path = ldc.Level.Image
+  bg_path := filepath.Join(filepath.Clean(level.directory), level.bg_path)
   terrain,err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
   if err != nil {
     return nil, err
@@ -674,7 +678,7 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
 
-  level.editor = MakeEditor(&level.StaticLevelData, level.directory)
+  level.editor = MakeEditor(&level.StaticLevelData, level.directory, base)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
   level.selected_gui = MakeStatsWindow()
