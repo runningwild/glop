@@ -135,6 +135,7 @@ func main() {
   prev := time.Nanoseconds()
 
   profiling := false
+  var load_widget gui.Widget
   for {
     n++
     next := time.Nanoseconds()
@@ -191,32 +192,38 @@ func main() {
         }
       }
       if gin.In().GetKey('l').FramePressCount() > 0 {
-        table := gui.MakeVerticalTable()
-        dir,err := os.Open(filepath.Join(basedir, "maps"))
-        if err != nil {
-          panic(err.String())
+        if load_widget != nil {
+          ui.RemoveChild(load_widget)
+          load_widget = nil
+        } else {
+          table := gui.MakeVerticalTable()
+          dir,err := os.Open(filepath.Join(basedir, "maps"))
+          if err != nil {
+            panic(err.String())
+          }
+          names,err := dir.Readdir(0)
+          if err != nil {
+            panic(err.String())
+          }
+          for _,name := range names {
+            if !strings.HasSuffix(name.Name, "json") { continue }
+            table.AddChild(gui.MakeButton("standard", name.Name, 300, 1, 1, 1, 1,
+              func(int64) {
+                mappath := filepath.Join(basedir, "maps", name.Name)
+                mappath = path.Clean(mappath)
+                nlevel,err := game.LoadLevel(mappath)
+                if err != nil {
+                  panic(err.String())
+                }
+                ui.RemoveChild(level.GetGui())
+                ui.AddChild(nlevel.GetGui())
+                ui.RemoveChild(table)
+                level = nlevel
+            }))
+          }
+          load_widget = table
+          ui.AddChild(load_widget)
         }
-        names,err := dir.Readdir(0)
-        if err != nil {
-          panic(err.String())
-        }
-        for _,name := range names {
-          if !strings.HasSuffix(name.Name, "json") { continue }
-          table.AddChild(gui.MakeButton("standard", name.Name, 300, 1, 1, 1, 1,
-            func(int64) {
-              mappath := filepath.Join(basedir, "maps", name.Name)
-              mappath = path.Clean(mappath)
-              nlevel,err := game.LoadLevel(mappath)
-              if err != nil {
-                panic(err.String())
-              }
-              ui.RemoveChild(level.GetGui())
-              ui.AddChild(nlevel.GetGui())
-              ui.RemoveChild(table)
-              level = nlevel
-          }))
-        }
-        ui.AddChild(table)
       }
       level.Terrain.Zoom(zoom * 0.0025)
     }

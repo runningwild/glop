@@ -88,14 +88,19 @@ func (e *Editor) SelectCell(x,y int) {
     e.selected[&e.level.grid[x][y]] = true
   }
   e.terrain_parent.Collapsed = len(e.selected) == 0
-  if len(e.selected) == 1 {
-    e.terrain_type.SetSelectedOption(e.level.grid[x][y].Name())
-    e.current_type = e.level.grid[x][y].Name()
-  } else {
-    if e.terrain_type.GetSelectedOption() != e.level.grid[x][y].Name() {
-      e.terrain_type.SetSelectedIndex(-1)
-      e.current_type = ""
+  if len(e.selected) > 0 {
+    var name string
+    for cell,_ := range e.selected {
+      name = cell.Name()
+      break
     }
+    for cell,_ := range e.selected {
+      if name != cell.Name() {
+        name = ""
+        break
+      }
+    }
+    e.terrain_type.SetSelectedOption(name)
   }
 }
 
@@ -125,6 +130,9 @@ func (e *Editor) Think() {
 func (e *Editor) HandleEventGroup(event_group gin.EventGroup, x,y int) {
   if gin.In().GetKey(gin.MouseLButton).CurPressAmt() == 0 { return }
   if event_group.Events[0].Key.Id() == gin.MouseLButton && event_group.Events[0].Type == gin.Press {
+    if gin.In().GetKey(gin.EitherShift).CurPressAmt() == 0 {
+      e.selected = make(map[*CellData]bool)
+    }
     _,ok := e.selected[&e.level.grid[x][y]]
     e.invert = ok
   }
