@@ -12,6 +12,11 @@ CGOFILES=cgo_windows.go
 CGO_LDFLAGS=-Lwindows/lib -lglop
 endif
 
+ifeq ($(GOOS),linux)
+CGOFILES=cgo_linux.go
+CGO_LDFLAGS=-Llinux/lib -lglop -lX11 -lGL
+endif
+
 # gb: this is the local install
 GBROOT=..
 
