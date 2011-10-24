@@ -9,6 +9,7 @@ import (
   "glop/sprite"
   "game"
   "runtime"
+  "runtime/pprof"
   "fmt"
   "io/ioutil"
   "os"
@@ -72,7 +73,7 @@ func main() {
 //  table := gui.MakeVerticalTable()
 //  ui.AddChild(table)
 
-  mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
+  mappath := filepath.Join(basedir, "maps", "bosworth")
   mappath = path.Clean(mappath)
   level,err := game.LoadLevel(mappath)
   if err != nil {
@@ -132,6 +133,7 @@ func main() {
   level.Setup()
   prev := time.Nanoseconds()
 
+  profiling := false
   for {
     n++
     next := time.Nanoseconds()
@@ -173,6 +175,19 @@ func main() {
       }
       if gin.In().GetKey('e').FramePressCount() % 2 == 1 {
         level.ToggleEditor()
+      }
+      if gin.In().GetKey('p').FramePressCount() > 0 {
+        if !profiling {
+          f, err := os.Create(filepath.Join(basedir, "profiles", "profile.prof"))
+          if err != nil {
+            fmt.Printf("Failed to write profile: %s\n", err.String())
+          }
+          pprof.StartCPUProfile(f)
+          profiling = true
+        } else {
+          pprof.StopCPUProfile()
+          profiling = false
+        }
       }
       level.Terrain.Zoom(zoom * 0.0025)
     }
