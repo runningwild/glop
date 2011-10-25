@@ -1,5 +1,7 @@
 package gui
 
+import "gl"
+
 type VerticalTable struct {
   EmbeddedWidget
   NonResponder
@@ -30,6 +32,38 @@ func (w *VerticalTable) DoThink(int64, bool) {
   }
 }
 func (w *VerticalTable) Draw(region Region) {
+  gl.Enable(gl.BLEND)
+  gl.Disable(gl.TEXTURE_2D)
+  dx := region.Dx
+  if dx > w.Request_dims.Dx && !w.Ex {
+    dx = w.Request_dims.Dx
+  }
+  dy := region.Dy
+  if dy > w.Request_dims.Dy && !w.Ex {
+    dy = w.Request_dims.Dy
+  }
+  gl.Color4d(0, 0, 0, 0.7)
+  gl.Begin(gl.QUADS)
+    gl.Vertex2i(region.X, region.Y + region.Dy - dy)
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy - dy)
+  gl.End()
+  gl.Color4d(1, 1, 1, 0.5)
+  gl.Begin(gl.LINES)
+    gl.Vertex2i(region.X, region.Y + region.Dy - dy)
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy)
+
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy - dy)
+
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy - dy)
+    gl.Vertex2i(region.X, region.Y + region.Dy - dy)
+  gl.End()
+
   fill_available := region.Dy - w.Request_dims.Dy
   if fill_available < 0 {
     fill_available = 0
@@ -94,6 +128,38 @@ func (w *HorizontalTable) DoThink(int64, bool) {
   }
 }
 func (w *HorizontalTable) Draw(region Region) {
+  gl.Enable(gl.BLEND)
+  gl.Disable(gl.TEXTURE_2D)
+  dx := region.Dx
+  if dx > w.Request_dims.Dx && !w.Ex {
+    dx = w.Request_dims.Dx
+  }
+  dy := region.Dy
+  if dy > w.Request_dims.Dy && !w.Ex {
+    dy = w.Request_dims.Dy
+  }
+  gl.Color4d(0, 0, 0, 0.7)
+  gl.Begin(gl.QUADS)
+    gl.Vertex2i(region.X, region.Y)
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y)
+  gl.End()
+  gl.Color4d(1, 1, 1, 0.5)
+  gl.Begin(gl.LINES)
+    gl.Vertex2i(region.X, region.Y)
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy)
+
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy)
+    gl.Vertex2i(region.X + dx, region.Y)
+
+    gl.Vertex2i(region.X + dx, region.Y + region.Dy - dy)
+    gl.Vertex2i(region.X, region.Y)
+  gl.End()
+
   fill_available := region.Dx - w.Request_dims.Dx
   if fill_available < 0 {
     fill_available = 0

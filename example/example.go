@@ -207,9 +207,10 @@ func main() {
           }
           for _,name := range names {
             if !strings.HasSuffix(name.Name, "json") { continue }
-            table.AddChild(gui.MakeButton("standard", name.Name, 300, 1, 1, 1, 1,
+            var the_name = name.Name  // closure madness
+            table.AddChild(gui.MakeButton("standard", the_name, 300, 1, 1, 1, 1,
               func(int64) {
-                mappath := filepath.Join(basedir, "maps", name.Name)
+                mappath := filepath.Join(basedir, "maps", the_name)
                 mappath = path.Clean(mappath)
                 nlevel,err := game.LoadLevel(mappath)
                 if err != nil {
@@ -219,6 +220,7 @@ func main() {
                 ui.AddChild(nlevel.GetGui())
                 ui.RemoveChild(table)
                 level = nlevel
+                load_widget = nil
             }))
           }
           load_widget = table
