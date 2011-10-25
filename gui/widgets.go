@@ -25,6 +25,7 @@ type AnchorBox struct {
   EmbeddedWidget
   NonResponder
   NonThinker
+  NonFocuser
   BasicZone
   children []Widget
   anchors  []Anchor
@@ -89,6 +90,7 @@ type ImageBox struct {
   EmbeddedWidget
   NonResponder
   NonThinker
+  NonFocuser
   BasicZone
   Childless
 
@@ -182,6 +184,7 @@ type CollapseWrapper struct {
   Wrapper
   CollapsableZone
   NonResponder
+  NonFocuser
 }
 
 func MakeCollapseWrapper(w Widget) *CollapseWrapper {

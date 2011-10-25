@@ -54,6 +54,7 @@ type TextLine struct {
   EmbeddedWidget
   Childless
   NonResponder
+  NonFocuser
   BasicZone
   text      string
   changed   bool

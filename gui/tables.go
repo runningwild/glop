@@ -5,6 +5,7 @@ import "gl"
 type VerticalTable struct {
   EmbeddedWidget
   NonResponder
+  NonFocuser
   BasicZone
   StandardParent
 }
@@ -101,6 +102,7 @@ func (w *VerticalTable) Draw(region Region) {
 type HorizontalTable struct {
   EmbeddedWidget
   NonResponder
+  NonFocuser
   BasicZone
   StandardParent
 }

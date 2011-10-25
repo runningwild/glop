@@ -109,6 +109,7 @@ type Widget interface {
   Respond(*Gui,EventGroup) bool
 
   Draw(Region)
+  DrawFocused(Region)
 
   String() string
 }
@@ -121,6 +122,8 @@ type CoreWidget interface {
   Zone
 
   Draw(Region)
+  DrawFocused(Region)
+
   GetChildren() []Widget
 }
 type EmbeddedWidget interface {
@@ -223,6 +226,9 @@ func (c Clickable) DoRespond(event_group EventGroup) (bool, bool) {
   return false, false
 }
 
+type NonFocuser struct {}
+func (n NonFocuser) DrawFocused(Region) {}
+
 type NonThinker struct {}
 func (n NonThinker) DoThink(int64,bool) {}
 
@@ -272,6 +278,7 @@ type rootWidget struct {
   BasicZone
   NonResponder
   NonThinker
+  NonFocuser
 }
 
 func (r *rootWidget) String() string {
@@ -311,6 +318,9 @@ func (g *Gui) Draw() {
   gl.MatrixMode(gl.MODELVIEW)
   gl.LoadIdentity();
   g.root.Draw(region)
+  if g.FocusWidget() != nil {
+    g.FocusWidget().DrawFocused(region)
+  }
 }
 
 // TODO: Shouldn't be exposing this

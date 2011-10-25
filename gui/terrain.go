@@ -38,6 +38,7 @@ type Terrain struct {
   EmbeddedWidget
   BasicZone
   NonThinker
+  NonFocuser
 
 
   // Length of the side of block in the source image.
