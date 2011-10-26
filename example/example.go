@@ -21,11 +21,8 @@ import (
 var (
   sys system.System
   font_path *string = flag.String("font", "fonts/skia.ttf", "relative path of a font")
+  quit chan bool
 )
-
-func init() {
-  sys = system.Make(gos.GetSystemInterface())
-}
 
 func LoadUnit(path string) (*game.UnitType, os.Error) {
   f,err := os.Open(path)
@@ -45,8 +42,17 @@ func LoadUnit(path string) (*game.UnitType, os.Error) {
   return &unit, nil
 }
 
-func main() {
+func init() {
+  sys = system.Make(gos.GetSystemInterface())
+  quit = make(chan bool)
+  go actualMain()
+}
+
+func actualMain() {
   runtime.LockOSThread()
+  defer func() {
+    quit <- true
+  }()
   // Running a binary via osx's package mechanism will add a flag that begins with
   // '-psn' so we have to find it and pretend like we were expecting it so that go
   // doesn't asplode because of an unexpected flag.
@@ -200,3 +206,8 @@ func main() {
 
   fmt.Printf("")
 }
+
+func main() {
+  <-quit
+}
+

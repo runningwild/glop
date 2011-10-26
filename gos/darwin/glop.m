@@ -10,8 +10,11 @@
 #include <Foundation/NSProcessInfo.h>
 
 @interface GlopApplication : NSApplication {
+  int should_stop;
 }
 - (void)sendEvent:(NSEvent*)event;
+- (void)stop:(id)id;
+- (void)run;
 @end
 
 struct inputState {
@@ -304,6 +307,31 @@ int* getInputStateVal(int flag) {
     [super sendEvent: event];
   }
 }
+
+- (void)stop:(id)id {
+  should_stop = 1;
+}
+
+- (void)run {
+//  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+  do {
+//    [pool release];
+//    pool = [[NSAutoreleasePool alloc] init];
+
+    NSEvent *event =
+      [self
+        nextEventMatchingMask:NSAnyEventMask
+        untilDate:[NSDate distantFuture]
+        inMode:NSDefaultRunLoopMode
+        dequeue:YES];
+
+    [self sendEvent:event];
+    [self updateWindows];
+  } while (!should_stop);
+  should_stop = 0;
+//  [pool release];
+}
 @end
 
 void Quit() {
@@ -313,6 +341,7 @@ void Quit() {
 void Think() {
   // TODO: This is retarded, but it does seem to get all of the evnts out of the queue
   // rather than only most of them
+  [glop_app finishLaunching];
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
   [glop_app postEvent:terminator atStart:FALSE];
