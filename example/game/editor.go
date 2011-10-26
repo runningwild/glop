@@ -7,6 +7,7 @@ import (
   "fmt"
   "path/filepath"
   "io/ioutil"
+  "sort"
 )
 
 type Editor struct {
@@ -15,11 +16,15 @@ type Editor struct {
 
   ui *gui.VerticalTable
 
-  // All of these are for editing attributes of the terrain
+  // attributes of the terrain
   terrain_parent *gui.CollapseWrapper
   terrain_type   *gui.SelectTextBox
-  current_type   string
+  current_terrain   string
 
+  // units
+  unit_parent   *gui.CollapseWrapper
+  starting_unit *gui.SelectTextBox
+  current_unit  string
 
   // Event processing stuff
 
@@ -42,7 +47,7 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   // Save everything to a whole new directory, including the background image
   e.ui.AddChild(gui.MakeButton("standard", "Save", 150, 1, 1, 0, 1, func(int64) {
     ldc := e.level.makeLevelDataContainer()
-    bg_in_path := filepath.Join(dir, ldc.Level.Image)
+    bg_in_path := filepath.Join(dir, "maps", ldc.Level.Image)
     bg_in,err := os.Open(bg_in_path)
     if err != nil {
       fmt.Printf("Err: %s\n", err.String())
@@ -50,7 +55,7 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
     }
     defer bg_in.Close()
 
-    bg_out_path := filepath.Join(dir, bg_name_widget.GetText())
+    bg_out_path := filepath.Join(dir, "maps", bg_name_widget.GetText())
     if bg_out_path != bg_in_path {
       image_data,err := ioutil.ReadAll(bg_in)
       if err != nil {
@@ -60,7 +65,7 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
       err = ioutil.WriteFile(bg_out_path, image_data, 0664)
     }
 
-    data_path := filepath.Join(dir, filename_widget.GetText())
+    data_path := filepath.Join(dir, "maps", filename_widget.GetText())
     data_file,err := os.Create(data_path)
     if err != nil {
       fmt.Printf("Err: %s\n", err.String())
@@ -71,13 +76,28 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
       fmt.Printf("Err: %s\n", err.String())
     }
   }))
-  terrain_data := gui.MakeVerticalTable()
-  e.terrain_parent = gui.MakeCollapseWrapper(terrain_data)
   e.terrain_type = gui.MakeSelectTextBox(GetRegisteredTerrains(), 200)
-  terrain_data.AddChild(e.terrain_type)
+  e.terrain_parent = gui.MakeCollapseWrapper(e.terrain_type)
   e.terrain_parent.Collapsed = true
 
   e.ui.AddChild(e.terrain_parent)
+
+  units,err := LoadAllUnits(filepath.Join(dir, "units"))
+  var names []string
+  if err == nil {
+    for _,unit := range units {
+      names = append(names, unit.Name)
+    }
+  } else {
+    names = append(names, err.String())
+  }
+  names = append(names, "")
+  sort.Strings(names)
+  e.starting_unit = gui.MakeSelectTextBox(names, 200)
+  e.unit_parent = gui.MakeCollapseWrapper(e.starting_unit)
+  e.unit_parent.Collapsed = true
+  e.ui.AddChild(e.unit_parent)
+
   return &e
 }
 
@@ -87,20 +107,30 @@ func (e *Editor) SelectCell(x,y int) {
   } else {
     e.selected[&e.level.grid[x][y]] = true
   }
-  e.terrain_parent.Collapsed = len(e.selected) == 0
+
+  collapse := len(e.selected) == 0
+  e.terrain_parent.Collapsed = collapse
+  e.unit_parent.Collapsed = collapse
+  e.current_terrain = ""
+  e.current_unit = ""
   if len(e.selected) > 0 {
-    var name string
     for cell,_ := range e.selected {
-      name = cell.Terrain.Name()
+      e.current_terrain = cell.Terrain.Name()
+      e.current_unit = cell.Unit.Name
       break
     }
     for cell,_ := range e.selected {
-      if name != cell.Terrain.Name() {
-        name = ""
+      if e.current_terrain != cell.Terrain.Name() {
+        e.current_terrain = ""
+        break
+      }
+      if e.current_unit != cell.Unit.Name {
+        e.current_unit = ""
         break
       }
     }
-    e.terrain_type.SetSelectedOption(name)
+    e.terrain_type.SetSelectedOption(e.current_terrain)
+    e.starting_unit.SetSelectedOption(e.current_unit)
   }
 }
 
@@ -110,9 +140,14 @@ func (e *Editor) GetGui() gui.Widget {
 
 func (e *Editor) Think() {
   if len(e.selected) > 0 {
-    if e.current_type != e.terrain_type.GetSelectedOption() {
+    if e.current_terrain != e.terrain_type.GetSelectedOption() {
       for cell,_ := range e.selected {
         cell.staticCellData.Terrain = MakeTerrain(e.terrain_type.GetSelectedOption())
+      }
+    }
+    if e.current_unit != e.starting_unit.GetSelectedOption() {
+      for cell,_ := range e.selected {
+        cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
       }
     }
   }

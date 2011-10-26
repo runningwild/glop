@@ -1,5 +1,6 @@
 {
   "Name" : "Navy Seal",
+  "Sprite" : "blue",
   "AP" : 30,
   "Attack" : 150,
   "Defense" : 140,

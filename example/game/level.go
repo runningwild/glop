@@ -434,7 +434,7 @@ func (l *Level) PrepMove() {
   if len(l.reachable) == 0 { return }
 
   l.command = Move
-  l.clearCache(game_highlights)
+  l.clearCache(combat_highlights)
 }
 
 func (l *Level) DoMove(click_x,click_y int) {
@@ -454,7 +454,7 @@ func (l *Level) DoMove(click_x,click_y int) {
     l.selected.path = append(l.selected.path, [2]int{x,y})
   }
 
-  l.clearCache(game_highlights)
+  l.clearCache(combat_highlights)
   l.command = NoCommand
 }
 
@@ -500,7 +500,7 @@ func (l *Level) Think(dt int64) {
   }
 
   // Highlight selected entity
-  if l.selected != nil {
+  if l.selected != nil && len(l.selected.path) == 0 {
     cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
     cell.highlight |= Reachable
 //    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
@@ -531,7 +531,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
 
   if l.selected == nil && dist < 3 {
     l.selected = ent
-    l.clearCache(game_highlights)
+    l.clearCache(combat_highlights)
     l.command = NoCommand
     return
   }
@@ -560,7 +560,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
   if target != nil {
     l.selected = target
   }
-  l.clearCache(game_highlights)
+  l.clearCache(combat_highlights)
   l.command = NoCommand
 }
 
@@ -586,6 +586,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
 
 type levelDataCell struct {
   Terrain string
+  Unit UnitPlacement
 }
 type levelData struct {
   // TOOD: Need to track the file this came from so we can copy it when
@@ -609,6 +610,7 @@ func (sld *StaticLevelData) makeLevelDataContainer() *levelDataContainer {
   for i := range ldc.Level.Cells {
     for j := range ldc.Level.Cells[i] {
       ldc.Level.Cells[i][j].Terrain = sld.grid[i][j].Terrain.Name()
+      ldc.Level.Cells[i][j].Unit = sld.grid[i][j].Unit
     }
   }
   return &ldc
@@ -645,7 +647,8 @@ func (l *Level) SaveLevel(pathname string) os.Error {
   return err
 }
 
-func LoadLevel(datapath string) (*Level, os.Error) {
+func LoadLevel(datadir,mapname string) (*Level, os.Error) {
+  datapath := filepath.Join(datadir, "maps", mapname)
   datafile,err := os.Open(datapath)
   if err != nil {
     return nil, err
@@ -655,7 +658,10 @@ func LoadLevel(datapath string) (*Level, os.Error) {
     return nil, err
   }
   var ldc levelDataContainer
-  json.Unmarshal(data, &ldc)
+  err = json.Unmarshal(data, &ldc)
+  if err != nil{
+    fmt.Printf("err: %s\n", err.String())
+  }
 
   var level Level
 
@@ -676,9 +682,29 @@ func LoadLevel(datapath string) (*Level, os.Error) {
   for i := range level.grid {
     level.grid[i] = all_cells[i*dy : (i+1)*dy]
   }
+  all_units,err := LoadAllUnits(filepath.Join(datadir, "units"))
+  if err != nil {
+    return nil, err
+  }
+  unit_map := make(map[string]*UnitType)
+  for _,unit := range all_units {
+    unit_map[unit.Name] = unit
+  }
   for i := range level.grid {
     for j := range level.grid[i] {
       level.grid[i][j].Terrain = MakeTerrain(ldc.Level.Cells[i][j].Terrain)
+      level.grid[i][j].Unit = ldc.Level.Cells[i][j].Unit
+      if level.grid[i][j].Unit.Name != "" {
+        if unit,ok := unit_map[level.grid[i][j].Unit.Name]; !ok {
+          return nil, os.NewError(fmt.Sprintf("Unable to find unit definition for '%s'.", level.grid[i][j].Unit))
+        } else {
+          sprite,err := sprite.LoadSprite(filepath.Join(datadir, "sprites", unit.Sprite))
+          if err != nil {
+            return nil, err
+          }
+          level.AddEntity(*unit, i, j, 0.0075, sprite)
+        }
+      }
     }
   }
   level.bg_path = ldc.Level.Image
@@ -690,7 +716,7 @@ func LoadLevel(datapath string) (*Level, os.Error) {
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
 
-  level.editor = MakeEditor(&level.StaticLevelData, level.directory, base)
+  level.editor = MakeEditor(&level.StaticLevelData, datadir, base)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
   level.selected_gui = MakeStatsWindow()

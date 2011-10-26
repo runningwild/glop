@@ -6,7 +6,6 @@ import (
   "glop/gin"
   "glop/gui"
   "glop/system"
-  "glop/sprite"
   "game"
   "runtime"
   "runtime/pprof"
@@ -15,7 +14,6 @@ import (
   "os"
   "flag"
   "time"
-  "path"
   "path/filepath"
   "strings"
 )
@@ -62,6 +60,18 @@ func main() {
 
   basedir := filepath.Join(os.Args[0], "..", "..")
 
+  // TODO: Loading weapon specs should be done automatically - it just needs the datadir
+  // Load weapon files
+  weaponpath := filepath.Join(basedir, "weapons", "guns.json")
+  weapons,err := os.Open(weaponpath)
+  if err != nil {
+    panic(err.String())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.String())
+  }
+
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
 
   factor := 1.0
@@ -74,9 +84,7 @@ func main() {
 //  table := gui.MakeVerticalTable()
 //  ui.AddChild(table)
 
-  mappath := filepath.Join(basedir, "maps", "bosworth.json")
-  mappath = path.Clean(mappath)
-  level,err := game.LoadLevel(mappath)
+  level,err := game.LoadLevel(basedir, "bosworth.json")
   if err != nil {
     panic(err.String())
   }
@@ -93,50 +101,6 @@ func main() {
   ticker := time.Tick(10e6)
 
 
-  // Load weapon files
-  weaponpath := filepath.Join(basedir, "weapons", "guns.json")
-  weapons,err := os.Open(weaponpath)
-  if err != nil {
-    panic(err.String())
-  }
-  err = game.LoadWeaponSpecs(weapons)
-  if err != nil {
-    panic(err.String())
-  }
-
-  seal,err := LoadUnit(filepath.Join(basedir, "units", "seal.json"))
-  if err != nil { panic(err.String()) }
-  rifleman,err := LoadUnit(filepath.Join(basedir, "units", "rifleman.json"))
-  if err != nil { panic(err.String()) }
-
-  bluepath := filepath.Join(basedir, "sprites", "blue")
-  purplepath := filepath.Join(basedir, "sprites", "purple")
-  var ents []*game.Entity
-  guy,err := sprite.LoadSprite(bluepath)
-  if err != nil {
-    panic(err.String())
-  }
-  ents = append(ents, level.AddEntity(*seal, 1, 2, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(bluepath)
-  ents = append(ents, level.AddEntity(*seal, 2, 4, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(bluepath)
-  ents = append(ents, level.AddEntity(*seal, 5, 1, 0.0075, guy))
-  guy,err = sprite.LoadSprite(purplepath)
-  if err != nil {
-    panic(err.String())
-  }
-  ents = append(ents, level.AddEntity(*rifleman, 25, 20, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(purplepath)
-  ents = append(ents, level.AddEntity(*rifleman, 25, 29, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(purplepath)
-  ents = append(ents, level.AddEntity(*rifleman, 25, 25, 0.0075, guy))
-
-//  var texts []*gui.SingleLineText
-//  for i := range ents {
-//    texts = append(texts, gui.MakeSingleLineText("standard", "", 1, 1, 1, 1))
-//    table.InstallWidget(texts[i], nil)
-//  }
-//  table.InstallWidget(gui.MakeTextEntry("standard", "", 1,1,1,1), nil)
   level.Setup()
   prev := time.Nanoseconds()
 
@@ -148,9 +112,6 @@ func main() {
     dt := (next - prev) / 1000000
     prev = next
 
-//    for i := range ents {
-//      texts[i].SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ents[i].Base.Name, ents[i].Health, ents[i].AP))
-//    }
     sys.Think()
     ui.Draw()
     sys.SwapBuffers()
@@ -216,9 +177,7 @@ func main() {
             var the_name = name.Name  // closure madness
             table.AddChild(gui.MakeButton("standard", the_name, 300, 1, 1, 1, 1,
               func(int64) {
-                mappath := filepath.Join(basedir, "maps", the_name)
-                mappath = path.Clean(mappath)
-                nlevel,err := game.LoadLevel(mappath)
+                nlevel,err := game.LoadLevel(basedir, the_name)
                 if err != nil {
                   panic(err.String())
                 }
@@ -226,6 +185,7 @@ func main() {
                 ui.AddChild(nlevel.GetGui())
                 ui.RemoveChild(table)
                 level = nlevel
+                level.Setup()
                 load_widget = nil
             }))
           }

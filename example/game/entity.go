@@ -6,11 +6,19 @@ import (
   "glop/gui"
   "glop/sprite"
   "github.com/arbaal/mathgl"
+  "json"
+  "io/ioutil"
+  "os"
+  "path/filepath"
+  "strings"
 )
 
 // contains the stats used to intialize a unit of this type
 type UnitType struct {
   Name string
+
+  // Name of the sprite that should be used to represent this unit
+  Sprite string
 
   Health int
 
@@ -206,5 +214,38 @@ func (e *Entity) turnToFace(target mathgl.Vec2) {
 func (e *Entity) Think(dt int64) {
   e.s.Think(dt)
   e.advance(e.Move_speed * float32(dt))
+}
+
+func LoadAllUnits(dir string) ([]*UnitType, os.Error) {
+  var paths []string
+  err := filepath.Walk(dir, func(path string, info *os.FileInfo, err os.Error) os.Error {
+    if !info.IsDirectory() && strings.HasSuffix(path, ".json") {
+      paths = append(paths, path)
+    }
+    return nil
+  })
+  if err != nil {
+    return nil, err
+  }
+
+  var units []*UnitType
+  for _,path := range paths {
+    f,err := os.Open(path)
+    if err != nil {
+      return nil, err
+    }
+    defer f.Close()
+    data,err := ioutil.ReadAll(f)
+    if err != nil {
+      return nil, err
+    }
+    var unit UnitType
+    err = json.Unmarshal(data, &unit)
+    if err != nil {
+      return nil, err
+    }
+    units = append(units, &unit)
+  }
+  return units, nil
 }
 

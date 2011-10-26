@@ -1,5 +1,6 @@
 {
   "Name" : "Rifleman",
+  "Sprite" : "purple",
   "AP" : 30,
   "Attack" : 100,
   "Defense" : 80,
