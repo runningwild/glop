@@ -45,6 +45,7 @@ type EntityStatsWindow struct {
   gui.EmbeddedWidget
   gui.BasicZone
   gui.NonResponder
+  gui.NonFocuser
 
   ent    *Entity
   table  *gui.HorizontalTable

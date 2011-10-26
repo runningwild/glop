@@ -112,13 +112,19 @@ func main() {
   bluepath := filepath.Join(basedir, "sprites", "blue")
   purplepath := filepath.Join(basedir, "sprites", "purple")
   var ents []*game.Entity
-  guy,_ := sprite.LoadSprite(bluepath)
+  guy,err := sprite.LoadSprite(bluepath)
+  if err != nil {
+    panic(err.String())
+  }
   ents = append(ents, level.AddEntity(*seal, 1, 2, 0.0075, guy))
   guy,_ = sprite.LoadSprite(bluepath)
   ents = append(ents, level.AddEntity(*seal, 2, 4, 0.0075, guy))
   guy,_ = sprite.LoadSprite(bluepath)
   ents = append(ents, level.AddEntity(*seal, 5, 1, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(purplepath)
+  guy,err = sprite.LoadSprite(purplepath)
+  if err != nil {
+    panic(err.String())
+  }
   ents = append(ents, level.AddEntity(*rifleman, 25, 20, 0.0075, guy))
   guy,_ = sprite.LoadSprite(purplepath)
   ents = append(ents, level.AddEntity(*rifleman, 25, 29, 0.0075, guy))

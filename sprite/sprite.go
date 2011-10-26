@@ -182,7 +182,7 @@ func (sl *spriteLevel) load() {
   pdx := int(nextPowerOf2(uint32(dx)))
   pdy := int(nextPowerOf2(uint32(dy)))
 
-  sheet := image.NewRGBA(pdx, pdy)
+  sheet := image.NewRGBA(image.Rect(0, 0, pdx, pdy))
   cx := 0
   for i := range images {
     // blit the image onto the sheet
@@ -347,38 +347,6 @@ func (s *Sprite) Render(x,y,z,scale float32) {
   }
 }
 
-type facingVisitor struct {
-  base  string
-  count map[int]bool
-}
-func (f *facingVisitor) VisitDir(path string, _ *os.FileInfo) bool {
-  if path == f.base {
-    return true
-  }
-  _,final := filepath.Split(path)
-  num,err := strconv.Atoi(final)
-  if err != nil {
-    return false
-  }
-  if f.count == nil {
-    f.count = make(map[int]bool)
-  }
-  f.count[num] = true
-  return false
-}
-func (f *facingVisitor) VisitFile(_ string, _ *os.FileInfo) {}
-func (f *facingVisitor) Valid() bool {
-  for v := range f.count {
-    if v < 0 { return false }
-    if v >= len(f.count) { return false }
-  }
-  return true
-}
-func (f *facingVisitor) Count() int {
-  return len(f.count)
-}
-
-
 type SpriteManager struct {
   loaded_sprites map[string]*sharedSprite
 }
@@ -414,7 +382,7 @@ func loadThumbnail(path string) *Thumbnail {
 
   var thumb Thumbnail
   thumb.Rectangle = img.Bounds()
-  canvas := image.NewRGBA(img.Bounds().Dx(), img.Bounds().Dy())
+  canvas := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
   for y := 0; y < canvas.Bounds().Dy(); y++ {
     for x := 0; x < canvas.Bounds().Dx(); x++ {
       r,g,b,a := img.At(x,y).RGBA()
@@ -458,14 +426,31 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     ss.anim = anim_graph
     ss.state = state_graph
 
-    f := facingVisitor {
-      base : path,
+    all_facings := make(map[int]bool)
+    err = filepath.Walk(path, func(cur string, info *os.FileInfo, err os.Error) os.Error {
+      if cur == path { return nil }
+      if info.IsDirectory() {
+        _,name := filepath.Split(cur)
+        num,err := strconv.Atoi(name)
+        if err == nil {
+          all_facings[num] = true
+        }
+        return filepath.SkipDir
+      }
+      return nil
+    })
+    if err != nil {
+      return nil, os.NewError(fmt.Sprintf("Unable to read sprites directory: %s", err.String()))
     }
-    filepath.Walk(path, &f, nil)
-    if !f.Valid() || f.Count() == 0 {
+    valid := true
+    count := len(all_facings)
+    for i := 0; i < count; i++ {
+      if _,ok := all_facings[i]; !ok { valid = false }
+    }
+    if !valid || count == 0 {
       return nil, os.NewError("Sprite facing directories not set up properly")
     }
-    ss.num_facings = f.Count()
+    ss.num_facings = count
 
     for facing := 0; facing < ss.num_facings; facing++ {
       for _,node := range anim_graph.nodes {

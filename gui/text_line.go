@@ -4,6 +4,7 @@ import (
   "fmt"
   "image"
   "image/draw"
+  "image/color"
   "freetype-go.googlecode.com/hg/freetype"
   "freetype-go.googlecode.com/hg/freetype/truetype"
   "gl"
@@ -26,8 +27,8 @@ func MustLoadFontAs(path,name string) {
   basic_fonts[name] = font
 }
 
-func drawText(font *truetype.Font, c *freetype.Context, color image.Color, rgba *image.RGBA, text string) (int,int) {
-  fg := image.NewColorImage(color)
+func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba *image.RGBA, text string) (int,int) {
+  fg := image.NewUniform(color)
   bg := image.Transparent
   draw.Draw(rgba, rgba.Bounds(), bg, image.ZP, draw.Src)
   c.SetFont(font)
@@ -65,7 +66,7 @@ type TextLine struct {
   glyph_buf *truetype.GlyphBuf
   texture   gl.Texture
   rgba      *image.RGBA
-  color     image.Color
+  color     color.Color
   scale     float64
 }
 
@@ -85,14 +86,14 @@ func nextPowerOf2(n uint32) uint32 {
 func (w *TextLine) figureDims() {
   // Always draw the text as white on a transparent background so that we can change
   // the color easily through opengl
-  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, image.RGBAColor{ 255, 255, 255, 255 }, image.NewRGBA(1, 1), w.text)
+  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, color.RGBA{ 255, 255, 255, 255 }, image.NewRGBA(image.Rect(0, 0, 1, 1)), w.text)
 
   texture_dims := Dims{
     Dx : int(nextPowerOf2(uint32(w.rdims.Dx))),
     Dy : int(nextPowerOf2(uint32(w.rdims.Dy))),
   }
-  w.rgba = image.NewRGBA(texture_dims.Dx, texture_dims.Dy)
-  drawText(w.font, w.context, image.RGBAColor{ 255, 255, 255, 255 }, w.rgba, w.text)
+  w.rgba = image.NewRGBA(image.Rect(0, 0, texture_dims.Dx, texture_dims.Dy))
+  drawText(w.font, w.context, color.RGBA{ 255, 255, 255, 255 }, w.rgba, w.text)
 
 
   gl.Enable(gl.TEXTURE_2D)
@@ -141,7 +142,7 @@ func MakeTextLine(font_name,text string, width int, r,g,b,a float64) *TextLine {
 }
 
 func (w *TextLine) SetColor(r,g,b,a float64) {
-  w.color = image.RGBAColor{
+  w.color = color.RGBA{
     R : uint8(255 * r),
     G : uint8(255 * g),
     B : uint8(255 * b),

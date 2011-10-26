@@ -136,7 +136,7 @@ func (w *ImageBox) SetImage(path string) {
 
   w.Request_dims.Dx = img.Bounds().Dx()
   w.Request_dims.Dy = img.Bounds().Dy()
-  canvas := image.NewRGBA(img.Bounds().Dx(), img.Bounds().Dy())
+  canvas := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
   for y := 0; y < canvas.Bounds().Dy(); y++ {
     for x := 0; x < canvas.Bounds().Dx(); x++ {
       r,g,b,a := img.At(x,y).RGBA()

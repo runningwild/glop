@@ -91,11 +91,11 @@ func (e *Editor) SelectCell(x,y int) {
   if len(e.selected) > 0 {
     var name string
     for cell,_ := range e.selected {
-      name = cell.Name()
+      name = cell.Terrain.Name()
       break
     }
     for cell,_ := range e.selected {
-      if name != cell.Name() {
+      if name != cell.Terrain.Name() {
         name = ""
         break
       }

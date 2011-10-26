@@ -14,6 +14,7 @@ type BoxWidget struct {
   gui.CollapsableZone
   gui.EmbeddedWidget
   gui.Childless
+  gui.NonFocuser
   r,g,b,a float64
   on int
   vbo gl.Buffer

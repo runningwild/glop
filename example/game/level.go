@@ -73,9 +73,21 @@ func GetRegisteredTerrains() []string {
   return terrains
 }
 
+type UnitPlacement struct {
+  // What side the unit initially in this cell belongs to.  0 Means that there
+  // is no unit here (hence Name is irrelevant).
+  Side int
+
+  // If Side > 0 and Name == "" this cell is available for unit placement for
+  // the specified side.  Otherwise Name indicates the name of the unit that
+  // is initially placed in this cell at the beginning of the game.
+  Name string
+}
+
 
 type staticCellData struct {
-  Terrain
+  Terrain Terrain
+  Unit UnitPlacement
 }
 type cachedCellData struct {
   highlight Highlight
@@ -201,7 +213,7 @@ func (l unitGraph) costToMove(src,dst int) float64 {
   if !ok { return - 1 }
 
   cost_ab := float64(cost_a + cost_b) / 2
-  return math.Fmax(cost_ab, float64(cost_c))
+  return math.Max(cost_ab, float64(cost_c))
 }
 func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
   x,y := l.fromVertex(v)
@@ -510,7 +522,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
     if dx < 0 { dx = -dx }
     dy := cc.Y
     if dy < 0 { dy = -dy }
-    d := float32(math.Fmax(float64(dx), float64(dy)))
+    d := float32(math.Max(float64(dx), float64(dy)))
     if d < dist {
       dist = d
       ent = l.Entities[i]
@@ -596,7 +608,7 @@ func (sld *StaticLevelData) makeLevelDataContainer() *levelDataContainer {
   }
   for i := range ldc.Level.Cells {
     for j := range ldc.Level.Cells[i] {
-      ldc.Level.Cells[i][j].Terrain = sld.grid[i][j].Name()
+      ldc.Level.Cells[i][j].Terrain = sld.grid[i][j].Terrain.Name()
     }
   }
   return &ldc
@@ -624,7 +636,7 @@ func (l *Level) SaveLevel(pathname string) os.Error {
   }
   for i := range ldc.Level.Cells {
     for j := range ldc.Level.Cells[i] {
-      ldc.Level.Cells[i][j].Terrain = l.grid[i][j].Name()
+      ldc.Level.Cells[i][j].Terrain = l.grid[i][j].Terrain.Name()
     }
   }
   data,err := json.Marshal(&ldc)
