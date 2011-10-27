@@ -42,6 +42,18 @@ func (t Brush) Name() string {
   return "brush"
 }
 
+// Mountain blocks LOS immediately
+type Mountain struct {}
+func (t Mountain) Name() string {
+  return "mountain"
+}
+
+// Two squares of forest in a row will block LOS
+type Forest struct {}
+func (t Forest) Name() string {
+  return "forest"
+}
+
 var terrain_registry map[string]Terrain
 func init() {
   terrain_registry = make(map[string]Terrain)
@@ -276,6 +288,10 @@ type Level struct {
   editor     *Editor
   editor_gui *gui.CollapseWrapper
 
+  // whose turn it is, side 1 goes first, then 2, then back to 1...
+  side int
+  side_gui *gui.TextLine
+
   // unset when the cache is cleared, lets Think() know it has to refil the cache
   cached bool
 
@@ -319,7 +335,14 @@ func (l *Level) GetHovered() *Entity {
   return l.hovered
 }
 func (l *Level) Round() {
+  l.side = l.side % 2 + 1
+  if l.side == 1 {
+    l.side_gui.SetText("It is The Jungle's turn to move")
+  } else {
+    l.side_gui.SetText("It is The Man's turn to move")
+  }
   for i := range l.Entities {
+    if l.Entities[i].side != l.side { continue }
     l.Entities[i].OnRound()
   }
 }
@@ -328,6 +351,7 @@ func (l *Level) Setup() {
   for i := range l.Entities {
     l.Entities[i].OnSetup()
   }
+  l.Round()
 }
 
 func (l *Level) clearCache(mask Highlight) {
@@ -340,19 +364,17 @@ func (l *Level) clearCache(mask Highlight) {
   l.cached = false
 }
 
-func (l *Level) maintainCommand() {
+func (l *Level) refreshCommandHighlights() {
   switch l.command {
     case Move:
     for _,v := range l.reachable {
       x,y := l.fromVertex(v)
-      l.grid[x][y].highlight &= ^combat_highlights
       l.grid[x][y].highlight |= Reachable
     }
 
     case Attack:
     for _,v := range l.in_range {
       x,y := l.fromVertex(v)
-      l.grid[x][y].highlight &= ^combat_highlights
       l.grid[x][y].highlight |= Attackable
     }
 
@@ -426,15 +448,15 @@ func (l *Level) DoAttack(target *Entity) {
 func (l *Level) PrepMove() {
   if l.selected == nil { return }
 
+  l.clearCache(combat_highlights)
+
   bx := int(l.selected.pos.X)
   by := int(l.selected.pos.Y)
   graph := &unitGraph{ l, l.selected.Base.Move_cost }
   l.reachable = algorithm.ReachableWithinLimit(graph, []int{ l.toVertex(bx, by) }, float64(l.selected.AP))
 
   if len(l.reachable) == 0 { return }
-
   l.command = Move
-  l.clearCache(combat_highlights)
 }
 
 func (l *Level) DoMove(click_x,click_y int) {
@@ -472,15 +494,8 @@ func (l *Level) Think(dt int64) {
     l.Terrain.AddUprightDrawable(e.pos.X + 0.25, e.pos.Y + 0.25, e.s)
   }
 
-  l.maintainCommand()
+  l.refreshCommandHighlights()
   l.editor.Think()
-
-  // Draw tiles
-  for i := range l.grid {
-    for j := range l.grid[i] {
-      l.Terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
-    }
-  }
 
   // Highlight the square under the cursor
   bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
@@ -509,6 +524,13 @@ func (l *Level) Think(dt int64) {
   l.targeted_gui.SetEntity(l.hovered)
 
   l.cached = true
+
+  // Draw tiles
+  for i := range l.grid {
+    for j := range l.grid[i] {
+      l.Terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
+    }
+  }
 }
 
 func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
@@ -528,40 +550,33 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
       ent = l.Entities[i]
     }
   }
+  // At this point ent is the entity closest to the point that the user clicked
+  // and dist is the distance from the click to the center of the entity's cell
 
-  if l.selected == nil && dist < 3 {
-    l.selected = ent
-    l.clearCache(combat_highlights)
-    l.command = NoCommand
-    return
-  }
-
-  var target *Entity
-  if l.selected != nil && dist < 0.5 {
-    target = ent
+  if dist > 0.5 {
+    ent = nil
   }
 
   switch l.command {
     case Move:
-      if target == nil {
+      if ent == nil {
         l.DoMove(int(click.X), int(click.Y))
+      } else {
+        l.selected = ent
+        l.PrepMove()
       }
 
     case Attack:
-      if target != nil {
-        l.DoAttack(target)
-        target = nil
+      if ent != nil && ent.side != l.side {
+        l.DoAttack(ent)
       }
 
     case NoCommand:
-    default:
+      if ent != nil && ent.side == l.side {
+        l.selected = ent
+        l.PrepMove()
+      }
   }
-
-  if target != nil {
-    l.selected = target
-  }
-  l.clearCache(combat_highlights)
-  l.command = NoCommand
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
@@ -664,7 +679,6 @@ func LoadLevel(datadir,mapname string) (*Level, os.Error) {
   }
 
   var level Level
-
   // level.directory should be the directory that contains the level, but the
   // level itself, pathname, is a directory, so we have to properly strip that
   // out.
@@ -702,7 +716,8 @@ func LoadLevel(datadir,mapname string) (*Level, os.Error) {
           if err != nil {
             return nil, err
           }
-          level.AddEntity(*unit, i, j, 0.0075, sprite)
+          side := level.grid[i][j].Unit.Side
+          level.addEntity(*unit, i, j, side, 0.0075, sprite)
         }
       }
     }
@@ -716,6 +731,8 @@ func LoadLevel(datadir,mapname string) (*Level, os.Error) {
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
 
+
+  level.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
   level.editor = MakeEditor(&level.StaticLevelData, datadir, base)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
@@ -725,6 +742,7 @@ func LoadLevel(datadir,mapname string) (*Level, os.Error) {
   entity_guis.AddChild(level.selected_gui)
   entity_guis.AddChild(level.targeted_gui)
   game_only_gui.AddChild(level.Terrain)
+  game_only_gui.AddChild(level.side_gui)
   game_only_gui.AddChild(entity_guis)
   level.game_gui.AddChild(game_only_gui)
   level.editor_gui = gui.MakeCollapseWrapper(level.editor.GetGui())
@@ -740,12 +758,13 @@ func (l *Level) ToggleEditor() {
   l.editor_gui.Collapsed = !l.editor_gui.Collapsed
 }
 
-func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprite *sprite.Sprite) *Entity  {
+func (l *Level) addEntity(unit_type UnitType, x,y,side int, move_speed float32, sprite *sprite.Sprite) *Entity  {
   ent := &Entity{
     UnitStats : UnitStats {
       Base : &unit_type,
     },
     pos : mathgl.Vec2{ float32(x), float32(y) },
+    side : side,
     s : sprite,
     level : l,
     CosmeticStats : CosmeticStats{

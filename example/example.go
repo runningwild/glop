@@ -119,6 +119,7 @@ func actualMain() {
     prev = next
 
     sys.Think()
+    level.Think(dt)
     ui.Draw()
     sys.SwapBuffers()
     <-ticker
@@ -201,7 +202,6 @@ func actualMain() {
       }
       level.Terrain.Zoom(zoom * 0.0025)
     }
-    level.Think(dt)
   }
 
   fmt.Printf("")

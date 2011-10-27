@@ -102,7 +102,7 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   e.starting_unit = gui.MakeSelectStringsBox(unit_names, 200)
   attributes.AddChild(e.starting_unit)
 
-  e.starting_side = gui.MakeSelectStringsBox([]string{"None","The Jungle","The Man"}, 200)
+  e.starting_side = gui.MakeSelectStringsBox([]string{"None","The Man","The Jungle"}, 200)
   attributes.AddChild(e.starting_side)
 
   return &e

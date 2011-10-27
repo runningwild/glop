@@ -116,6 +116,9 @@ type Entity struct {
   UnitStats
   CosmeticStats
 
+  // 0 indicates that the unit is unaffiliated
+  side int
+
   s *sprite.Sprite
 
   level *Level
@@ -136,9 +139,6 @@ func (e *Entity) OnSetup() {
   e.Health = e.Base.Health
   e.AP = e.Base.AP
   e.prev_pos.Assign(&e.pos)
-}
-// On Turn is always called before OnRound
-func (e *Entity) OnTurn() {
 }
 func (e *Entity) OnRound() {
   e.AP = e.Base.AP
