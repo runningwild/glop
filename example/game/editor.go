@@ -16,15 +16,16 @@ type Editor struct {
 
   ui *gui.VerticalTable
 
+  cell_parent *gui.CollapseWrapper
+
   // attributes of the terrain
-  terrain_parent *gui.CollapseWrapper
-  terrain_type   *gui.SelectTextBox
-  current_terrain   string
+  terrain_type    *gui.SelectBox
 
   // units
-  unit_parent   *gui.CollapseWrapper
-  starting_unit *gui.SelectTextBox
-  current_unit  string
+  starting_unit *gui.SelectStringsBox
+
+  // side
+  starting_side *gui.SelectStringsBox
 
   // Event processing stuff
 
@@ -76,27 +77,33 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
       fmt.Printf("Err: %s\n", err.String())
     }
   }))
-  e.terrain_type = gui.MakeSelectTextBox(GetRegisteredTerrains(), 200)
-  e.terrain_parent = gui.MakeCollapseWrapper(e.terrain_type)
-  e.terrain_parent.Collapsed = true
 
-  e.ui.AddChild(e.terrain_parent)
+  attributes := gui.MakeVerticalTable()
+  e.cell_parent = gui.MakeCollapseWrapper(attributes)
+  e.cell_parent.Collapsed = true
+  e.ui.AddChild(e.cell_parent)
 
-  units,err := LoadAllUnits(filepath.Join(dir, "units"))
-  var names []string
-  if err == nil {
-    for _,unit := range units {
-      names = append(names, unit.Name)
-    }
-  } else {
-    names = append(names, err.String())
+
+  terrain_names := GetRegisteredTerrains()
+  terrain_objs := make([]interface{}, len(terrain_names))
+  for i,terrain_name := range terrain_names {
+    terrain_objs[i] = MakeTerrain(terrain_name)
   }
-  names = append(names, "")
-  sort.Strings(names)
-  e.starting_unit = gui.MakeSelectTextBox(names, 200)
-  e.unit_parent = gui.MakeCollapseWrapper(e.starting_unit)
-  e.unit_parent.Collapsed = true
-  e.ui.AddChild(e.unit_parent)
+  e.terrain_type = gui.MakeSelectBox(terrain_names, terrain_objs, 200)
+  attributes.AddChild(e.terrain_type)
+
+  units,_ := LoadAllUnits(filepath.Join(dir, "units"))
+  unit_names := make([]string, len(units))
+  for i,unit := range units {
+    unit_names[i] = unit.Name
+  }
+  unit_names = append(unit_names, "")
+  sort.Strings(unit_names)
+  e.starting_unit = gui.MakeSelectStringsBox(unit_names, 200)
+  attributes.AddChild(e.starting_unit)
+
+  e.starting_side = gui.MakeSelectStringsBox([]string{"None","The Jungle","The Man"}, 200)
+  attributes.AddChild(e.starting_side)
 
   return &e
 }
@@ -108,29 +115,32 @@ func (e *Editor) SelectCell(x,y int) {
     e.selected[&e.level.grid[x][y]] = true
   }
 
-  collapse := len(e.selected) == 0
-  e.terrain_parent.Collapsed = collapse
-  e.unit_parent.Collapsed = collapse
-  e.current_terrain = ""
-  e.current_unit = ""
+  e.cell_parent.Collapsed = len(e.selected) == 0
+
   if len(e.selected) > 0 {
+    var terrain string
+    var unit string
+    var side int
     for cell,_ := range e.selected {
-      e.current_terrain = cell.Terrain.Name()
-      e.current_unit = cell.Unit.Name
+      terrain = cell.Terrain.Name()
+      unit = cell.Unit.Name
+      side = cell.Unit.Side
       break
     }
     for cell,_ := range e.selected {
-      if e.current_terrain != cell.Terrain.Name() {
-        e.current_terrain = ""
-        break
+      if terrain != cell.Terrain.Name() {
+        terrain = ""
       }
-      if e.current_unit != cell.Unit.Name {
-        e.current_unit = ""
-        break
+      if unit != cell.Unit.Name {
+        unit = ""
+      }
+      if side != cell.Unit.Side {
+        side = 0
       }
     }
-    e.terrain_type.SetSelectedOption(e.current_terrain)
-    e.starting_unit.SetSelectedOption(e.current_unit)
+    e.terrain_type.SetSelectedOption(terrain)
+    e.starting_unit.SetSelectedOption(unit)
+    e.starting_side.SetSelectedIndex(side)
   }
 }
 
@@ -139,17 +149,12 @@ func (e *Editor) GetGui() gui.Widget {
 }
 
 func (e *Editor) Think() {
-  if len(e.selected) > 0 {
-    if e.current_terrain != e.terrain_type.GetSelectedOption() {
-      for cell,_ := range e.selected {
-        cell.staticCellData.Terrain = MakeTerrain(e.terrain_type.GetSelectedOption())
-      }
+  for cell,_ := range e.selected {
+    if terrain,ok := e.terrain_type.GetSelectedData().(Terrain); ok {
+      cell.staticCellData.Terrain = terrain
     }
-    if e.current_unit != e.starting_unit.GetSelectedOption() {
-      for cell,_ := range e.selected {
-        cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
-      }
-    }
+    cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
+    cell.staticCellData.Unit.Side = e.starting_side.GetSelectedIndex()
   }
   for i := range e.level.grid {
     for j := range e.level.grid[i] {

@@ -213,59 +213,78 @@ func (w *CollapseWrapper) Draw(region Region) {
   w.Render_region = region
 }
 
-type SelectTextOption struct {
+type SelectOption struct {
   TextLine
+  data interface{}
 }
 
-func makeSelectTextOption(text string, width int) *SelectTextOption {
-  var sto SelectTextOption
-  sto.TextLine = *MakeTextLine("standard", text, width, 1, 1, 1, 1)
-  sto.EmbeddedWidget = &BasicWidget{ CoreWidget : &sto }
-  return &sto
+func makeSelectOption(text string, data interface{}, width int) *SelectOption {
+  var so SelectOption
+  so.TextLine = *MakeTextLine("standard", text, width, 1, 1, 1, 1)
+  so.data = data
+  so.EmbeddedWidget = &BasicWidget{ CoreWidget : &so }
+  return &so
 }
 
-func (w *SelectTextOption) Draw(region Region) {
+func (w *SelectOption) Draw(region Region) {
   w.TextLine.Draw(region)
 }
 
-type SelectTextBox struct {
+type SelectBox struct {
   VerticalTable
   selected int
 }
 
-func MakeSelectTextBox(options []string, width int) *SelectTextBox {
-  var stb SelectTextBox
-  stb.VerticalTable = *MakeVerticalTable()
-  stb.EmbeddedWidget = &BasicWidget{ CoreWidget : &stb }
+type SelectStringsBox struct {
+  *SelectBox
+}
+
+func MakeSelectBox(options []string, data []interface{}, width int) *SelectBox {
+  if len(options) != len(data) {
+    panic("Cannot create a select text box with a different number of options and data.")
+  }
+  var sb SelectBox
+  sb.VerticalTable = *MakeVerticalTable()
+  sb.EmbeddedWidget = &BasicWidget{ CoreWidget : &sb }
   for i := range options {
-    option := makeSelectTextOption(options[i], width)
-    stb.VerticalTable.AddChild(option)
+    option := makeSelectOption(options[i], data[i], width)
+    sb.VerticalTable.AddChild(option)
     option.SetColor(0.6, 0.4, 0.4, 1)
   }
-  stb.selected = -1
-  return &stb
+  sb.selected = -1
+  return &sb
 }
 
-func (w *SelectTextBox) String() string {
-  return "select text box"
+func MakeSelectStringsBox(options []string, width int) *SelectStringsBox {
+  var ssb SelectStringsBox
+  option_objs := make([]interface{}, len(options))
+  for i := range options {
+    option_objs[i] = options[i]
+  }
+  ssb.SelectBox = MakeSelectBox(options, option_objs, width)
+  return &ssb
 }
 
-func (w *SelectTextBox) GetSelectedIndex() int {
+func (w *SelectBox) String() string {
+  return "select box"
+}
+
+func (w *SelectBox) GetSelectedIndex() int {
   return w.selected
 }
 
-func (w *SelectTextBox) SetSelectedIndex(index int) {
+func (w *SelectBox) SetSelectedIndex(index int) {
   w.selectIndex(index)
 }
 
-func (w *SelectTextBox) GetSelectedOption() string {
+func (w *SelectBox) GetSelectedOption() string {
   if w.selected == -1 { return "" }
-  return w.Children[w.selected].(*SelectTextOption).GetText()
+  return w.Children[w.selected].(*SelectOption).GetText()
 }
 
-func (w *SelectTextBox) SetSelectedOption(option string) {
+func (w *SelectBox) SetSelectedOption(option string) {
   for i := range w.Children {
-    if w.Children[i].(*SelectTextOption).GetText() == option {
+    if w.Children[i].(*SelectOption).GetText() == option {
       w.selectIndex(i)
       return
     }
@@ -273,19 +292,24 @@ func (w *SelectTextBox) SetSelectedOption(option string) {
   w.selectIndex(-1)
 }
 
-func (w *SelectTextBox) selectIndex(index int) {
+func (w *SelectBox) GetSelectedData() interface{} {
+  if w.selected == -1 { return nil }
+  return w.Children[w.selected].(*SelectOption).data
+}
+
+func (w *SelectBox) selectIndex(index int) {
   if w.selected >= 0 {
-    w.Children[w.selected].(*SelectTextOption).SetColor(0.6, 0.4, 0.4, 1)
+    w.Children[w.selected].(*SelectOption).SetColor(0.6, 0.4, 0.4, 1)
   }
   if index < 0 || index >= len(w.Children) {
     index = -1
   } else {
-    w.Children[index].(*SelectTextOption).SetColor(0.9, 1, 0.9, 1)
+    w.Children[index].(*SelectOption).SetColor(0.9, 1, 0.9, 1)
   }
   w.selected = index
 }
 
-func (w *SelectTextBox) DoRespond(event_group EventGroup) (consume,change_focus bool) {
+func (w *SelectBox) DoRespond(event_group EventGroup) (consume,change_focus bool) {
   if event_group.Events[0].Type != gin.Press { return }
   if event_group.Events[0].Key.Id() != gin.MouseLButton { return }
   x,y := event_group.Events[0].Key.Cursor().Point()

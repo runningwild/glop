@@ -130,7 +130,9 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
   if err != nil {
     return nil,err
   }
-  t.zoom = 1.0
+  t.Zoom(-1)
+  t.fx = float32(t.bg_dims.Dx / t.block_size / 2)
+  t.fy = float32(t.bg_dims.Dy / t.block_size / 2)
 
   t.makeMat()
   t.Request_dims.Dx = 100
