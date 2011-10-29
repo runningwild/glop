@@ -77,50 +77,41 @@ var (
 )
 
 func init() {
-  go func() {
-    runtime.LockOSThread()
-    sys = system.Make(gos.GetSystemInterface())
-    sys.Startup()
-    sys.CreateWindow(10, 10, 800, 600)
-    sys.EnableVSync(true)
-
-    fmt.Printf("")
-    gui.MustLoadFontAs("/Library/fonts/Tahoma.ttf", "standard")
-
-    gl.MatrixMode(gl.PROJECTION)
-    gl.Ortho(0, 800, 0, 600, 1, -1)
-    gl.MatrixMode(gl.MODELVIEW)
-    gl.LoadIdentity()
-    ui := gui.Make(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
-    table := gui.MakeVerticalTable()
-    box := MakeColorBoxWidget(100, 100, 0, 1, 1, 1)
-    table.AddChild(box)
-    ui.AddChild(table)
-  //  gin.In().RegisterEventListener(t)
-    for gin.In().GetKey('q').FramePressCount() == 0 {
-      sys.SwapBuffers()
-      if gin.In().GetKey('w').FramePressCount() > 0 {
-        box.Collapsed = true
-      }
-      if gin.In().GetKey('e').FramePressCount() > 0 {
-        box.Collapsed = false
-      }
-      gl.ClearColor(0, 0, 0, 1)
-      gl.Clear(gl.COLOR_BUFFER_BIT)
-      sys.Think()
-      ui.Draw()
-    }
-  } ()
+  runtime.LockOSThread()
 }
 
 func main() {
-  select {}
+  sys = system.Make(gos.GetSystemInterface())
+  sys.Startup()
+  sys.CreateWindow(10, 10, 800, 600)
+  sys.EnableVSync(true)
+
+  fmt.Printf("")
+  gui.MustLoadFontAs("/Library/fonts/Tahoma.ttf", "standard")
+
+  gl.MatrixMode(gl.PROJECTION)
+  gl.Ortho(0, 800, 0, 600, 1, -1)
+  gl.MatrixMode(gl.MODELVIEW)
+  gl.LoadIdentity()
+  ui := gui.Make(gin.In(), gui.Dims{ Dx : 800, Dy : 600})
+  table := gui.MakeVerticalTable()
+  box := MakeColorBoxWidget(100, 100, 0, 1, 1, 1)
+  table.AddChild(box)
+  ui.AddChild(table)
+//  gin.In().RegisterEventListener(t)
+  for gin.In().GetKey('q').FramePressCount() == 0 {
+    sys.SwapBuffers()
+    if gin.In().GetKey('w').FramePressCount() > 0 {
+      box.Collapsed = true
+    }
+    if gin.In().GetKey('e').FramePressCount() > 0 {
+      box.Collapsed = false
+    }
+    gl.ClearColor(0, 0, 0, 1)
+    gl.Clear(gl.COLOR_BUFFER_BIT)
+    sys.Think()
+    ui.Draw()
+  }
 }
-
-
-
-
-
-
 
 

@@ -5,12 +5,12 @@
   "Attack" : 150,
   "Defense" : 140,
   "Health" : 175,
-  "Move_cost" : {
-    "brush" : 4,
-    "dirt" : 2,
-    "grass" : 2,
-    "water" : 6
-  },
+  "Movement" : [
+    "basic human"
+  ],
+  "Los" : [
+    "basic human"
+  ],
   "Weapons" : [
     "Desert Eagle"
   ]

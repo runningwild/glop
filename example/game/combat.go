@@ -134,6 +134,17 @@ func (w StaticRange) InRange(source,target *Entity) bool {
   y := int(source.pos.Y)
   x2 := int(target.pos.X)
   y2 := int(target.pos.Y)
+
+  // Don't let units attack something they don't have LOS to
+  if _,ok := source.visible[source.level.toVertex(x2, y2)]; !ok {
+    return false
+  }
+
+  // Don't let units attack something on their own side
+  if source.side == target.side {
+    return false
+  }
+
   dist := maxNormi(x, y, x2, y2)
   fmt.Printf("Range/Dist : %d/%d -> %t\n", w, dist, int(w) >= dist)
   return int(w) >= dist
@@ -179,7 +190,7 @@ type Gun struct {
 func (g *Gun) Damage(source,target *Entity) Resolution {
   dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
   acc := 2 * int(g.StaticRange) - dist
-  if rand.Intn(acc) == 0 {
+  if rand.Intn(acc) < dist {
     return Resolution {
       Connect : Miss,
     }

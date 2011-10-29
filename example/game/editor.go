@@ -19,7 +19,7 @@ type Editor struct {
   cell_parent *gui.CollapseWrapper
 
   // attributes of the terrain
-  terrain_type    *gui.SelectBox
+  terrain_type    *gui.SelectStringsBox
 
   // units
   starting_unit *gui.SelectStringsBox
@@ -83,16 +83,15 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   e.cell_parent.Collapsed = true
   e.ui.AddChild(e.cell_parent)
 
-
-  terrain_names := GetRegisteredTerrains()
-  terrain_objs := make([]interface{}, len(terrain_names))
-  for i,terrain_name := range terrain_names {
-    terrain_objs[i] = MakeTerrain(terrain_name)
+  var terrain_names []string
+  err := loadJson(filepath.Join(dir, "terrains.json"), &terrain_names)
+  if err != nil {
+    fmt.Printf("err: %s\n", err.String())
   }
-  e.terrain_type = gui.MakeSelectBox(terrain_names, terrain_objs, 200)
+  e.terrain_type = gui.MakeSelectStringsBox(terrain_names, 200)
   attributes.AddChild(e.terrain_type)
 
-  units,_ := LoadAllUnits(filepath.Join(dir, "units"))
+  units,_ := LoadAllUnits(dir)
   unit_names := make([]string, len(units))
   for i,unit := range units {
     unit_names[i] = unit.Name
@@ -102,7 +101,7 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   e.starting_unit = gui.MakeSelectStringsBox(unit_names, 200)
   attributes.AddChild(e.starting_unit)
 
-  e.starting_side = gui.MakeSelectStringsBox([]string{"None","The Man","The Jungle"}, 200)
+  e.starting_side = gui.MakeSelectStringsBox([]string{"None","The Jungle","The Man"}, 200)
   attributes.AddChild(e.starting_side)
 
   return &e
@@ -118,17 +117,17 @@ func (e *Editor) SelectCell(x,y int) {
   e.cell_parent.Collapsed = len(e.selected) == 0
 
   if len(e.selected) > 0 {
-    var terrain string
+    var terrain Terrain
     var unit string
     var side int
     for cell,_ := range e.selected {
-      terrain = cell.Terrain.Name()
+      terrain = cell.Terrain
       unit = cell.Unit.Name
       side = cell.Unit.Side
       break
     }
     for cell,_ := range e.selected {
-      if terrain != cell.Terrain.Name() {
+      if terrain != cell.Terrain {
         terrain = ""
       }
       if unit != cell.Unit.Name {
@@ -138,7 +137,7 @@ func (e *Editor) SelectCell(x,y int) {
         side = 0
       }
     }
-    e.terrain_type.SetSelectedOption(terrain)
+    e.terrain_type.SetSelectedOption(string(terrain))
     e.starting_unit.SetSelectedOption(unit)
     e.starting_side.SetSelectedIndex(side)
   }
@@ -148,6 +147,7 @@ func (e *Editor) GetGui() gui.Widget {
   return e.ui
 }
 
+// TODO: Right now if you select two squares, one with a unit and one without, the unit will be erased because the gui will be set to not having a unit and both cells will be set to match the gui.  Instead we need to make select boxes either report that they were clicked, or we need to manually track the value in it.
 func (e *Editor) Think() {
   for cell,_ := range e.selected {
     if terrain,ok := e.terrain_type.GetSelectedData().(Terrain); ok {
