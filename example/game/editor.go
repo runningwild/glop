@@ -138,7 +138,11 @@ func (e *Editor) SelectCell(x,y int) {
       }
     }
     e.terrain_type.SetSelectedOption(string(terrain))
-    e.starting_unit.SetSelectedOption(unit)
+    if unit == "" {
+      e.starting_unit.SetSelectedIndex(-1)
+    } else {
+      e.starting_unit.SetSelectedOption(unit)
+    }
     e.starting_side.SetSelectedIndex(side)
   }
 }
@@ -153,7 +157,9 @@ func (e *Editor) Think() {
     if terrain,ok := e.terrain_type.GetSelectedData().(Terrain); ok {
       cell.staticCellData.Terrain = terrain
     }
-    cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
+    if e.starting_unit.GetSelectedIndex() != -1 {
+      cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
+    }
     cell.staticCellData.Unit.Side = e.starting_side.GetSelectedIndex()
   }
   for i := range e.level.grid {
