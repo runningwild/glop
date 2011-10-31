@@ -103,22 +103,24 @@ type EntityStatsWindow struct {
   gui.NonResponder
   gui.NonFocuser
 
-  ent    *Entity
-  table  *gui.HorizontalTable
-  image  *gui.ImageBox
-  name   *gui.TextLine
-  health *gui.TextLine
-  ap     *gui.TextLine
+  ent     *Entity
+  table   *gui.VerticalTable
+  image   *gui.ImageBox
+  name    *gui.TextLine
+  health  *gui.TextLine
+  ap      *gui.TextLine
+  actions *gui.HorizontalTable
 }
 func MakeStatsWindow() *EntityStatsWindow {
   var esw EntityStatsWindow
   esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
   esw.Request_dims.Dx = 350
-  esw.Request_dims.Dy = 100
+  esw.Request_dims.Dy = 175
 
-  esw.table = gui.MakeHorizontalTable()
+  top := gui.MakeHorizontalTable()
+
   esw.image = gui.MakeImageBox()
-  esw.table.AddChild(esw.image)
+  top.AddChild(esw.image)
 
   esw.name = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
   esw.health = gui.MakeTextLine("standard", "", 275, 1, 1, 1, 1)
@@ -127,7 +129,12 @@ func MakeStatsWindow() *EntityStatsWindow {
   vert.AddChild(esw.name)
   vert.AddChild(esw.health)
   vert.AddChild(esw.ap)
-  esw.table.AddChild(vert)
+  top.AddChild(vert)
+
+  esw.table = gui.MakeVerticalTable()
+  esw.table.AddChild(top)
+  esw.actions = gui.MakeHorizontalTable()
+  esw.table.AddChild(esw.actions)
 
   return &esw
 }
@@ -142,15 +149,22 @@ func (w *EntityStatsWindow) DoThink(int64, bool) {
 func (w *EntityStatsWindow) SetEntity(e *Entity) {
   if e == w.ent { return }
   w.ent = e
-  if w.ent == nil {
-    w.health.SetText("")
-    w.ap.SetText("")
-    w.name.SetText("")
-    w.image.UnsetImage()
-  } else {
+
+  w.health.SetText("")
+  w.ap.SetText("")
+  w.name.SetText("")
+  w.image.UnsetImage()
+  w.actions.RemoveAllChildren()
+
+  if e != nil {
     thumb := e.s.Thumbnail()
     w.image.SetImageByTexture(thumb.Texture(), thumb.Dx(), thumb.Dy())
     w.name.SetText(e.Base.Name)
+    for i := range e.Weapons {
+      icon := gui.MakeImageBox()
+      icon.SetImage(filepath.Join("/Users/runningwild/code/go-glop/example/example.app/Contents/icons", e.Weapons[i].Icon()))
+      w.actions.AddChild(icon)
+    }
   }
 }
 func (w *EntityStatsWindow) GetChildren() []gui.Widget {
@@ -158,6 +172,12 @@ func (w *EntityStatsWindow) GetChildren() []gui.Widget {
 }
 func (w *EntityStatsWindow) Draw(region gui.Region) {
   w.table.Draw(region)
+}
+
+// An Action represents something that a unit can do on its turn, other than
+// move.  Actions are represented as icons in the EntityStatsWindow.
+type Action interface {
+  Icon() string
 }
 
 type Entity struct {

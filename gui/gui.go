@@ -270,7 +270,9 @@ func (s *StandardParent) RemoveChild(w Widget) {
     }
   }
 }
-
+func (s *StandardParent) RemoveAllChildren() {
+  s.Children = s.Children[0:0]
+}
 
 type rootWidget struct {
   EmbeddedWidget

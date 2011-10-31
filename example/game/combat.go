@@ -28,7 +28,7 @@ type Resolution struct {
   Damage  Damage
 }
 
-type Weapon interface {
+type baseWeapon interface {
   // Cost in AP that the source Entity must spent to use this weapon.
   Cost(source *Entity) int
 
@@ -40,20 +40,32 @@ type Weapon interface {
   Damage(source,target *Entity) Resolution
 }
 
+type Weapon interface {
+  // Using the weapon is an Action, so it must satisfy the Action interface
+  Action
+
+  baseWeapon
+}
+
 
 type WeaponInstance struct {
   Base string
   Name string
+  Path string
 }
+func (wi WeaponInstance) Icon() string {
+  return wi.Path
+}
+
 type WeaponSpec struct {
-  Instance WeaponInstance
-  Weapon
+  WeaponInstance
+  baseWeapon
 }
 
 
 // TODO: IT would be nice to change to using the reflect system, if possible, instead of
 // requiring a WeaponMaker
-type WeaponMaker func() Weapon
+type WeaponMaker func() baseWeapon
 
 // map from WeaponInstance.Base to a WeaponMaker for the underlying type for that weapon
 var weapon_registry map[string]WeaponMaker
@@ -85,13 +97,13 @@ func (w *WeaponSpec) UnmarshalJSON(data []byte) os.Error {
   if res == nil {
     return os.NewError(fmt.Sprintf("Unable to unmarshal the JSON for the MarshalWeapon:\n%s\n", string(data)))
   }
-  json.Unmarshal(res[1], &w.Instance)
-  maker,ok := weapon_registry[w.Instance.Base]
+  json.Unmarshal(res[1], &w.WeaponInstance)
+  maker,ok := weapon_registry[w.WeaponInstance.Base]
   if !ok {
     return os.NewError(fmt.Sprintf("Unable to make a weapon of type '%s'", string(res[1])))
   }
-  w.Weapon = maker()
-  json.Unmarshal(res[2], &w.Weapon)
+  w.baseWeapon = maker()
+  json.Unmarshal(res[2], &w.baseWeapon)
   return nil
 }
 
@@ -105,11 +117,11 @@ func LoadWeaponSpecs(spec io.Reader) os.Error {
   err = json.Unmarshal(data, &specs)
   if err != nil { return err }
   for i := range specs {
-    name := specs[i].Instance.Name
+    name := specs[i].WeaponInstance.Name
     if _,ok := weapon_specs_registry[name]; ok {
       return os.NewError(fmt.Sprintf("Cannot register the weapon '%s' because a weapon has already been registered with that name.", name))
     }
-    weapon_specs_registry[name] = specs[i].Weapon
+    weapon_specs_registry[name] = specs[i]
   }
   return nil
 }
@@ -151,7 +163,7 @@ func (w StaticRange) InRange(source,target *Entity) bool {
 }
 
 func init() {
-  RegisterWeapon("Club", func() Weapon { return &Club{} })
+  RegisterWeapon("Club", func() baseWeapon { return &Club{} })
 }
 type Club struct {
   StaticCost
@@ -180,7 +192,7 @@ func (c *Club) Damage(source,target *Entity) Resolution {
 }
 
 func init() {
-  RegisterWeapon("Gun", func() Weapon { return &Gun{} })
+  RegisterWeapon("Gun", func() baseWeapon { return &Gun{} })
 }
 type Gun struct {
   StaticCost

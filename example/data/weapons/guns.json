@@ -2,7 +2,8 @@
   {
     "Instance" : {
       "Base" : "Gun",
-      "Name" : "Desert Eagle"
+      "Name" : "Desert Eagle",
+      "Path" : "weapons/eagle.png"
     },
     "Weapon" : {
       "Power" : 50,
@@ -10,10 +11,12 @@
       "StaticRange" : 5
     }
   },
+
   {
     "Instance" : {
       "Base" : "Gun",
-      "Name" : "Hunting Rifle"
+      "Name" : "AK-47",
+      "Path" : "weapons/ak47.png"
     },
     "Weapon" : {
       "Power" : 25,
@@ -21,11 +24,13 @@
       "StaticRange" : 25
     }
   },
+
   {
     "Instance" : {
       "Base" : "Gun",
-      "Name" : "Shotgun"
-    },
+      "Name" : "Shotgun",
+      "Path" : "weapons/shotguns.png"
+   },
     "Weapon" : {
       "Power" : 15,
       "StaticCost" : 4,
