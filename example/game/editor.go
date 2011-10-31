@@ -154,8 +154,8 @@ func (e *Editor) GetGui() gui.Widget {
 // TODO: Right now if you select two squares, one with a unit and one without, the unit will be erased because the gui will be set to not having a unit and both cells will be set to match the gui.  Instead we need to make select boxes either report that they were clicked, or we need to manually track the value in it.
 func (e *Editor) Think() {
   for cell,_ := range e.selected {
-    if terrain,ok := e.terrain_type.GetSelectedData().(Terrain); ok {
-      cell.staticCellData.Terrain = terrain
+    if e.terrain_type.GetSelectedIndex() != -1 {
+      cell.staticCellData.Terrain = Terrain(e.terrain_type.GetSelectedOption())
     }
     if e.starting_unit.GetSelectedIndex() != -1 {
       cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
