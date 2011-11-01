@@ -306,6 +306,7 @@ func (l *Level) Round() {
     if l.Entities[i].side != l.side { continue }
     l.Entities[i].OnRound()
   }
+  l.updateDependantGuis()
 }
 
 func (l *Level) Setup() {
@@ -515,13 +516,6 @@ func (l *Level) Think(dt int64) {
     cell := &l.grid[mx][my]
     cell.highlight |= MouseOver
 //    l.Terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
-    l.hovered = nil
-    for i := range l.Entities {
-      x,y := l.Entities[i].Coords()
-      if x == mx && y == my {
-        l.hovered = l.Entities[i]
-      }
-    }
   }
 
   // Highlight selected entity
@@ -530,8 +524,6 @@ func (l *Level) Think(dt int64) {
     cell.highlight |= Reachable
 //    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
   }
-  l.selected_gui.SetEntity(l.selected)
-  l.targeted_gui.SetEntity(l.hovered)
 
   l.cached = true
 
@@ -540,6 +532,22 @@ func (l *Level) Think(dt int64) {
     for j := range l.grid[i] {
       l.Terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
     }
+  }
+}
+
+// Some gui elements are dependent on entities we have selected, etc...
+// We need to be very careful when we modify these things, if we modified them
+// in Think() then the gui would be modified between layout and render which
+// would cause a single-frame gui glitch.  This is the only function that
+// directly modifies the gui elements so that we can easily isolate these
+// calls.  This function should only be called during event-handling or
+// Round()
+func (l *Level) updateDependantGuis() {
+  l.selected_gui.SetEntity(l.selected)
+  if l.hovered == l.selected {
+    l.targeted_gui.SetEntity(nil)
+  } else {
+    l.targeted_gui.SetEntity(l.hovered)
   }
 }
 
@@ -590,12 +598,22 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
+  defer l.updateDependantGuis()
+
   cursor := event_group.Events[0].Key.Cursor()
   if cursor == nil { return }
   l.winx, l.winy = cursor.Point()
   bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
   if bx < 0 || by < 0 || int(bx) >= len(l.grid) || int(by) >= len(l.grid[0]) {
     return
+  }
+
+  l.hovered = nil
+  for i := range l.Entities {
+    x,y := l.Entities[i].Coords()
+    if x == int(bx) && y == int(by) {
+      l.hovered = l.Entities[i]
+    }
   }
 
   if !l.editor_gui.Collapsed {
@@ -746,8 +764,8 @@ func LoadLevel(datadir,mapname string) (*Level, os.Error) {
   level.editor = MakeEditor(&level.StaticLevelData, datadir, base)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
-  level.selected_gui = MakeStatsWindow()
-  level.targeted_gui = MakeStatsWindow()
+  level.selected_gui = MakeStatsWindow(true)
+  level.targeted_gui = MakeStatsWindow(false)
   entity_guis := gui.MakeHorizontalTable()
   entity_guis.AddChild(level.selected_gui)
   entity_guis.AddChild(level.targeted_gui)

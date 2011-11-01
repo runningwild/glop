@@ -266,6 +266,14 @@ func (s *StandardParent) RemoveChild(w Widget) {
     }
   }
 }
+func (s *StandardParent) ReplaceChild(old,new Widget) {
+  for i := range s.Children {
+    if s.Children[i] == old {
+      s.Children[i] = new
+      return
+    }
+  }
+}
 func (s *StandardParent) RemoveAllChildren() {
   s.Children = s.Children[0:0]
 }

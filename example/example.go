@@ -103,8 +103,8 @@ func actualMain() {
 
   // TODO: Would be better to only be vsynced, but apparently it can turn itself off
   // when the window disappears, so we need a safety net to slow it down if necessary
-  sys.EnableVSync(true)
-  ticker := time.Tick(10e6)
+//  sys.EnableVSync(true)
+  ticker := time.Tick(1e9)
 
 
   level.Setup()
@@ -123,11 +123,8 @@ func actualMain() {
     ui.Draw()
     sys.SwapBuffers()
     <-ticker
-    groups := sys.GetInputEvents()
-    for _,group := range groups {
-      if found,_ := group.FindEvent('q'); found {
-        return
-      }
+    if gin.In().GetKey('q').FramePressCount() > 0 {
+      return
     }
 
     if ui.FocusWidget() == nil {

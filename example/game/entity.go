@@ -110,12 +110,20 @@ type EntityStatsWindow struct {
   health  *gui.TextLine
   ap      *gui.TextLine
   actions *gui.SelectBox
+
+  // If this is false then events on this window will be immediately rejected
+  // This is so we can have multiple windows, but only one can be used to
+  // affect anything game related - so you can mouse-over units that aren't
+  // under your control and see their stats, but not modify them, since they
+  // aren't yours
+  clickable bool
 }
-func MakeStatsWindow() *EntityStatsWindow {
+func MakeStatsWindow(clickable bool) *EntityStatsWindow {
   var esw EntityStatsWindow
   esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
   esw.Request_dims.Dx = 350
   esw.Request_dims.Dy = 175
+  esw.clickable = clickable
 
   top := gui.MakeHorizontalTable()
 
@@ -138,13 +146,29 @@ func MakeStatsWindow() *EntityStatsWindow {
 
   return &esw
 }
+
+// Short-circuits the typical event-handling - if this window wasn't set to
+// clickable then nothing will be able to get to it.
+func (w *EntityStatsWindow) Respond(g *gui.Gui, e gui.EventGroup) bool {
+  if w.clickable {
+    return w.table.Respond(g, e)
+  }
+  return false
+}
 func (w *EntityStatsWindow) String() string {
   return "entity stats window"
 }
-func (w *EntityStatsWindow) DoThink(int64, bool) {
+func (w *EntityStatsWindow) update() {
   if w.ent == nil { return }
   w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.Health, w.ent.Base.Health))
   w.ap.SetText(fmt.Sprintf("Ap: %d/%d", w.ent.AP, w.ent.Base.AP))
+}
+func (w *EntityStatsWindow) DoThink(int64, bool) {
+  if w.ent == nil { return }
+  w.update()
+}
+func (w *EntityStatsWindow) GetEntity() *Entity {
+  return w.ent
 }
 func (w *EntityStatsWindow) SetEntity(e *Entity) {
   if e == w.ent { return }
@@ -167,6 +191,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
     w.actions = gui.MakeSelectImageBox(paths, names)
     w.table.AddChild(w.actions)
     w.actions.SetSelectedIndex(0)
+    w.update()
   }
 }
 func (w *EntityStatsWindow) GetChildren() []gui.Widget {
