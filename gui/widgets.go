@@ -95,15 +95,20 @@ type ImageBox struct {
 
   active  bool
   texture gl.Texture
+  r,g,b,a float64
 }
 func MakeImageBox() *ImageBox {
   var ib ImageBox
   ib.EmbeddedWidget = &BasicWidget{ CoreWidget : &ib }
   runtime.SetFinalizer(&ib, freeTexture)
+  ib.r, ib.g, ib.b, ib.a = 1, 1, 1, 1
   return &ib
 }
 func (w *ImageBox) String() string {
   return "image box"
+}
+func (w *ImageBox) SetShading(r,g,b,a float64) {
+  w.r,w.g,w.b,w.a = r,g,b,a
 }
 func freeTexture(w *ImageBox) {
   if w.active {
@@ -176,7 +181,8 @@ func (w *ImageBox) Draw(region Region) {
 
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)
-  gl.Color4d(1.0, 1.0, 1.0, 1.0)
+  gl.Enable(gl.BLEND)
+  gl.Color4d(w.r, w.g, w.b, w.a)
   gl.Begin(gl.QUADS)
     gl.TexCoord2f(0, 0)
     gl.Vertex2i(region.X, region.Y)
@@ -277,48 +283,52 @@ func makeTextOption(text string, width int) SelectableWidget {
   return &so
 }
 
-/*
 type imageOption struct {
   ImageBox
-  Clickable
   selectableOption
 }
 
-func (w *imageOption) SetSelected(selected bool) {
+func (w *imageOption) DoRespond(event_group EventGroup) (consume,change_focus bool) {
+  w.selectableOption.DoRespond(event_group)
+  return
 }
 
-func makeImageOption(path string, data interface{}, f func()) SelectableWidget {
+func (w *imageOption) SetSelected(selected bool) {
+  if selected {
+    w.SetShading(1, 1, 1, 1)
+  } else {
+    w.SetShading(0.5, 0.5, 0.5, 0.5)
+  }
+}
+
+func makeImageOption(path string, data interface{}) SelectableWidget {
   var sio imageOption
   sio.ImageBox = *MakeImageBox()
   sio.ImageBox.SetImage(path)
   sio.data = data
-  sio.on_click = f
   sio.EmbeddedWidget = &BasicWidget{ CoreWidget : &sio }
   return &sio
 }
-*/
 
 type SelectBox struct {
   Table
   selected int
 }
 
-type SelectTextBox struct {
-  Table
-  selected int
-}
-
-func MakeSelectBox(options []SelectableWidget) *SelectBox {
+func MakeSelectBox(options []SelectableWidget, vertical bool) *SelectBox {
   var sb SelectBox
-  sb.Table = MakeVerticalTable()
+  if vertical {
+    sb.Table = MakeVerticalTable()
+  } else {
+    sb.Table = MakeHorizontalTable()
+  }
   for i := range options {
     option := options[i]
     option.SetSelectFunc(func(int64) {
       sb.SetSelectedOption(option.GetData())
-      print("Selecting an option \n")
     })
-    option.SetSelected(false)
     sb.AddChild(option)
+    option.SetSelected(false)
   }
   return &sb
 }
@@ -328,7 +338,15 @@ func MakeSelectTextBox(text_options []string, width int) *SelectBox {
   for i := range options {
     options[i] = makeTextOption(text_options[i], width)
   }
-  return MakeSelectBox(options)
+  return MakeSelectBox(options, true)
+}
+
+func MakeSelectImageBox(paths []string, names []string) *SelectBox {
+  options := make([]SelectableWidget, len(paths))
+  for i := range options {
+    options[i] = makeImageOption(paths[i], names[i])
+  }
+  return MakeSelectBox(options, false)
 }
 
 func (w *SelectBox) String() string {
@@ -359,7 +377,6 @@ func (w *SelectBox) SetSelectedOption(option interface{}) {
 }
 
 func (w *SelectBox) selectIndex(index int) {
-  print("Seleting ", index, "\n")
   if w.selected >= 0 {
     w.GetChildren()[w.selected].(SelectableWidget).SetSelected(false)
   }

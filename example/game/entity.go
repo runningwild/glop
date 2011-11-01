@@ -109,7 +109,7 @@ type EntityStatsWindow struct {
   name    *gui.TextLine
   health  *gui.TextLine
   ap      *gui.TextLine
-  actions *gui.HorizontalTable
+  actions *gui.SelectBox
 }
 func MakeStatsWindow() *EntityStatsWindow {
   var esw EntityStatsWindow
@@ -133,13 +133,13 @@ func MakeStatsWindow() *EntityStatsWindow {
 
   esw.table = gui.MakeVerticalTable()
   esw.table.AddChild(top)
-  esw.actions = gui.MakeHorizontalTable()
+  esw.actions = gui.MakeSelectImageBox([]string{}, []string{})
   esw.table.AddChild(esw.actions)
 
   return &esw
 }
 func (w *EntityStatsWindow) String() string {
-  return "entity state window"
+  return "entity stats window"
 }
 func (w *EntityStatsWindow) DoThink(int64, bool) {
   if w.ent == nil { return }
@@ -154,23 +154,26 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
   w.ap.SetText("")
   w.name.SetText("")
   w.image.UnsetImage()
-  w.actions.RemoveAllChildren()
-
+  w.table.RemoveChild(w.actions)
   if e != nil {
     thumb := e.s.Thumbnail()
     w.image.SetImageByTexture(thumb.Texture(), thumb.Dx(), thumb.Dy())
     w.name.SetText(e.Base.Name)
+    var paths,names []string
     for i := range e.Weapons {
-      icon := gui.MakeImageBox()
-      icon.SetImage(filepath.Join("/Users/runningwild/code/go-glop/example/example.app/Contents/icons", e.Weapons[i].Icon()))
-      w.actions.AddChild(icon)
+      paths = append(paths, filepath.Join("/Users/runningwild/code/go-glop/example/example.app/Contents/icons", e.Weapons[i].Icon()))
+      names = append(names, e.Weapons[i].Icon())
     }
+    w.actions = gui.MakeSelectImageBox(paths, names)
+    w.table.AddChild(w.actions)
+    w.actions.SetSelectedIndex(0)
   }
 }
 func (w *EntityStatsWindow) GetChildren() []gui.Widget {
   return []gui.Widget{ w.table }
 }
 func (w *EntityStatsWindow) Draw(region gui.Region) {
+  w.Render_region = region
   w.table.Draw(region)
 }
 

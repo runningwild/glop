@@ -110,8 +110,6 @@ type Widget interface {
 
   Draw(Region)
   DrawFocused(Region)
-
-  String() string
 }
 type CoreWidget interface {
   DoThink(int64, bool)
@@ -125,6 +123,7 @@ type CoreWidget interface {
   DrawFocused(Region)
 
   GetChildren() []Widget
+  String() string
 }
 type EmbeddedWidget interface {
   Think(*Gui, int64)
@@ -166,9 +165,6 @@ func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
     if kids[i].Respond(gui, event_group) { return true }
   }
   return false
-}
-func (w *BasicWidget) String() string {
-  return "basic widget"
 }
 
 type BasicZone struct {
