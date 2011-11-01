@@ -8,7 +8,6 @@ import (
   "gl"
   "gl/glu"
   "runtime"
-  "glop/gin"
 )
 
 // An Anchor specifies where a widget should be positioned withing an AnchorBox
@@ -109,18 +108,25 @@ func (w *ImageBox) String() string {
 func freeTexture(w *ImageBox) {
   if w.active {
     w.texture.Delete()
+    w.active = false
   }
+  w.texture = 0
 }
-func (w *ImageBox) UnsetImage() {
-  w.active = false
-}
+
+// Does not take ownserhip of the texture, you must still free the texture
+// when you are done with it.
 func (w *ImageBox) SetImageByTexture(texture gl.Texture, dx,dy int) {
+  w.UnsetImage()
   w.texture = texture
   w.Request_dims.Dx = dx
   w.Request_dims.Dy = dy
-  w.active = true
+  w.active = false
+}
+func (w *ImageBox) UnsetImage() {
+  freeTexture(w)
 }
 func (w *ImageBox) SetImage(path string) {
+  w.UnsetImage()
   data,err := os.Open(path)
   if err != nil {
     // TODO: Log error
@@ -162,7 +168,12 @@ func (w *ImageBox) SetImage(path string) {
 }
 func (w *ImageBox) Draw(region Region) {
   w.Render_region = region
-  if !w.active { return }
+
+  // We check texture == 0 and not active because active only indicates if we
+  // have a texture that we need to free later.  It's possible for us to have
+  // a texture that someone else owns.
+  if w.texture == 0 { return }
+
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
@@ -213,56 +224,111 @@ func (w *CollapseWrapper) Draw(region Region) {
   w.Render_region = region
 }
 
-type SelectOption struct {
-  TextLine
-  data interface{}
+
+type OptionContainer interface {
+  SetSelectedOption(Widget)
 }
 
-func makeSelectOption(text string, data interface{}, width int) *SelectOption {
-  var so SelectOption
+type SelectableWidget interface {
+  Widget
+
+  // The selectable widget will call this function when clicked
+  SetSelectFunc(func(int64))
+
+  SetSelected(bool)
+  GetData() interface{}
+}
+
+type selectableOption struct {
+  Clickable
+  data interface{}
+  parent OptionContainer
+}
+func (so *selectableOption) GetData() interface{} {
+  return so.data
+}
+func (so *selectableOption) SetSelectFunc(f func(int64)) {
+  so.on_click = f
+}
+
+type textOption struct {
+  TextLine
+  selectableOption
+}
+
+func (w *textOption) DoRespond(event_group EventGroup) (consume,change_focus bool) {
+  w.selectableOption.DoRespond(event_group)
+  return
+}
+
+func (w *textOption) SetSelected(selected bool) {
+  if selected {
+    w.SetColor(0.9, 1, 0.9, 1)
+  } else {
+    w.SetColor(0.6, 0.4, 0.4, 1)
+  }
+}
+
+func makeTextOption(text string, width int) SelectableWidget {
+  var so textOption
   so.TextLine = *MakeTextLine("standard", text, width, 1, 1, 1, 1)
-  so.data = data
+  so.data = text
   so.EmbeddedWidget = &BasicWidget{ CoreWidget : &so }
   return &so
 }
 
-func (w *SelectOption) Draw(region Region) {
-  w.TextLine.Draw(region)
+/*
+type imageOption struct {
+  ImageBox
+  Clickable
+  selectableOption
 }
 
+func (w *imageOption) SetSelected(selected bool) {
+}
+
+func makeImageOption(path string, data interface{}, f func()) SelectableWidget {
+  var sio imageOption
+  sio.ImageBox = *MakeImageBox()
+  sio.ImageBox.SetImage(path)
+  sio.data = data
+  sio.on_click = f
+  sio.EmbeddedWidget = &BasicWidget{ CoreWidget : &sio }
+  return &sio
+}
+*/
+
 type SelectBox struct {
-  VerticalTable
+  Table
   selected int
 }
 
-type SelectStringsBox struct {
-  *SelectBox
+type SelectTextBox struct {
+  Table
+  selected int
 }
 
-func MakeSelectBox(options []string, data []interface{}, width int) *SelectBox {
-  if len(options) != len(data) {
-    panic("Cannot create a select text box with a different number of options and data.")
-  }
+func MakeSelectBox(options []SelectableWidget) *SelectBox {
   var sb SelectBox
-  sb.VerticalTable = *MakeVerticalTable()
-  sb.EmbeddedWidget = &BasicWidget{ CoreWidget : &sb }
+  sb.Table = MakeVerticalTable()
   for i := range options {
-    option := makeSelectOption(options[i], data[i], width)
-    sb.VerticalTable.AddChild(option)
-    option.SetColor(0.6, 0.4, 0.4, 1)
+    option := options[i]
+    option.SetSelectFunc(func(int64) {
+      sb.SetSelectedOption(option.GetData())
+      print("Selecting an option \n")
+    })
+    option.SetSelected(false)
+    sb.AddChild(option)
   }
-  sb.selected = -1
   return &sb
 }
 
-func MakeSelectStringsBox(options []string, width int) *SelectStringsBox {
-  var ssb SelectStringsBox
-  option_objs := make([]interface{}, len(options))
+func MakeSelectTextBox(text_options []string, width int) *SelectBox {
+  options := make([]SelectableWidget, len(text_options))
   for i := range options {
-    option_objs[i] = options[i]
+    options[i] = makeTextOption(text_options[i], width)
   }
-  ssb.SelectBox = MakeSelectBox(options, option_objs, width)
-  return &ssb
+  return MakeSelectBox(options)
 }
 
 func (w *SelectBox) String() string {
@@ -277,14 +343,14 @@ func (w *SelectBox) SetSelectedIndex(index int) {
   w.selectIndex(index)
 }
 
-func (w *SelectBox) GetSelectedOption() string {
+func (w *SelectBox) GetSelectedOption() interface{} {
   if w.selected == -1 { return "" }
-  return w.Children[w.selected].(*SelectOption).GetText()
+  return w.GetChildren()[w.selected].(SelectableWidget).GetData()
 }
 
-func (w *SelectBox) SetSelectedOption(option string) {
-  for i := range w.Children {
-    if w.Children[i].(*SelectOption).GetText() == option {
+func (w *SelectBox) SetSelectedOption(option interface{}) {
+  for i := range w.GetChildren() {
+    if w.GetChildren()[i].(SelectableWidget).GetData() == option {
       w.selectIndex(i)
       return
     }
@@ -292,35 +358,16 @@ func (w *SelectBox) SetSelectedOption(option string) {
   w.selectIndex(-1)
 }
 
-func (w *SelectBox) GetSelectedData() interface{} {
-  if w.selected == -1 { return nil }
-  return w.Children[w.selected].(*SelectOption).data
-}
-
 func (w *SelectBox) selectIndex(index int) {
+  print("Seleting ", index, "\n")
   if w.selected >= 0 {
-    w.Children[w.selected].(*SelectOption).SetColor(0.6, 0.4, 0.4, 1)
+    w.GetChildren()[w.selected].(SelectableWidget).SetSelected(false)
   }
-  if index < 0 || index >= len(w.Children) {
+  if index < 0 || index >= len(w.GetChildren()) {
     index = -1
   } else {
-    w.Children[index].(*SelectOption).SetColor(0.9, 1, 0.9, 1)
+    w.GetChildren()[index].(SelectableWidget).SetSelected(true)
   }
   w.selected = index
 }
-
-func (w *SelectBox) DoRespond(event_group EventGroup) (consume,change_focus bool) {
-  if event_group.Events[0].Type != gin.Press { return }
-  if event_group.Events[0].Key.Id() != gin.MouseLButton { return }
-  x,y := event_group.Events[0].Key.Cursor().Point()
-  p := Point{ x, y }
-  for i := range w.Children {
-    if p.Inside(w.Children[i].Rendered()) {
-      w.selectIndex(i)
-      break
-    }
-  }
-  return
-}
-
 

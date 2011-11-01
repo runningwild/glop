@@ -2,6 +2,14 @@ package gui
 
 import "gl"
 
+type Table interface {
+  Widget
+  GetChildren() []Widget
+  AddChild(w Widget)
+  RemoveChild(w Widget)
+  RemoveAllChildren()
+}
+
 type VerticalTable struct {
   EmbeddedWidget
   NonResponder
@@ -9,7 +17,6 @@ type VerticalTable struct {
   BasicZone
   StandardParent
 }
-
 func MakeVerticalTable() *VerticalTable {
   var table VerticalTable
   table.EmbeddedWidget = &BasicWidget{ CoreWidget : &table }

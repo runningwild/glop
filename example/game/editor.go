@@ -19,13 +19,13 @@ type Editor struct {
   cell_parent *gui.CollapseWrapper
 
   // attributes of the terrain
-  terrain_type    *gui.SelectStringsBox
+  terrain_type    *gui.SelectBox
 
   // units
-  starting_unit *gui.SelectStringsBox
+  starting_unit *gui.SelectBox
 
   // side
-  starting_side *gui.SelectStringsBox
+  starting_side *gui.SelectBox
 
   // Event processing stuff
 
@@ -88,7 +88,7 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   if err != nil {
     fmt.Printf("err: %s\n", err.String())
   }
-  e.terrain_type = gui.MakeSelectStringsBox(terrain_names, 200)
+  e.terrain_type = gui.MakeSelectTextBox(terrain_names, 200)
   attributes.AddChild(e.terrain_type)
 
   units,_ := LoadAllUnits(dir)
@@ -98,10 +98,10 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   }
   unit_names = append(unit_names, "")
   sort.Strings(unit_names)
-  e.starting_unit = gui.MakeSelectStringsBox(unit_names, 200)
+  e.starting_unit = gui.MakeSelectTextBox(unit_names, 200)
   attributes.AddChild(e.starting_unit)
 
-  e.starting_side = gui.MakeSelectStringsBox([]string{"None","The Jungle","The Man"}, 200)
+  e.starting_side = gui.MakeSelectTextBox([]string{"None","The Jungle","The Man"}, 200)
   attributes.AddChild(e.starting_side)
 
   return &e
@@ -155,10 +155,10 @@ func (e *Editor) GetGui() gui.Widget {
 func (e *Editor) Think() {
   for cell,_ := range e.selected {
     if e.terrain_type.GetSelectedIndex() != -1 {
-      cell.staticCellData.Terrain = Terrain(e.terrain_type.GetSelectedOption())
+      cell.staticCellData.Terrain = Terrain(e.terrain_type.GetSelectedOption().(string))
     }
     if e.starting_unit.GetSelectedIndex() != -1 {
-      cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption()
+      cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption().(string)
     }
     cell.staticCellData.Unit.Side = e.starting_side.GetSelectedIndex()
   }
