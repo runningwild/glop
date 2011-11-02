@@ -84,6 +84,14 @@ func actualMain() {
   if err != nil {
     panic(err.String())
   }
+  weapons,err = os.Open(filepath.Join(basedir, "weapons", "aoe.json"))
+  if err != nil {
+    panic(err.String())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.String())
+  }
 
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
 

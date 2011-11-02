@@ -8,7 +8,7 @@
     "Weapon" : {
       "Power" : 50,
       "StaticCost" : 6,
-      "StaticRange" : 5
+      "EntityRange" : 5
     }
   },
 
@@ -21,7 +21,7 @@
     "Weapon" : {
       "Power" : 25,
       "StaticCost" : 10,
-      "StaticRange" : 25
+      "EntityRange" : 25
     }
   },
 
@@ -34,7 +34,7 @@
     "Weapon" : {
       "Power" : 15,
       "StaticCost" : 4,
-      "StaticRange" : 15
+      "EntityRange" : 15
     }
   }
 ]

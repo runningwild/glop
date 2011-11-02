@@ -53,6 +53,9 @@ const (
   Attackable
   // If the attack action is selected this indicates cells that the unit can attack
 
+  AttackMouseOver
+  // MouseOver effect when in attack mode - could be multiple cells for an AOE
+
   MouseOver
   // The cell that the mouse is currently position over (should only ever be one)
 
@@ -132,8 +135,12 @@ func (t *CellData) Render(x,y,z,scale float32) {
         r,g,b,a = 0, 0.2, 0.5, 0.2
         draw_quad()
       }
+      if t.highlight & AttackMouseOver != 0 {
+        r,g,b,a = 0.7, 0.2, 0.2, 0.5
+        draw_quad()
+      }
       if t.highlight & Attackable != 0 {
-        r,g,b,a = 0.7, 0.2, 0.2, 0.9
+        r,g,b,a = 0.7, 0.2, 0.2, 0.2
         draw_quad()
       }
       if t.highlight & MouseOver != 0 {
@@ -492,7 +499,7 @@ func (l *Level) figureVisible() {
 }
 
 func (l *Level) Think(dt int64) {
-  l.clearCache(MouseOver)
+  l.clearCache(MouseOver | AttackMouseOver)
   l.figureVisible()
 
   // If the selected entity isn't moving and we don't have a command selected
@@ -520,21 +527,28 @@ func (l *Level) Think(dt int64) {
   l.refreshCommandHighlights()
   l.editor.Think()
 
-  // Highlight the square under the cursor
-  bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
-  mx := int(bx)
-  my := int(by)
-  if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
-    cell := &l.grid[mx][my]
-    cell.highlight |= MouseOver
-//    l.Terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
-  }
-
   // Highlight selected entity
   if l.selected != nil && len(l.selected.path) == 0 {
     cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
     cell.highlight |= Reachable
 //    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
+  }
+
+  bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
+  // mouseovers
+  if l.selected != nil && l.command == Attack {
+    index := l.selected_gui.actions.GetSelectedIndex()
+    if index != -1 {
+      l.selected.Weapons[index].MouseOver(l.selected, float64(bx), float64(by))
+    }
+  } else {
+    // Highlight the square under the cursor
+    mx := int(bx)
+    my := int(by)
+    if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
+      cell := &l.grid[mx][my]
+      cell.highlight |= MouseOver
+    }
   }
 
   l.cached = true

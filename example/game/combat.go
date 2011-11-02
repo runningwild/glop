@@ -30,7 +30,7 @@ type Resolution struct {
 
 type TargetType int
 const(
-  NoTarget TargetType = iota
+  NoTarget TargetType = 1 << iota
   EntityTarget
   CellTarget
 )
@@ -45,6 +45,11 @@ type baseWeapon interface {
 
   // Returns a list of all valid targets.
   ValidTargets(source *Entity) []Target
+
+  // Does any effects for when the player mouses over something while this
+  // weapon is selected, such as highlighting the region that would be hit
+  // with an AOE attack
+  MouseOver(source *Entity, bx,by float64)
 
   // Returns a Resolution indicating everything that happened in once instance of an attack
   // with this weapon
@@ -146,13 +151,25 @@ func MakeWeapon(name string) Weapon {
   return weapon
 }
 
+type NoMouseOverEffect struct {}
+func (w NoMouseOverEffect) MouseOver(*Entity, float64, float64) { }
+
 type StaticCost int
 func (w StaticCost) Cost(_ *Entity) int {
   return int(w)
 }
 
-type StaticRange int
-func (w StaticRange) ValidTargets(source *Entity) []Target {
+type EntityRange int
+func (r EntityRange) ValidTargets(source *Entity) []Target {
+  return entitiesWithinRange(source, int(r))
+}
+
+type CellRange int
+func (r CellRange) ValidTargets(source *Entity) []Target {
+  return cellsWithinRange(source, int(r))
+}
+
+func entitiesWithinRange(source *Entity, rnge int) []Target {
   x := int(source.pos.X)
   y := int(source.pos.Y)
   var ret []Target
@@ -172,7 +189,7 @@ func (w StaticRange) ValidTargets(source *Entity) []Target {
 
     // The obvious check - must not be further away than our weapon's range
     dist := maxNormi(x, y, x2, y2)
-    if int(w) < dist {
+    if rnge < dist {
       continue
     }
 
@@ -183,13 +200,48 @@ func (w StaticRange) ValidTargets(source *Entity) []Target {
   return ret
 }
 
+func cellsWithinRange(source *Entity, rnge int) []Target {
+  x := int(source.pos.X)
+  y := int(source.pos.Y)
+  minx := x - rnge
+  if minx < 0 { minx = 0 }
+  miny := y - rnge
+  if miny < 0 { miny = 0 }
+  maxx := x + rnge
+  if maxx >= len(source.level.grid) { maxx = len(source.level.grid) }
+  maxy := y + rnge
+  if maxy >= len(source.level.grid[0]) { maxy = len(source.level.grid[0]) }
+
+  var ret []Target
+  for x2 := minx; x2 <= maxx; x2++ {
+    for y2 := miny; y2 <= maxy; y2++ {
+      // Don't let units attack something they don't have LOS to
+      if _,ok := source.visible[source.level.toVertex(x2, y2)]; !ok {
+        continue
+      }
+
+      // The obvious check - must not be further away than our weapon's range
+      dist := maxNormi(x, y, x2, y2)
+      if rnge < dist {
+        continue
+      }
+
+      // If it passed all of the above tests then we can include it as a valid
+      // target
+      ret = append(ret, Target{ CellTarget, x2, y2 })
+    }
+  }
+  return ret
+}
+
 func init() {
   RegisterWeapon("Club", func() baseWeapon { return &Club{} })
 }
 type Club struct {
   StaticCost
-  StaticRange
+  EntityRange
   Factor int
+  NoMouseOverEffect
 }
 func (c *Club) Damage(source,target *Entity) Resolution {
   mod := rand.Intn(10)
@@ -218,12 +270,85 @@ func init() {
 }
 type Gun struct {
   StaticCost
-  StaticRange
+  EntityRange
   Power int
+  NoMouseOverEffect
 }
 func (g *Gun) Damage(source,target *Entity) Resolution {
   dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
-  acc := 2 * int(g.StaticRange) - dist
+  acc := 2 * int(g.EntityRange) - dist
+  if rand.Intn(acc) < dist {
+    return Resolution {
+      Connect : Miss,
+    }
+  }
+
+  if rand.Intn(target.Base.Defense) / 2 > source.Base.Attack {
+    return Resolution {
+      Connect : Dodge,
+    }
+  }
+
+  return Resolution {
+    Connect : Hit,
+    Damage : Damage {
+      Piercing : g.Power,
+    },
+  }
+}
+
+func init() {
+  RegisterWeapon("StandardAOE", func() baseWeapon { return &StandardAOE{} })
+}
+type StandardAOE struct {
+  StaticCost
+  CellRange
+  Power  int
+  Size int
+}
+func (g *StandardAOE) affected(source *Entity, bx,by float64) [][2]int {
+  var cx,cy int
+  if g.Size % 2 == 0 {
+    cx = int(bx - 0.5)
+    cy = int(by - 0.5)
+  } else {
+    cx = int(bx)
+    cy = int(by)
+  }
+  var minx,miny,maxx,maxy int
+  minx = cx - (g.Size - 1) / 2
+  if minx < 0 { minx = 0 }
+  miny = cy - (g.Size - 1) / 2
+  if miny < 0 { miny = 0 }
+  maxx = cx + g.Size / 2
+  if maxx >= len(source.level.grid) { maxx = len(source.level.grid) }
+  maxy = cy + g.Size / 2
+  if maxy >= len(source.level.grid[0]) { maxy = len(source.level.grid[0]) }
+
+  var ret [][2]int
+  for x := minx; x <= maxx; x++ {
+    for y := miny; y <= maxy; y++ {
+      // TODO: Remove things that can't be hit?  Maybe impassable terrain?
+      ret = append(ret, [2]int{ x, y })
+    }
+  }
+  return ret
+}
+func (g *StandardAOE) MouseOver(source *Entity, bx,by float64) {
+  targets := g.ValidTargets(source)
+  for _,target := range targets {
+    if target.Type == CellTarget && target.X == int(bx) && target.Y == int(by) {
+      affected := g.affected(source, bx, by)
+      for _,pos := range affected {
+        source.level.grid[pos[0]][pos[1]].highlight |= AttackMouseOver
+      }
+      return
+    }
+  }
+}
+func (g *StandardAOE) Damage(source,target *Entity) Resolution {
+  dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
+  acc := 2 * int(g.CellRange) - dist
   if rand.Intn(acc) < dist {
     return Resolution {
       Connect : Miss,
