@@ -26,6 +26,7 @@ const(
 type Resolution struct {
   Connect Connect
   Damage  Damage
+  Target  *Entity
 }
 
 type TargetType int
@@ -53,7 +54,7 @@ type baseWeapon interface {
 
   // Returns a Resolution indicating everything that happened in once instance of an attack
   // with this weapon
-  Damage(source,target *Entity) Resolution
+  Damage(source *Entity, target Target) []Resolution
 }
 
 type Weapon interface {
@@ -243,26 +244,34 @@ type Club struct {
   Factor int
   NoMouseOverEffect
 }
-func (c *Club) Damage(source,target *Entity) Resolution {
+func (c *Club) Damage(source *Entity, t Target) (res []Resolution) {
+  res = []Resolution{ Resolution{} }
+  r := &res[0]
+
+  var target *Entity
+  for _,ent := range source.level.Entities {
+    if int(ent.pos.X) != t.X { continue }
+    if int(ent.pos.Y) != t.Y { continue }
+    target = ent
+  }
+  if target == nil {
+    panic("Tried to attack a entity in a cell where there is no entity.")
+  }
+  r.Target = target
+
   mod := rand.Intn(10)
   if c.Factor * source.Base.Attack + mod > target.Base.Defense {
     amt := c.Factor * source.Base.Attack + mod - target.Base.Defense - 2
     if amt <= 0 {
-      return Resolution {
-        Connect : Dodge,
-      }
+      r.Connect = Dodge
+      return
     } else {
-      return Resolution {
-        Connect : Hit,
-        Damage : Damage {
-          Piercing : amt,
-        },
-      }
+      r.Connect = Hit
+      r.Damage = Damage{ Piercing : amt }
     }
   }
-  return Resolution {
-    Connect : Miss,
-  }
+  r.Connect = Miss
+  return
 }
 
 func init() {
@@ -274,27 +283,38 @@ type Gun struct {
   Power int
   NoMouseOverEffect
 }
-func (g *Gun) Damage(source,target *Entity) Resolution {
+func (g *Gun) Damage(source *Entity, t Target) (res []Resolution) {
+  // TODO: Extracting the target entity from a Target object should be
+  // automatic
+  res = []Resolution{ Resolution{} }
+  r := &res[0]
+
+  var target *Entity
+  for _,ent := range source.level.Entities {
+    if int(ent.pos.X) != t.X { continue }
+    if int(ent.pos.Y) != t.Y { continue }
+    target = ent
+  }
+  if target == nil {
+    panic("Tried to attack a entity in a cell where there is no entity.")
+  }
+  r.Target = target
+
   dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
   acc := 2 * int(g.EntityRange) - dist
   if rand.Intn(acc) < dist {
-    return Resolution {
-      Connect : Miss,
-    }
+    r.Connect = Miss
+    return
   }
 
   if rand.Intn(target.Base.Defense) / 2 > source.Base.Attack {
-    return Resolution {
-      Connect : Dodge,
-    }
+    r.Connect = Dodge
+    return
   }
 
-  return Resolution {
-    Connect : Hit,
-    Damage : Damage {
-      Piercing : g.Power,
-    },
-  }
+  r.Connect = Hit
+  r.Damage = Damage{ Piercing : g.Power }
+  return
 }
 
 func init() {
@@ -346,25 +366,21 @@ func (g *StandardAOE) MouseOver(source *Entity, bx,by float64) {
     }
   }
 }
-func (g *StandardAOE) Damage(source,target *Entity) Resolution {
-  dist := maxNormi(int(source.pos.X), int(source.pos.Y), int(target.pos.X), int(target.pos.Y))
-  acc := 2 * int(g.CellRange) - dist
-  if rand.Intn(acc) < dist {
-    return Resolution {
-      Connect : Miss,
+func (g *StandardAOE) Damage(source *Entity, target Target) (res []Resolution) {
+  // TODO: We're about to do a double loop over entities and positions,
+  // seems a bit wasteful, lets use a map or something not-stupid
+  cells := g.affected(source, float64(target.X), float64(target.Y))
+  for _,ent := range source.level.Entities {
+    for _,cell := range cells {
+      if int(ent.pos.X) != cell[0] { continue }
+      if int(ent.pos.Y) != cell[1] { continue }
+      res = append(res, Resolution{
+        Connect : Hit,
+        Damage : Damage{ Piercing : g.Power },
+        Target : ent,
+      })
+      break
     }
   }
-
-  if rand.Intn(target.Base.Defense) / 2 > source.Base.Attack {
-    return Resolution {
-      Connect : Dodge,
-    }
-  }
-
-  return Resolution {
-    Connect : Hit,
-    Damage : Damage {
-      Piercing : g.Power,
-    },
-  }
+  return
 }

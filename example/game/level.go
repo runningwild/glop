@@ -368,7 +368,7 @@ func (l *Level) PrepAttack() {
   l.command = Attack
   l.clearCache(combat_highlights)
 }
-func (l *Level) DoAttack(target *Entity) {
+func (l *Level) DoAttack(target Target) {
   if l.selected == nil { return }
 
   // First check range, if the target is out of range then just return and
@@ -382,9 +382,9 @@ func (l *Level) DoAttack(target *Entity) {
   valid_targets := weapon.ValidTargets(l.selected)
   valid := false
   for _,valid_target := range valid_targets {
-    if valid_target.Type != EntityTarget { continue }
-    if valid_target.X != int(target.pos.X) { continue }
-    if valid_target.Y != int(target.pos.Y) { continue }
+    if valid_target.Type & target.Type == 0 { continue }
+    if valid_target.X != int(target.X) { continue }
+    if valid_target.Y != int(target.Y) { continue }
     valid = true
   }
   if !valid { return }
@@ -394,33 +394,35 @@ func (l *Level) DoAttack(target *Entity) {
   l.selected.AP -= cost
 
 
-  res := weapon.Damage(l.selected, target)
+  ress := weapon.Damage(l.selected, target)
 
   // Resolve the actual attack here
-  l.selected.turnToFace(target.pos)
+  l.selected.turnToFace(mathgl.Vec2{ float32(target.X), float32(target.Y) })
 
-  x := int(target.pos.X)
-  y := int(target.pos.Y)
   x2 := int(l.selected.pos.X)
   y2 := int(l.selected.pos.Y)
-  dist := maxNormi(x, y, x2, y2)
+  dist := maxNormi(target.X, target.Y, x2, y2)
 
-  if dist > 2 {
+  // TODO: Melee/ranged should be determined by the weapon, not by the distance
+  if dist >= 2 {
     l.selected.s.Command("ranged")
   } else {
     l.selected.s.Command("melee")
   }
-  target.s.Command("defend")
 
-  if res.Connect == Hit {
-    target.Health -= res.Damage.Piercing
-    if target.Health <= 0 {
-      target.s.Command("killed")
+  for _,res := range ress {
+    res.Target.s.Command("defend")
+
+    if res.Connect == Hit {
+      res.Target.Health -= res.Damage.Piercing
+      if res.Target.Health <= 0 {
+        res.Target.s.Command("killed")
+      } else {
+        res.Target.s.Command("damaged")
+      }
     } else {
-      target.s.Command("damaged")
+      res.Target.s.Command("undamaged")
     }
-  } else {
-    target.s.Command("undamaged")
   }
 
   l.clearCache(combat_highlights)
@@ -611,9 +613,11 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
       }
 
     case Attack:
-      if ent != nil && ent.side != l.side {
-        l.DoAttack(ent)
+      target := Target{ CellTarget, int(click.X), int(click.Y) }
+      if ent != nil {
+        target.Type |= EntityTarget
       }
+      l.DoAttack(target)
 
     case NoCommand:
       if ent != nil && ent.side == l.side {

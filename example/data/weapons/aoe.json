@@ -8,7 +8,7 @@
     "Weapon" : {
       "StaticCost" : 25,
       "CellRange" : 5,
-      "Power" : 10,
+      "Power" : 75,
       "Size" : 4
     }
   }
