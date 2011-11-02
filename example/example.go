@@ -68,8 +68,15 @@ func actualMain() {
 
   // TODO: Loading weapon specs should be done automatically - it just needs the datadir
   // Load weapon files
-  weaponpath := filepath.Join(basedir, "weapons", "guns.json")
-  weapons,err := os.Open(weaponpath)
+  weapons,err := os.Open(filepath.Join(basedir, "weapons", "guns.json"))
+  if err != nil {
+    panic(err.String())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.String())
+  }
+  weapons,err = os.Open(filepath.Join(basedir, "weapons", "melee.json"))
   if err != nil {
     panic(err.String())
   }
@@ -103,8 +110,8 @@ func actualMain() {
 
   // TODO: Would be better to only be vsynced, but apparently it can turn itself off
   // when the window disappears, so we need a safety net to slow it down if necessary
-//  sys.EnableVSync(true)
-  ticker := time.Tick(1e9)
+  sys.EnableVSync(true)
+  ticker := time.Tick(1e7)
 
 
   level.Setup()

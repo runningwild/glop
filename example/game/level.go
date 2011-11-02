@@ -347,7 +347,12 @@ func (l *Level) refreshCommandHighlights() {
 
 func (l *Level) PrepAttack() {
   if l.selected == nil { return }
-  weapon := l.selected.Weapons[0]
+  item := l.selected_gui.actions.GetSelectedIndex()
+  if item < 0 {
+    item = 0
+    l.selected_gui.actions.SetSelectedIndex(item)
+  }
+  weapon := l.selected.Weapons[item]
   if weapon.Cost(l.selected) > l.selected.AP { return }
 
   l.in_range = nil
@@ -367,7 +372,12 @@ func (l *Level) DoAttack(target *Entity) {
 
   // First check range, if the target is out of range then just return and
   // stay in attack mode
-  weapon := l.selected.Weapons[0]
+  item := l.selected_gui.actions.GetSelectedIndex()
+  if item < 0 {
+    item = 0
+    l.selected_gui.actions.SetSelectedIndex(item)
+  }
+  weapon := l.selected.Weapons[item]
   if !weapon.InRange(l.selected, target) { return }
 
   cost := weapon.Cost(l.selected)

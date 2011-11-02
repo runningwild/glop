@@ -297,7 +297,7 @@ func (w *imageOption) SetSelected(selected bool) {
   if selected {
     w.SetShading(1, 1, 1, 1)
   } else {
-    w.SetShading(0.5, 0.5, 0.5, 0.5)
+    w.SetShading(0.5, 0.5, 0.5, 0.9)
   }
 }
 

@@ -13,6 +13,7 @@
     "sharpshooter"
   ],
   "Weapons" : [
-    "AK-47"
+    "AK-47",
+    "Taser"
   ]
 }

@@ -168,11 +168,12 @@ func init() {
 type Club struct {
   StaticCost
   StaticRange
+  Factor int
 }
 func (c *Club) Damage(source,target *Entity) Resolution {
   mod := rand.Intn(10)
-  if source.Base.Attack + mod > target.Base.Defense {
-    amt := source.Base.Attack + mod - target.Base.Defense - 2
+  if c.Factor * source.Base.Attack + mod > target.Base.Defense {
+    amt := c.Factor * source.Base.Attack + mod - target.Base.Defense - 2
     if amt <= 0 {
       return Resolution {
         Connect : Dodge,
