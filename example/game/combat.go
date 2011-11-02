@@ -28,12 +28,23 @@ type Resolution struct {
   Damage  Damage
 }
 
+type TargetType int
+const(
+  NoTarget TargetType = iota
+  EntityTarget
+  CellTarget
+)
+type Target struct {
+  Type TargetType
+  X,Y int
+}
+
 type baseWeapon interface {
   // Cost in AP that the source Entity must spent to use this weapon.
   Cost(source *Entity) int
 
-  // Returns true iff the source Entity can hit the target Entity with this weapon.
-  InRange(source,target *Entity) bool
+  // Returns a list of all valid targets.
+  ValidTargets(source *Entity) []Target
 
   // Returns a Resolution indicating everything that happened in once instance of an attack
   // with this weapon
@@ -141,25 +152,35 @@ func (w StaticCost) Cost(_ *Entity) int {
 }
 
 type StaticRange int
-func (w StaticRange) InRange(source,target *Entity) bool {
+func (w StaticRange) ValidTargets(source *Entity) []Target {
   x := int(source.pos.X)
   y := int(source.pos.Y)
-  x2 := int(target.pos.X)
-  y2 := int(target.pos.Y)
+  var ret []Target
+  for _,target := range source.level.Entities {
+    x2 := int(target.pos.X)
+    y2 := int(target.pos.Y)
 
-  // Don't let units attack something they don't have LOS to
-  if _,ok := source.visible[source.level.toVertex(x2, y2)]; !ok {
-    return false
+    // Don't let units attack something they don't have LOS to
+    if _,ok := source.visible[source.level.toVertex(x2, y2)]; !ok {
+      continue
+    }
+
+    // Don't let units attack something on their own side
+    if source.side == target.side {
+      continue
+    }
+
+    // The obvious check - must not be further away than our weapon's range
+    dist := maxNormi(x, y, x2, y2)
+    if int(w) < dist {
+      continue
+    }
+
+    // If it passed all of the above tests then we can include it as a valid
+    // target
+    ret = append(ret, Target{ EntityTarget, x2, y2 })
   }
-
-  // Don't let units attack something on their own side
-  if source.side == target.side {
-    return false
-  }
-
-  dist := maxNormi(x, y, x2, y2)
-  fmt.Printf("Range/Dist : %d/%d -> %t\n", w, dist, int(w) >= dist)
-  return int(w) >= dist
+  return ret
 }
 
 func init() {

@@ -285,7 +285,7 @@ type Level struct {
   reachable []int
 
   // ATTACK data
-  in_range []int
+  in_range []Target
 }
 func (l *Level) GetSelected() *Entity {
   return l.selected
@@ -335,8 +335,7 @@ func (l *Level) refreshCommandHighlights() {
 
     case Attack:
     for _,v := range l.in_range {
-      x,y := l.fromVertex(v)
-      l.grid[x][y].highlight |= Attackable
+      l.grid[v.X][v.Y].highlight |= Attackable
     }
 
     case NoCommand:
@@ -355,12 +354,7 @@ func (l *Level) PrepAttack() {
   weapon := l.selected.Weapons[item]
   if weapon.Cost(l.selected) > l.selected.AP { return }
 
-  l.in_range = nil
-  for i := range l.Entities {
-    if l.Entities[i] == l.selected { continue }
-    if !weapon.InRange(l.selected, l.Entities[i]) { continue }
-    l.in_range = append(l.in_range, l.toVertex(l.Entities[i].Coords()))
-  }
+  l.in_range = weapon.ValidTargets(l.selected)
 
   if len(l.in_range) == 0 { return }
 
@@ -378,7 +372,15 @@ func (l *Level) DoAttack(target *Entity) {
     l.selected_gui.actions.SetSelectedIndex(item)
   }
   weapon := l.selected.Weapons[item]
-  if !weapon.InRange(l.selected, target) { return }
+  valid_targets := weapon.ValidTargets(l.selected)
+  valid := false
+  for _,valid_target := range valid_targets {
+    if valid_target.Type != EntityTarget { continue }
+    if valid_target.X != int(target.pos.X) { continue }
+    if valid_target.Y != int(target.pos.Y) { continue }
+    valid = true
+  }
+  if !valid { return }
 
   cost := weapon.Cost(l.selected)
   if cost > l.selected.AP { return }
