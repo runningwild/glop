@@ -8,6 +8,3 @@ cp example example.app/Contents/MacOS/example
 cp ../gos/darwin/lib/libglop.so example.app/Contents/lib/
 
 cp -r data/* example.app/Contents/
-
-rm -f example
-
