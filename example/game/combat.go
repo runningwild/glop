@@ -45,7 +45,7 @@ type Target struct {
   X, Y int
 }
 
-type baseWeapon interface {
+type BaseWeapon interface {
   // Cost in AP that the source Entity must spent to use this weapon.
   Cost(source *Entity) int
 
@@ -68,7 +68,7 @@ type Weapon interface {
   // Using the weapon is an Action, so it must satisfy the Action interface
   Action
 
-  baseWeapon
+  BaseWeapon
 }
 
 type WeaponInstance struct {
@@ -83,12 +83,12 @@ func (wi WeaponInstance) Icon() string {
 
 type WeaponSpec struct {
   WeaponInstance
-  baseWeapon
+  BaseWeapon
 }
 
 // TODO: IT would be nice to change to using the reflect system, if possible, instead of
 // requiring a WeaponMaker
-type WeaponMaker func() baseWeapon
+type WeaponMaker func() BaseWeapon
 
 // map from WeaponInstance.Base to a WeaponMaker for the underlying type for that weapon
 var weapon_registry map[string]WeaponMaker
@@ -98,7 +98,7 @@ var weapon_specs_registry map[string]Weapon
 
 func init() {
   weapon_registry = make(map[string]WeaponMaker)
-  rstring := "\\s*{\\s*\"Instance\"\\s*:\\s*(\\{[^}]*\\})\\s*,\\s*\"Weapon\"\\s*:\\s*({(\\s|\\S)*})\\s*}\\s*$"
+  rstring := "\\s*{\\s*\"WeaponInstance\"\\s*:\\s*(\\{[^}]*\\})\\s*,\\s*\"BaseWeapon\"\\s*:\\s*({(\\s|\\S)*})\\s*}\\s*$"
   rstring = strings.Replace(rstring, "\\s", "[ \t\r\n\f]", -1)
   rstring = strings.Replace(rstring, "\\S", "[^ \t\r\n\f]", -1)
   weapon_spec_regexp = regexp.MustCompile(rstring)
@@ -127,8 +127,8 @@ func (w *WeaponSpec) UnmarshalJSON(data []byte) error {
   if !ok {
     return errors.New(fmt.Sprintf("Unable to make a weapon of type '%s'", string(res[1])))
   }
-  w.baseWeapon = maker()
-  json.Unmarshal(res[2], &w.baseWeapon)
+  w.BaseWeapon = maker()
+  json.Unmarshal(res[2], &w.BaseWeapon)
   return nil
 }
 
@@ -142,6 +142,7 @@ func LoadWeaponSpecs(spec io.Reader) error {
   }
   err = json.Unmarshal(data, &specs)
   if err != nil {
+    fmt.Printf("Got the error: %s when reading:\n%s\n", err.Error(), string(data))
     return err
   }
   for i := range specs {
@@ -274,7 +275,7 @@ func cellsWithinRange(source *Entity, rnge int) []Target {
 }
 
 func init() {
-  RegisterWeapon("Club", func() baseWeapon { return &Club{} })
+  RegisterWeapon("Club", func() BaseWeapon { return &Club{} })
 }
 
 type Club struct {
@@ -319,7 +320,7 @@ func (c *Club) Damage(source *Entity, t Target) (res []Resolution) {
 }
 
 func init() {
-  RegisterWeapon("Gun", func() baseWeapon { return &Gun{} })
+  RegisterWeapon("Gun", func() BaseWeapon { return &Gun{} })
 }
 
 type Gun struct {
@@ -368,7 +369,7 @@ func (g *Gun) Damage(source *Entity, t Target) (res []Resolution) {
 }
 
 func init() {
-  RegisterWeapon("StandardAOE", func() baseWeapon { return &StandardAOE{} })
+  RegisterWeapon("StandardAOE", func() BaseWeapon { return &StandardAOE{} })
 }
 
 type StandardAOE struct {

@@ -1,11 +1,11 @@
 [
   {
-    "Instance" : {
+    "WeaponInstance" : {
       "Base" : "Club",
       "Name" : "Taser",
       "Path" : "weapons/taser.png"
     },
-    "Weapon" : {
+    "BaseWeapon" : {
       "StaticCost" : 15,
       "EntityRange" : 1,
       "Factor" : 3

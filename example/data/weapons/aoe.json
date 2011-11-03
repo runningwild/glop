@@ -1,11 +1,11 @@
 [
   {
-    "Instance" : {
+    "WeaponInstance" : {
       "Base" : "StandardAOE",
       "Name" : "Grenade",
       "Path" : "weapons/grenade.png"
     },
-    "Weapon" : {
+    "BaseWeapon" : {
       "StaticCost" : 25,
       "CellRange" : 5,
       "Power" : 75,

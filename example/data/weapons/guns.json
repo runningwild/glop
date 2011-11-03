@@ -1,11 +1,11 @@
 [
   {
-    "Instance" : {
+    "WeaponInstance" : {
       "Base" : "Gun",
       "Name" : "Desert Eagle",
       "Path" : "weapons/eagle.png"
     },
-    "Weapon" : {
+    "BaseWeapon" : {
       "Power" : 50,
       "StaticCost" : 6,
       "EntityRange" : 5
@@ -13,12 +13,12 @@
   },
 
   {
-    "Instance" : {
+    "WeaponInstance" : {
       "Base" : "Gun",
       "Name" : "AK-47",
       "Path" : "weapons/ak47.png"
     },
-    "Weapon" : {
+    "BaseWeapon" : {
       "Power" : 25,
       "StaticCost" : 10,
       "EntityRange" : 25
@@ -26,12 +26,12 @@
   },
 
   {
-    "Instance" : {
+    "WeaponInstance" : {
       "Base" : "Gun",
       "Name" : "Shotgun",
       "Path" : "weapons/shotguns.png"
-   },
-    "Weapon" : {
+    },
+    "BaseWeapon" : {
       "Power" : 15,
       "StaticCost" : 4,
       "EntityRange" : 15
