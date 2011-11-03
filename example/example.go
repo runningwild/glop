@@ -68,29 +68,23 @@ func actualMain() {
 
   // TODO: Loading weapon specs should be done automatically - it just needs the datadir
   // Load weapon files
-  weapons, err := os.Open(filepath.Join(basedir, "weapons", "guns.json"))
+  dir, err := os.Open(filepath.Join(basedir, "weapons"))
   if err != nil {
     panic(err.Error())
   }
-  err = game.LoadWeaponSpecs(weapons)
+  names, err := dir.Readdir(0)
   if err != nil {
     panic(err.Error())
   }
-  weapons, err = os.Open(filepath.Join(basedir, "weapons", "melee.json"))
-  if err != nil {
-    panic(err.Error())
-  }
-  err = game.LoadWeaponSpecs(weapons)
-  if err != nil {
-    panic(err.Error())
-  }
-  weapons, err = os.Open(filepath.Join(basedir, "weapons", "aoe.json"))
-  if err != nil {
-    panic(err.Error())
-  }
-  err = game.LoadWeaponSpecs(weapons)
-  if err != nil {
-    panic(err.Error())
+  for _,name := range names {
+    weapons, err := os.Open(filepath.Join(basedir, "weapons", name.Name))
+    if err != nil {
+      panic(err.Error())
+    }
+    err = game.LoadWeaponSpecs(weapons)
+    if err != nil {
+      panic(err.Error())
+    }
   }
 
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")

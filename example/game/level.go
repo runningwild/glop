@@ -310,7 +310,8 @@ type Level struct {
   reachable []int
 
   // ATTACK data
-  in_range []Target
+  in_range          []Target
+  mouse_over_target Target
 }
 
 func (l *Level) GetSelected() *Entity {
@@ -591,7 +592,7 @@ func (l *Level) Think(dt int64) {
   if l.selected != nil && l.command == Attack {
     index := l.selected_gui.actions.GetSelectedIndex()
     if index != -1 {
-      l.selected.Weapons[index].MouseOver(l.selected, float64(bx), float64(by))
+      l.mouse_over_target = l.selected.Weapons[index].MouseOver(l.selected, float64(bx), float64(by))
     }
   } else {
     // Highlight the square under the cursor
@@ -667,11 +668,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
     }
 
   case Attack:
-    target := Target{CellTarget, int(click.X), int(click.Y)}
-    if ent != nil {
-      target.Type |= EntityTarget
-    }
-    l.DoAttack(target)
+    l.DoAttack(l.mouse_over_target)
 
   case NoCommand:
     if ent != nil && ent.side == l.side {

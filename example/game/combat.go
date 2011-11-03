@@ -39,6 +39,7 @@ const (
   CellTarget
 )
 
+// NEXT: Need to make Target objects from MouseOver so we can pass them arond to ensure that MouseOver and Damage are both hitting the exact same thing.
 type Target struct {
   Type TargetType
   X, Y int
@@ -54,7 +55,9 @@ type baseWeapon interface {
   // Does any effects for when the player mouses over something while this
   // weapon is selected, such as highlighting the region that would be hit
   // with an AOE attack
-  MouseOver(source *Entity, bx, by float64)
+  // Returns the Target object that should be used to target whatever is
+  // at the specified board coordinates
+  MouseOver(source *Entity, bx, by float64) Target
 
   // Returns a Resolution indicating everything that happened in once instance of an attack
   // with this weapon
@@ -162,9 +165,22 @@ func MakeWeapon(name string) Weapon {
   return weapon
 }
 
-type NoMouseOverEffect struct{}
+type SingleTargetMouseOver struct{}
 
-func (w NoMouseOverEffect) MouseOver(*Entity, float64, float64) {}
+func (w SingleTargetMouseOver) MouseOver(source *Entity, x, y float64) Target {
+  for _,ent := range source.level.Entities {
+    if int(ent.pos.X) == int(x) && int(ent.pos.Y) == int(y) {
+      return Target{
+        Type : EntityTarget,
+        X : int(x),
+        Y : int(y),
+      }
+    }
+  }
+  return Target{
+    Type : NoTarget,
+  }
+}
 
 type StaticCost int
 
@@ -227,11 +243,11 @@ func cellsWithinRange(source *Entity, rnge int) []Target {
     miny = 0
   }
   maxx := x + rnge
-  if maxx >= len(source.level.grid) - 1 {
+  if maxx >= len(source.level.grid) {
     maxx = len(source.level.grid) - 1
   }
   maxy := y + rnge
-  if maxy >= len(source.level.grid[0]) - 1 {
+  if maxy >= len(source.level.grid[0]) {
     maxy = len(source.level.grid[0]) - 1
   }
 
@@ -265,7 +281,7 @@ type Club struct {
   StaticCost
   EntityRange
   Factor int
-  NoMouseOverEffect
+  SingleTargetMouseOver
 }
 
 func (c *Club) Damage(source *Entity, t Target) (res []Resolution) {
@@ -310,7 +326,7 @@ type Gun struct {
   StaticCost
   EntityRange
   Power int
-  NoMouseOverEffect
+  SingleTargetMouseOver
 }
 
 func (g *Gun) Damage(source *Entity, t Target) (res []Resolution) {
@@ -362,7 +378,7 @@ type StandardAOE struct {
   Size  int
 }
 
-func (g *StandardAOE) affected(source *Entity, bx, by float64) [][2]int {
+func (g *StandardAOE) affected(source *Entity, bx, by float64) (int, int, [][2]int) {
   var cx, cy int
   if g.Size%2 == 0 {
     cx = int(bx - 0.5)
@@ -381,11 +397,11 @@ func (g *StandardAOE) affected(source *Entity, bx, by float64) [][2]int {
     miny = 0
   }
   maxx = cx + g.Size/2
-  if maxx >= len(source.level.grid) - 1{
+  if maxx >= len(source.level.grid) {
     maxx = len(source.level.grid) - 1
   }
   maxy = cy + g.Size/2
-  if maxy >= len(source.level.grid[0]) - 1 {
+  if maxy >= len(source.level.grid[0]) {
     maxy = len(source.level.grid[0]) - 1
   }
 
@@ -396,24 +412,31 @@ func (g *StandardAOE) affected(source *Entity, bx, by float64) [][2]int {
       ret = append(ret, [2]int{x, y})
     }
   }
-  return ret
+  return cx, cy, ret
 }
-func (g *StandardAOE) MouseOver(source *Entity, bx, by float64) {
+func (g *StandardAOE) MouseOver(source *Entity, bx, by float64) Target {
   targets := g.ValidTargets(source)
   for _, target := range targets {
     if target.Type == CellTarget && target.X == int(bx) && target.Y == int(by) {
-      affected := g.affected(source, bx, by)
+      x,y,affected := g.affected(source, bx, by)
       for _, pos := range affected {
         source.level.grid[pos[0]][pos[1]].highlight |= AttackMouseOver
       }
-      return
+      return Target{
+        Type : CellTarget,
+        X : x,
+        Y : y,
+      }
     }
   }
+  return Target{}
 }
 func (g *StandardAOE) Damage(source *Entity, target Target) (res []Resolution) {
   // TODO: We're about to do a double loop over entities and positions,
   // seems a bit wasteful, lets use a map or something not-stupid
-  cells := g.affected(source, float64(target.X), float64(target.Y))
+  // Adding 0.5 here because sometimes g.affected subtracts 0.5 depending on
+  // the size of the aoe
+  _,_,cells := g.affected(source, float64(target.X) + 0.5, float64(target.Y) + 0.5)
   for _, ent := range source.level.Entities {
     for _, cell := range cells {
       if int(ent.pos.X) != cell[0] {
