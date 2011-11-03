@@ -476,7 +476,7 @@ func (l *Level) PrepMove() {
 
   bx := int(l.selected.pos.X)
   by := int(l.selected.pos.Y)
-  graph := &unitGraph{l, l.selected.Base.movement.Mods}
+  graph := &unitGraph{l, l.selected.Base.attributes.MoveMods}
   l.reachable = algorithm.ReachableWithinLimit(graph, []int{l.toVertex(bx, by)}, float64(l.selected.AP))
 
   if len(l.reachable) == 0 {
@@ -492,7 +492,7 @@ func (l *Level) DoMove(click_x, click_y int) {
 
   start := l.toVertex(int(l.selected.pos.X), int(l.selected.pos.Y))
   end := l.toVertex(click_x, click_y)
-  graph := &unitGraph{l, l.selected.Base.movement.Mods}
+  graph := &unitGraph{l, l.selected.Base.attributes.MoveMods}
   ap, path := algorithm.Dijkstra(graph, []int{start}, []int{end})
   if len(path) == 0 || int(ap) > l.selected.AP {
     return

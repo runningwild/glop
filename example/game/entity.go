@@ -13,22 +13,6 @@ import (
   "strings"
 )
 
-type LosAttributes struct {
-  Dist int
-  // How far the unit is able to see
-
-  Mods map[string]float64
-  // How much less the unit can see if it has to look through this terrain
-  // 0 indicates that its vision is not affected by this terrain
-  // any unspecified terrain blocks los
-}
-
-type MovementAttributes struct {
-  Mods map[string]int
-  // Indicates how many AP must be used to enter a cell with this terrain
-  // any unspecified terrain is impassable
-}
-
 // contains the stats used to intialize a unit of this type
 type UnitType struct {
   Name string
@@ -47,41 +31,11 @@ type UnitType struct {
   // List of the names of the weapons this unit comes with
   Weapons []string
 
-  Los      []string
-  Movement []string
+  // These attribute names are referenced against a master list of all
+  // attributes and combined to determine the final attributes for this unit
+  attribute_names []string
 
-  los      LosAttributes
-  movement MovementAttributes
-}
-
-// takes all attributes listed for a unit and combines them by taking the
-// best parts of all attributes.
-func (unit *UnitType) processAttributes(los_atts map[string]LosAttributes, move_atts map[string]MovementAttributes) {
-
-  // Los Attributes
-  unit.los = LosAttributes{Mods: make(map[string]float64)}
-  for _, id := range unit.Los {
-    if los_atts[id].Dist > unit.los.Dist {
-      unit.los.Dist = los_atts[id].Dist
-    }
-    for terrain, cost := range los_atts[id].Mods {
-      if ccost, ok := unit.los.Mods[terrain]; !ok || cost < ccost {
-        unit.los.Mods[terrain] = cost
-      }
-    }
-  }
-  fmt.Printf("%v\n", unit.los)
-
-  // Movement Attributes
-  unit.movement = MovementAttributes{Mods: make(map[string]int)}
-  for _, id := range unit.Movement {
-    for terrain, cost := range move_atts[id].Mods {
-      if ccost, ok := unit.movement.Mods[terrain]; !ok || cost < ccost {
-        unit.movement.Mods[terrain] = cost
-      }
-    }
-  }
-  fmt.Printf("%v\n", unit.movement)
+  attributes Attributes
 }
 
 type UnitStats struct {
@@ -289,10 +243,10 @@ func bresenham(x, y, x2, y2 int) [][2]int {
   return ret
 }
 
-func (e *Entity) addVisibleAlongLine(vision float64, line [][2]int) {
+func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
   for _, v := range line {
     e.visible[e.level.toVertex(v[0], v[1])] = true
-    concealment, ok := e.UnitStats.Base.los.Mods[string(e.level.grid[v[0]][v[1]].Terrain)]
+    concealment, ok := e.UnitStats.Base.attributes.LosMods[string(e.level.grid[v[0]][v[1]].Terrain)]
     if concealment < 0 || !ok {
       break
     }
@@ -329,12 +283,12 @@ func (e *Entity) figureVisibility() {
   e.visible = make(map[int]bool, vision*vision)
   e.visible[e.level.toVertex(ex, ey)] = true
   for cx := x; cx <= x2; cx++ {
-    e.addVisibleAlongLine(float64(vision), bresenham(ex, ey, cx, y)[1:])
-    e.addVisibleAlongLine(float64(vision), bresenham(ex, ey, cx, y2)[1:])
+    e.addVisibleAlongLine(vision, bresenham(ex, ey, cx, y)[1:])
+    e.addVisibleAlongLine(vision, bresenham(ex, ey, cx, y2)[1:])
   }
   for cy := y; cy <= y2; cy++ {
-    e.addVisibleAlongLine(float64(vision), bresenham(ex, ey, x, cy)[1:])
-    e.addVisibleAlongLine(float64(vision), bresenham(ex, ey, x2, cy)[1:])
+    e.addVisibleAlongLine(vision, bresenham(ex, ey, x, cy)[1:])
+    e.addVisibleAlongLine(vision, bresenham(ex, ey, x2, cy)[1:])
   }
 }
 
@@ -353,7 +307,7 @@ func (e *Entity) OnRound() {
 }
 
 func (e *Entity) enterCell(x, y int) {
-  graph := unitGraph{e.level, e.Base.movement.Mods}
+  graph := unitGraph{e.level, e.Base.attributes.MoveMods}
   src := e.level.toVertex(int(e.prev_pos.X), int(e.prev_pos.Y))
   dst := e.level.toVertex(x, y)
   e.AP -= int(graph.costToMove(src, dst))
@@ -429,38 +383,6 @@ func (e *Entity) Think(dt int64) {
   e.advance(e.Move_speed * float32(dt))
 }
 
-func loadJson(path string, target interface{}) error {
-  f, err := os.Open(path)
-  if err != nil {
-    return err
-  }
-  data, err := ioutil.ReadAll(f)
-  if err != nil {
-    return err
-  }
-  err = json.Unmarshal(data, target)
-  if err != nil {
-    return err
-  }
-  return nil
-}
-
-func loadLosAttributes(dir string) (map[string]LosAttributes, error) {
-  var atts struct {
-    Los_attributes map[string]LosAttributes
-  }
-  err := loadJson(filepath.Join(dir, "los.json"), &atts)
-  return atts.Los_attributes, err
-}
-
-func loadMovementAttributes(dir string) (map[string]MovementAttributes, error) {
-  var atts struct {
-    Movement_attributes map[string]MovementAttributes
-  }
-  err := loadJson(filepath.Join(dir, "movement.json"), &atts)
-  return atts.Movement_attributes, err
-}
-
 func LoadAllUnits(dir string) ([]*UnitType, error) {
   var paths []string
   unit_dir := filepath.Join(dir, "units")
@@ -474,14 +396,11 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
     return nil, err
   }
 
-  los, err := loadLosAttributes(dir)
+  atts, err := loadAttributes(dir)
   if err != nil {
     return nil, err
   }
-  move, err := loadMovementAttributes(dir)
-  if err != nil {
-    return nil, err
-  }
+
   var units []*UnitType
   for _, path := range paths {
     f, err := os.Open(path)
@@ -498,7 +417,7 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
     if err != nil {
       return nil, err
     }
-    unit.processAttributes(los, move)
+    unit.processAttributes(atts)
     units = append(units, &unit)
   }
   return units, nil
