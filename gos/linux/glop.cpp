@@ -538,7 +538,7 @@ void GlopGetWindowDims(int* x, int* y, int* dx, int* dy) {
 static GlopKeyEvent* glop_event_buffer = 0;
 
 void GlopGetInputEvents(void** _events_ret, void* _num_events, void* _horizon) {
-  *((long long*)_horizon) = gtm();
+  *((long long*)_horizon) = gt();
   vector<GlopKeyEvent> ret; // weeeeeeeeeeee
   ret.swap(events);
 

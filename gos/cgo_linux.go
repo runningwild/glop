@@ -57,10 +57,13 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
   var horizon C.longlong
   C.GlopGetInputEvents(cp, unsafe.Pointer(&length), unsafe.Pointer(&horizon))
   linux.horizon = int64(horizon)
+  print("horizon: ", linux.horizon, "\n")
   c_events := (*[1000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
   events := make([]gin.OsEvent, length)
   for i := range c_events {
     wx,wy := linux.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
+    print("timestamp: ", c_events[i].timestamp, "\n")
+    print("press amt: ", c_events[i].press_amt, "\n")
     events[i] = gin.OsEvent{
       KeyId     : gin.KeyId(c_events[i].index),
       Press_amt : float64(c_events[i].press_amt),
@@ -73,8 +76,8 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 }
 
 func (linux *linuxSystemObject) rawCursorToWindowCoords(x,y int) (int,int) {
-  wx,wy,_,_ := linux.GetWindowDims()
-  return x - wx, y - wy
+  wx,wy,_,wdy := linux.GetWindowDims()
+  return x - wx, wy + wdy - y
 }
 
 func (linux *linuxSystemObject) GetCursorPos() (int,int) {

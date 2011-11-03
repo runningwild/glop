@@ -1,0 +1,4 @@
+cp ../gos/linux/lib/libglop.so .
+gb -mi
+ cp example linux/example 
+
