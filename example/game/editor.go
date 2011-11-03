@@ -19,7 +19,7 @@ type Editor struct {
   cell_parent *gui.CollapseWrapper
 
   // attributes of the terrain
-  terrain_type    *gui.SelectBox
+  terrain_type *gui.SelectBox
 
   // units
   starting_unit *gui.SelectBox
@@ -34,7 +34,7 @@ type Editor struct {
   invert bool
 }
 
-func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
+func MakeEditor(level_data *StaticLevelData, dir, filename string) *Editor {
   var e Editor
   e.level = level_data
   e.selected = make(map[*CellData]bool, 50)
@@ -49,32 +49,32 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   e.ui.AddChild(gui.MakeButton("standard", "Save", 150, 1, 1, 0, 1, func(int64) {
     ldc := e.level.makeLevelDataContainer()
     bg_in_path := filepath.Join(dir, "maps", ldc.Level.Image)
-    bg_in,err := os.Open(bg_in_path)
+    bg_in, err := os.Open(bg_in_path)
     if err != nil {
-      fmt.Printf("Err: %s\n", err.String())
+      fmt.Printf("Err: %s\n", err.Error())
       return
     }
     defer bg_in.Close()
 
     bg_out_path := filepath.Join(dir, "maps", bg_name_widget.GetText())
     if bg_out_path != bg_in_path {
-      image_data,err := ioutil.ReadAll(bg_in)
+      image_data, err := ioutil.ReadAll(bg_in)
       if err != nil {
-        fmt.Printf("Err: %s\n", err.String())
+        fmt.Printf("Err: %s\n", err.Error())
         return
       }
       err = ioutil.WriteFile(bg_out_path, image_data, 0664)
     }
 
     data_path := filepath.Join(dir, "maps", filename_widget.GetText())
-    data_file,err := os.Create(data_path)
+    data_file, err := os.Create(data_path)
     if err != nil {
-      fmt.Printf("Err: %s\n", err.String())
+      fmt.Printf("Err: %s\n", err.Error())
       return
     }
     err = ldc.Write(data_file)
     if err != nil {
-      fmt.Printf("Err: %s\n", err.String())
+      fmt.Printf("Err: %s\n", err.Error())
     }
   }))
 
@@ -86,14 +86,14 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   var terrain_names []string
   err := loadJson(filepath.Join(dir, "terrains.json"), &terrain_names)
   if err != nil {
-    fmt.Printf("err: %s\n", err.String())
+    fmt.Printf("err: %s\n", err.Error())
   }
   e.terrain_type = gui.MakeSelectTextBox(terrain_names, 200)
   attributes.AddChild(e.terrain_type)
 
-  units,_ := LoadAllUnits(dir)
+  units, _ := LoadAllUnits(dir)
   unit_names := make([]string, len(units))
-  for i,unit := range units {
+  for i, unit := range units {
     unit_names[i] = unit.Name
   }
   unit_names = append(unit_names, "")
@@ -101,15 +101,15 @@ func MakeEditor(level_data *StaticLevelData, dir,filename string) *Editor {
   e.starting_unit = gui.MakeSelectTextBox(unit_names, 200)
   attributes.AddChild(e.starting_unit)
 
-  e.starting_side = gui.MakeSelectTextBox([]string{"None","The Jungle","The Man"}, 200)
+  e.starting_side = gui.MakeSelectTextBox([]string{"None", "The Jungle", "The Man"}, 200)
   attributes.AddChild(e.starting_side)
 
   return &e
 }
 
-func (e *Editor) SelectCell(x,y int) {
+func (e *Editor) SelectCell(x, y int) {
   if e.invert {
-    e.selected[&e.level.grid[x][y]] = false,false
+    e.selected[&e.level.grid[x][y]] = false, false
   } else {
     e.selected[&e.level.grid[x][y]] = true
   }
@@ -120,13 +120,13 @@ func (e *Editor) SelectCell(x,y int) {
     var terrain Terrain
     var unit string
     var side int
-    for cell,_ := range e.selected {
+    for cell, _ := range e.selected {
       terrain = cell.Terrain
       unit = cell.Unit.Name
       side = cell.Unit.Side
       break
     }
-    for cell,_ := range e.selected {
+    for cell, _ := range e.selected {
       if terrain != cell.Terrain {
         terrain = ""
       }
@@ -153,7 +153,7 @@ func (e *Editor) GetGui() gui.Widget {
 
 // TODO: Right now if you select two squares, one with a unit and one without, the unit will be erased because the gui will be set to not having a unit and both cells will be set to match the gui.  Instead we need to make select boxes either report that they were clicked, or we need to manually track the value in it.
 func (e *Editor) Think() {
-  for cell,_ := range e.selected {
+  for cell, _ := range e.selected {
     if e.terrain_type.GetSelectedIndex() != -1 {
       cell.staticCellData.Terrain = Terrain(e.terrain_type.GetSelectedOption().(string))
     }
@@ -164,7 +164,7 @@ func (e *Editor) Think() {
   }
   for i := range e.level.grid {
     for j := range e.level.grid[i] {
-      if _,ok := e.selected[&e.level.grid[i][j]]; ok {
+      if _, ok := e.selected[&e.level.grid[i][j]]; ok {
         e.level.grid[i][j].highlight |= Selected
       } else {
         e.level.grid[i][j].highlight &= ^Selected
@@ -173,13 +173,15 @@ func (e *Editor) Think() {
   }
 }
 
-func (e *Editor) HandleEventGroup(event_group gin.EventGroup, x,y int) {
-  if gin.In().GetKey(gin.MouseLButton).CurPressAmt() == 0 { return }
+func (e *Editor) HandleEventGroup(event_group gin.EventGroup, x, y int) {
+  if gin.In().GetKey(gin.MouseLButton).CurPressAmt() == 0 {
+    return
+  }
   if event_group.Events[0].Key.Id() == gin.MouseLButton && event_group.Events[0].Type == gin.Press {
     if gin.In().GetKey(gin.EitherShift).CurPressAmt() == 0 {
       e.selected = make(map[*CellData]bool)
     }
-    _,ok := e.selected[&e.level.grid[x][y]]
+    _, ok := e.selected[&e.level.grid[x][y]]
     e.invert = ok
   }
   e.SelectCell(x, y)

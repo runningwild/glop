@@ -5,10 +5,8 @@ import (
   "testing"
 )
 
-
 func TestAllSpecs(t *testing.T) {
   r := gospec.NewRunner()
   r.AddSpec(LoadSpriteSpec)
   gospec.MainGoTest(r, t)
 }
-

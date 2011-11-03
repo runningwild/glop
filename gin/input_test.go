@@ -10,9 +10,9 @@ import (
 func injectEvent(events *[]gin.OsEvent, index gin.KeyId, amt float64, timestamp int64) {
   *events = append(*events,
     gin.OsEvent{
-      KeyId : index,
-      Press_amt : amt,
-      Timestamp : timestamp,
+      KeyId:     index,
+      Press_amt: amt,
+      Timestamp: timestamp,
     },
   )
 }
@@ -26,25 +26,25 @@ func NaturalKeySpec(c gospec.Context) {
     events := make([]gin.OsEvent, 0)
     injectEvent(&events, 'a', 1, 5)
     input.Think(10, false, events)
-    c.Expect(keya.FramePressCount(),   Equals, 1)
+    c.Expect(keya.FramePressCount(), Equals, 1)
     c.Expect(keya.FrameReleaseCount(), Equals, 0)
-    c.Expect(keyb.FramePressCount(),   Equals, 0)
+    c.Expect(keyb.FramePressCount(), Equals, 0)
     c.Expect(keyb.FrameReleaseCount(), Equals, 0)
 
     events = events[0:0]
     injectEvent(&events, 'b', 1, 15)
     input.Think(20, false, events)
-    c.Expect(keya.FramePressCount(),   Equals, 0)
+    c.Expect(keya.FramePressCount(), Equals, 0)
     c.Expect(keya.FrameReleaseCount(), Equals, 0)
-    c.Expect(keyb.FramePressCount(),   Equals, 1)
+    c.Expect(keyb.FramePressCount(), Equals, 1)
     c.Expect(keyb.FrameReleaseCount(), Equals, 0)
 
     events = events[0:0]
     injectEvent(&events, 'a', 0, 25)
     input.Think(30, false, events)
-    c.Expect(keya.FramePressCount(),   Equals, 0)
+    c.Expect(keya.FramePressCount(), Equals, 0)
     c.Expect(keya.FrameReleaseCount(), Equals, 1)
-    c.Expect(keyb.FramePressCount(),   Equals, 0)
+    c.Expect(keyb.FramePressCount(), Equals, 0)
     c.Expect(keyb.FrameReleaseCount(), Equals, 0)
   })
 
@@ -57,9 +57,9 @@ func NaturalKeySpec(c gospec.Context) {
     injectEvent(&events, 'a', 0, 8)
     injectEvent(&events, 'a', 1, 9)
     input.Think(10, false, events)
-    c.Expect(keya.FramePressCount(),   Equals, 3)
+    c.Expect(keya.FramePressCount(), Equals, 3)
     c.Expect(keya.FrameReleaseCount(), Equals, 2)
-    c.Expect(keyb.FramePressCount(),   Equals, 1)
+    c.Expect(keyb.FramePressCount(), Equals, 1)
     c.Expect(keyb.FrameReleaseCount(), Equals, 0)
   })
 
@@ -72,7 +72,7 @@ func NaturalKeySpec(c gospec.Context) {
     injectEvent(&events, 'a', 0, 8)
     injectEvent(&events, 'a', 0, 9)
     input.Think(10, false, events)
-    c.Expect(keya.FramePressCount(),   Equals, 1)
+    c.Expect(keya.FramePressCount(), Equals, 1)
     c.Expect(keya.FrameReleaseCount(), Equals, 1)
   })
 
@@ -83,18 +83,18 @@ func NaturalKeySpec(c gospec.Context) {
     injectEvent(&events, 'a', 0, 14)
     injectEvent(&events, 'a', 1, 16)
     input.Think(20, false, events)
-    c.Expect(keya.FramePressSum(),   Equals, 8.0)
+    c.Expect(keya.FramePressSum(), Equals, 8.0)
 
     events = events[0:0]
     injectEvent(&events, 'b', 1, 22)
     injectEvent(&events, 'b', 0, 24)
     input.Think(30, false, events)
-    c.Expect(keyb.FramePressSum(),   Equals, 2.0)
+    c.Expect(keyb.FramePressSum(), Equals, 2.0)
 
     events = events[0:0]
     injectEvent(&events, 'b', 1, 35)
     input.Think(40, false, events)
-    c.Expect(keyb.FramePressSum(),   Equals, 5.0)
+    c.Expect(keyb.FramePressSum(), Equals, 5.0)
   })
 
   c.Specify("Key.FramePressAvg() works.", func() {
@@ -107,14 +107,14 @@ func NaturalKeySpec(c gospec.Context) {
     injectEvent(&events, 'a', 1, 18)
     injectEvent(&events, 'a', 0, 20)
     input.Think(20, false, events)
-    c.Expect(keya.FramePressAvg(),   Equals, 0.6)
+    c.Expect(keya.FramePressAvg(), Equals, 0.6)
 
     events = events[0:0]
     injectEvent(&events, 'b', 1, 25)
     input.Think(30, false, events)
     injectEvent(&events, 'b', 0, 35)
     input.Think(40, false, events)
-    c.Expect(keyb.FramePressAvg(),   Equals, 0.5)
+    c.Expect(keyb.FramePressAvg(), Equals, 0.5)
   })
 }
 
@@ -148,7 +148,6 @@ func DerivedKeySpec(c gospec.Context) {
     c.Expect(ABc_Ef.IsDown(), Equals, true)
     c.Expect(ABc_Ef.FramePressCount(), Equals, 1)
     events = events[0:0]
-
 
     c.Specify("Release happens once primary key is released", func() {
       injectEvent(&events, 'a', 0, 11)
@@ -312,7 +311,7 @@ func EventSpec(c gospec.Context) {
   check := func(lengths ...int) {
     groups := input.Think(10, false, events)
     c.Assume(len(groups), Equals, len(lengths))
-    for i,length := range lengths {
+    for i, length := range lengths {
       c.Assume(len(groups[i].Events), Equals, length)
     }
   }
@@ -394,7 +393,7 @@ func AxisSpec(c gospec.Context) {
     input.Think(20, false, events)
     c.Expect(x.FramePressSum(), Equals, 0.0)
     c.Expect(x.IsDown(), Equals, false)
- })
+  })
 }
 
 type listener struct {
@@ -406,6 +405,7 @@ type listener struct {
   release_count []int
   press_amt     []float64
 }
+
 func (l *listener) ExpectPressCounts(v ...int) {
   l.press_count = v
 }
@@ -446,38 +446,38 @@ func EventListenerSpec(c gospec.Context) {
 
     c.Specify("Test a", func() {
       la := &listener{
-        input : input,
-        key_id : 'a',
-        context : c,
+        input:   input,
+        key_id:  'a',
+        context: c,
       }
       input.RegisterEventListener(la)
-      la.ExpectPressCounts(   1, 1, 1, 2, 2, 2)
-      la.ExpectReleaseCounts( 0, 1, 1, 1, 1, 2)
-      la.ExpectPressAmts(     1, 0, 0, 1, 1, 0)
+      la.ExpectPressCounts(1, 1, 1, 2, 2, 2)
+      la.ExpectReleaseCounts(0, 1, 1, 1, 1, 2)
+      la.ExpectPressAmts(1, 0, 0, 1, 1, 0)
       input.Think(0, false, events)
     })
     c.Specify("Test b", func() {
       lb := &listener{
-        input : input,
-        key_id : 'b',
-        context : c,
+        input:   input,
+        key_id:  'b',
+        context: c,
       }
       input.RegisterEventListener(lb)
-      lb.ExpectPressCounts(   0, 0, 1, 1, 1, 1)
-      lb.ExpectReleaseCounts( 0, 0, 0, 0, 1, 1)
-      lb.ExpectPressAmts(     0, 0, 1, 1, 0, 0)
+      lb.ExpectPressCounts(0, 0, 1, 1, 1, 1)
+      lb.ExpectReleaseCounts(0, 0, 0, 0, 1, 1)
+      lb.ExpectPressAmts(0, 0, 1, 1, 0, 0)
       input.Think(0, false, events)
     })
     c.Specify("Test ab", func() {
       lab := &listener{
-        input : input,
-        key_id : AB.Id(),
-        context : c,
+        input:   input,
+        key_id:  AB.Id(),
+        context: c,
       }
       input.RegisterEventListener(lab)
-      lab.ExpectPressCounts(  0, 0, 0, 1, 1, 1)
+      lab.ExpectPressCounts(0, 0, 0, 1, 1, 1)
       lab.ExpectReleaseCounts(0, 0, 0, 0, 0, 1)
-      lab.ExpectPressAmts(    0, 0, 0, 1, 1, 0)
+      lab.ExpectPressAmts(0, 0, 0, 1, 1, 0)
       input.Think(0, false, events)
     })
   })

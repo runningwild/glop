@@ -3,6 +3,7 @@ package gin
 var (
   next_derived_key_id KeyId
 )
+
 func init() {
   next_derived_key_id = KeyId(10000)
 }
@@ -15,7 +16,7 @@ func genDerivedKeyId() (id KeyId) {
 
 // TODO: Handle removal of dependencies
 func (input *Input) registerDependence(derived Key, dep KeyId) {
-  list,ok := input.dep_map[dep]
+  list, ok := input.dep_map[dep]
   if !ok {
     list = make([]Key, 0)
   }
@@ -28,14 +29,14 @@ func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
 }
 
 func (input *Input) bindDerivedKeyWithId(name string, id KeyId, bindings ...Binding) Key {
-  dk := &derivedKey {
-    keyState : keyState {
-      id : id,
-      name : name,
-      aggregator : &standardAggregator{},
+  dk := &derivedKey{
+    keyState: keyState{
+      id:         id,
+      name:       name,
+      aggregator: &standardAggregator{},
     },
-    Bindings : bindings,
-    bindings_down : make([]bool, len(bindings)),
+    Bindings:      bindings,
+    bindings_down: make([]bool, len(bindings)),
   }
 
   // Currently we don't have a way to register derived keys with cursor
@@ -43,9 +44,9 @@ func (input *Input) bindDerivedKeyWithId(name string, id KeyId, bindings ...Bind
   // association any event handler will be able to get at this data.
   input.registerKey(dk, dk.id, "")
 
-  for _,binding := range bindings {
+  for _, binding := range bindings {
     input.registerDependence(dk, binding.PrimaryKey)
-    for _,modifier := range binding.Modifiers {
+    for _, modifier := range binding.Modifiers {
       input.registerDependence(dk, modifier)
     }
   }
@@ -54,17 +55,17 @@ func (input *Input) bindDerivedKeyWithId(name string, id KeyId, bindings ...Bind
 
 func (input *Input) MakeBinding(primary KeyId, modifiers []KeyId, down []bool) Binding {
   return Binding{
-    PrimaryKey : primary,
-    Modifiers  : modifiers,
-    Down       : down,
-    Input      : input,
+    PrimaryKey: primary,
+    Modifiers:  modifiers,
+    Down:       down,
+    Input:      input,
   }
 }
 
 // A derivedKey is down if any of its bindings are down
 type derivedKey struct {
   keyState
-  is_down  bool
+  is_down bool
 
   Bindings      []Binding
   bindings_down []bool
@@ -88,7 +89,7 @@ func (dk *derivedKey) IsDown() bool {
 
 func (dk *derivedKey) numBindingsDown() int {
   count := 0
-  for _,down := range dk.bindings_down {
+  for _, down := range dk.bindings_down {
     if down {
       count++
     }
@@ -99,7 +100,7 @@ func (dk *derivedKey) numBindingsDown() int {
 func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
   index := -1
   if cause.Type != NoEvent {
-    for i,binding := range dk.Bindings {
+    for i, binding := range dk.Bindings {
       if cause.Key.Id() == binding.PrimaryKey {
         index = i
       }
@@ -144,4 +145,3 @@ func (b *Binding) CurPressAmt() float64 {
   }
   return b.Input.key_map[b.PrimaryKey].CurPressAmt()
 }
-

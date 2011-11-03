@@ -41,7 +41,7 @@ type UnitType struct {
   AP int
 
   // basic combat stats, will be replaced with more interesting things later
-  Attack int
+  Attack  int
   Defense int
 
   // List of the names of the weapons this unit comes with
@@ -59,13 +59,13 @@ type UnitType struct {
 func (unit *UnitType) processAttributes(los_atts map[string]LosAttributes, move_atts map[string]MovementAttributes) {
 
   // Los Attributes
-  unit.los = LosAttributes{ Mods : make(map[string]float64) }
-  for _,id := range unit.Los {
+  unit.los = LosAttributes{Mods: make(map[string]float64)}
+  for _, id := range unit.Los {
     if los_atts[id].Dist > unit.los.Dist {
       unit.los.Dist = los_atts[id].Dist
     }
-    for terrain,cost := range los_atts[id].Mods {
-      if ccost,ok := unit.los.Mods[terrain]; !ok || cost < ccost {
+    for terrain, cost := range los_atts[id].Mods {
+      if ccost, ok := unit.los.Mods[terrain]; !ok || cost < ccost {
         unit.los.Mods[terrain] = cost
       }
     }
@@ -73,14 +73,14 @@ func (unit *UnitType) processAttributes(los_atts map[string]LosAttributes, move_
   fmt.Printf("%v\n", unit.los)
 
   // Movement Attributes
-  unit.movement = MovementAttributes{ Mods : make(map[string]int) }
-  for _,id := range unit.Movement {
-    for terrain,cost := range move_atts[id].Mods {
-      if ccost,ok := unit.movement.Mods[terrain]; !ok || cost < ccost {
+  unit.movement = MovementAttributes{Mods: make(map[string]int)}
+  for _, id := range unit.Movement {
+    for terrain, cost := range move_atts[id].Mods {
+      if ccost, ok := unit.movement.Mods[terrain]; !ok || cost < ccost {
         unit.movement.Mods[terrain] = cost
       }
     }
-  }  
+  }
   fmt.Printf("%v\n", unit.movement)
 }
 
@@ -118,9 +118,10 @@ type EntityStatsWindow struct {
   // aren't yours
   clickable bool
 }
+
 func MakeStatsWindow(clickable bool) *EntityStatsWindow {
   var esw EntityStatsWindow
-  esw.EmbeddedWidget = &gui.BasicWidget{ CoreWidget : &esw }
+  esw.EmbeddedWidget = &gui.BasicWidget{CoreWidget: &esw}
   esw.Request_dims.Dx = 350
   esw.Request_dims.Dy = 175
   esw.clickable = clickable
@@ -159,19 +160,25 @@ func (w *EntityStatsWindow) String() string {
   return "entity stats window"
 }
 func (w *EntityStatsWindow) update() {
-  if w.ent == nil { return }
+  if w.ent == nil {
+    return
+  }
   w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.Health, w.ent.Base.Health))
   w.ap.SetText(fmt.Sprintf("Ap: %d/%d", w.ent.AP, w.ent.Base.AP))
 }
 func (w *EntityStatsWindow) DoThink(int64, bool) {
-  if w.ent == nil { return }
+  if w.ent == nil {
+    return
+  }
   w.update()
 }
 func (w *EntityStatsWindow) GetEntity() *Entity {
   return w.ent
 }
 func (w *EntityStatsWindow) SetEntity(e *Entity) {
-  if e == w.ent { return }
+  if e == w.ent {
+    return
+  }
   w.ent = e
 
   w.health.SetText("")
@@ -183,7 +190,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
     thumb := e.s.Thumbnail()
     w.image.SetImageByTexture(thumb.Texture(), thumb.Dx(), thumb.Dy())
     w.name.SetText(e.Base.Name)
-    var paths,names []string
+    var paths, names []string
     for i := range e.Weapons {
       paths = append(paths, filepath.Join("/Users/runningwild/code/go-glop/example/example.app/Contents/icons", e.Weapons[i].Icon()))
       names = append(names, e.Weapons[i].Icon())
@@ -195,7 +202,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
   }
 }
 func (w *EntityStatsWindow) GetChildren() []gui.Widget {
-  return []gui.Widget{ w.table }
+  return []gui.Widget{w.table}
 }
 func (w *EntityStatsWindow) Draw(region gui.Region) {
   w.Render_region = region
@@ -220,7 +227,7 @@ type Entity struct {
   level *Level
 
   // Board coordinates of this entity's current position
-  pos mathgl.Vec2
+  pos      mathgl.Vec2
   prev_pos mathgl.Vec2
 
   // If the entity is currently moving then it will follow the vertices in path
@@ -243,9 +250,9 @@ func bresenham(x, y, x2, y2 int) [][2]int {
   var ret [][2]int
   steep := dy > dx
   if steep {
-    x,y = y,x
-    x2,y2 = y2,x2
-    dx,dy = dy,dx
+    x, y = y, x
+    x2, y2 = y2, x2
+    dx, dy = dy, dx
     ret = make([][2]int, dy)[0:0]
   } else {
     ret = make([][2]int, dx)[0:0]
@@ -253,7 +260,6 @@ func bresenham(x, y, x2, y2 int) [][2]int {
 
   err := dx >> 1
   cy := y
-
 
   xstep := 1
   if x2 < x {
@@ -284,12 +290,16 @@ func bresenham(x, y, x2, y2 int) [][2]int {
 }
 
 func (e *Entity) addVisibleAlongLine(vision float64, line [][2]int) {
-  for _,v := range line {
+  for _, v := range line {
     e.visible[e.level.toVertex(v[0], v[1])] = true
-    concealment,ok := e.UnitStats.Base.los.Mods[string(e.level.grid[v[0]][v[1]].Terrain)]
-    if concealment < 0 || !ok { break }
+    concealment, ok := e.UnitStats.Base.los.Mods[string(e.level.grid[v[0]][v[1]].Terrain)]
+    if concealment < 0 || !ok {
+      break
+    }
     vision -= concealment + 1
-    if vision <= 0 { break }
+    if vision <= 0 {
+      break
+    }
   }
 }
 
@@ -299,14 +309,22 @@ func (e *Entity) figureVisibility() {
   ey := int(e.pos.Y)
 
   x := ex - vision
-  if x < 0 { x = 0 }
+  if x < 0 {
+    x = 0
+  }
   y := ey - vision
-  if y < 0 { y = 0 }
+  if y < 0 {
+    y = 0
+  }
 
   x2 := ex + vision
-  if x2 >= len(e.level.grid) { x2 = len(e.level.grid) - 1 }
+  if x2 >= len(e.level.grid) {
+    x2 = len(e.level.grid) - 1
+  }
   y2 := ey + vision
-  if y2 >= len(e.level.grid[0]) { y2 = len(e.level.grid[0]) - 1 }
+  if y2 >= len(e.level.grid[0]) {
+    y2 = len(e.level.grid[0]) - 1
+  }
 
   e.visible = make(map[int]bool, vision*vision)
   e.visible[e.level.toVertex(ex, ey)] = true
@@ -320,7 +338,7 @@ func (e *Entity) figureVisibility() {
   }
 }
 
-func (e *Entity) Coords() (x,y int) {
+func (e *Entity) Coords() (x, y int) {
   return int(e.pos.X), int(e.pos.Y)
 }
 
@@ -334,8 +352,8 @@ func (e *Entity) OnRound() {
   e.AP = e.Base.AP
 }
 
-func (e *Entity) enterCell(x,y int) {
-  graph := unitGraph{ e.level, e.Base.movement.Mods }
+func (e *Entity) enterCell(x, y int) {
+  graph := unitGraph{e.level, e.Base.movement.Mods}
   src := e.level.toVertex(int(e.prev_pos.X), int(e.prev_pos.Y))
   dst := e.level.toVertex(x, y)
   e.AP -= int(graph.costToMove(src, dst))
@@ -359,11 +377,15 @@ func (e *Entity) advance(dist float32) {
     e.s.Command("move")
   }
   fmt.Printf("")
-  if e.s.CurAnim() != "walk" { return }
-  if dist <= 0 { return }
-  var b,t mathgl.Vec2
+  if e.s.CurAnim() != "walk" {
+    return
+  }
+  if dist <= 0 {
+    return
+  }
+  var b, t mathgl.Vec2
   b = e.pos
-  t = mathgl.Vec2{ float32(e.path[0][0]), float32(e.path[0][1]) }
+  t = mathgl.Vec2{float32(e.path[0][0]), float32(e.path[0][1])}
   t.Subtract(&b)
   moved := t.Length()
   if moved <= 1e-5 {
@@ -382,7 +404,7 @@ func (e *Entity) advance(dist float32) {
   e.pos.Assign(&b)
 
   if moved > dist {
-    e.turnToFace(mathgl.Vec2{ float32(e.path[0][0]), float32(e.path[0][1]) })
+    e.turnToFace(mathgl.Vec2{float32(e.path[0][0]), float32(e.path[0][1])})
   }
 
   e.advance(dist - final_dist)
@@ -407,12 +429,12 @@ func (e *Entity) Think(dt int64) {
   e.advance(e.Move_speed * float32(dt))
 }
 
-func loadJson(path string, target interface{}) os.Error {
-  f,err := os.Open(path)
+func loadJson(path string, target interface{}) error {
+  f, err := os.Open(path)
   if err != nil {
     return err
   }
-  data,err := ioutil.ReadAll(f)
+  data, err := ioutil.ReadAll(f)
   if err != nil {
     return err
   }
@@ -423,7 +445,7 @@ func loadJson(path string, target interface{}) os.Error {
   return nil
 }
 
-func loadLosAttributes(dir string) (map[string]LosAttributes, os.Error) {
+func loadLosAttributes(dir string) (map[string]LosAttributes, error) {
   var atts struct {
     Los_attributes map[string]LosAttributes
   }
@@ -431,7 +453,7 @@ func loadLosAttributes(dir string) (map[string]LosAttributes, os.Error) {
   return atts.Los_attributes, err
 }
 
-func loadMovementAttributes(dir string) (map[string]MovementAttributes, os.Error) {
+func loadMovementAttributes(dir string) (map[string]MovementAttributes, error) {
   var atts struct {
     Movement_attributes map[string]MovementAttributes
   }
@@ -439,10 +461,10 @@ func loadMovementAttributes(dir string) (map[string]MovementAttributes, os.Error
   return atts.Movement_attributes, err
 }
 
-func LoadAllUnits(dir string) ([]*UnitType, os.Error) {
+func LoadAllUnits(dir string) ([]*UnitType, error) {
   var paths []string
   unit_dir := filepath.Join(dir, "units")
-  err := filepath.Walk(unit_dir, func(path string, info *os.FileInfo, err os.Error) os.Error {
+  err := filepath.Walk(unit_dir, func(path string, info *os.FileInfo, err error) error {
     if !info.IsDirectory() && strings.HasSuffix(path, ".json") {
       paths = append(paths, path)
     }
@@ -452,22 +474,22 @@ func LoadAllUnits(dir string) ([]*UnitType, os.Error) {
     return nil, err
   }
 
-  los,err := loadLosAttributes(dir)
+  los, err := loadLosAttributes(dir)
   if err != nil {
     return nil, err
   }
-  move,err := loadMovementAttributes(dir)
+  move, err := loadMovementAttributes(dir)
   if err != nil {
     return nil, err
   }
   var units []*UnitType
-  for _,path := range paths {
-    f,err := os.Open(path)
+  for _, path := range paths {
+    f, err := os.Open(path)
     if err != nil {
       return nil, err
     }
     defer f.Close()
-    data,err := ioutil.ReadAll(f)
+    data, err := ioutil.ReadAll(f)
     if err != nil {
       return nil, err
     }
@@ -481,4 +503,3 @@ func LoadAllUnits(dir string) ([]*UnitType, os.Error) {
   }
   return units, nil
 }
-

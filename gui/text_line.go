@@ -12,22 +12,22 @@ import (
   "io/ioutil"
 )
 
-func MustLoadFontAs(path,name string) {
-  if _,ok := basic_fonts[name]; ok {
+func MustLoadFontAs(path, name string) {
+  if _, ok := basic_fonts[name]; ok {
     panic(fmt.Sprintf("Cannot load two fonts with the same name: '%s'.", name))
   }
-  data,err := ioutil.ReadFile(path)
+  data, err := ioutil.ReadFile(path)
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
-  font,err := freetype.ParseFont(data)
+  font, err := freetype.ParseFont(data)
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
   basic_fonts[name] = font
 }
 
-func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba *image.RGBA, text string) (int,int) {
+func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba *image.RGBA, text string) (int, int) {
   fg := image.NewUniform(color)
   bg := image.Transparent
   draw.Draw(rgba, rgba.Bounds(), bg, image.ZP, draw.Src)
@@ -38,10 +38,10 @@ func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba 
   // height is the fraction of the font that is above the line, 1.0 would mean
   // that the font never falls below the line
   height := 0.75
-  pt := freetype.Pt(0, int(float64(c.FUnitToPixelRU(font.UnitsPerEm())) * height) )
-  adv,_ := c.DrawString(text, pt)
+  pt := freetype.Pt(0, int(float64(c.FUnitToPixelRU(font.UnitsPerEm()))*height))
+  adv, _ := c.DrawString(text, pt)
   pt.X += adv.X
-  py := int(float64(pt.Y >> 8) / height + 0.01)
+  py := int(float64(pt.Y>>8)/height + 0.01)
   return int(pt.X >> 8), py
 }
 
@@ -75,10 +75,14 @@ func (w *TextLine) String() string {
 }
 
 func nextPowerOf2(n uint32) uint32 {
-  if n == 0 { return 1 }
+  if n == 0 {
+    return 1
+  }
   for i := uint(0); i < 32; i++ {
     p := uint32(1) << i
-    if n <= p { return p }
+    if n <= p {
+      return p
+    }
   }
   return 0
 }
@@ -86,15 +90,14 @@ func nextPowerOf2(n uint32) uint32 {
 func (w *TextLine) figureDims() {
   // Always draw the text as white on a transparent background so that we can change
   // the color easily through opengl
-  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, color.RGBA{ 255, 255, 255, 255 }, image.NewRGBA(image.Rect(0, 0, 1, 1)), w.text)
+  w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, color.RGBA{255, 255, 255, 255}, image.NewRGBA(image.Rect(0, 0, 1, 1)), w.text)
 
   texture_dims := Dims{
-    Dx : int(nextPowerOf2(uint32(w.rdims.Dx))),
-    Dy : int(nextPowerOf2(uint32(w.rdims.Dy))),
+    Dx: int(nextPowerOf2(uint32(w.rdims.Dx))),
+    Dy: int(nextPowerOf2(uint32(w.rdims.Dy))),
   }
   w.rgba = image.NewRGBA(image.Rect(0, 0, texture_dims.Dx, texture_dims.Dy))
-  drawText(w.font, w.context, color.RGBA{ 255, 255, 255, 255 }, w.rgba, w.text)
-
+  drawText(w.font, w.context, color.RGBA{255, 255, 255, 255}, w.rgba, w.text)
 
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)
@@ -112,18 +115,18 @@ type Button struct {
   Clickable
 }
 
-func MakeButton(font_name,text string, width int, r,g,b,a float64, f func(int64)) *Button {
+func MakeButton(font_name, text string, width int, r, g, b, a float64, f func(int64)) *Button {
   var btn Button
   btn.TextLine = MakeTextLine(font_name, text, width, r, g, b, a)
-  btn.TextLine.EmbeddedWidget = &BasicWidget{ CoreWidget : &btn }
+  btn.TextLine.EmbeddedWidget = &BasicWidget{CoreWidget: &btn}
   btn.on_click = f
   return &btn
 }
 
-func MakeTextLine(font_name,text string, width int, r,g,b,a float64) *TextLine {
+func MakeTextLine(font_name, text string, width int, r, g, b, a float64) *TextLine {
   var w TextLine
-  w.EmbeddedWidget = &BasicWidget{ CoreWidget : &w }
-  font,ok := basic_fonts[font_name]
+  w.EmbeddedWidget = &BasicWidget{CoreWidget: &w}
+  font, ok := basic_fonts[font_name]
   if !ok {
     panic(fmt.Sprintf("Unable to find a font registered as '%s'.", font_name))
   }
@@ -137,16 +140,16 @@ func MakeTextLine(font_name,text string, width int, r,g,b,a float64) *TextLine {
   w.texture = gl.GenTexture()
   w.SetColor(r, g, b, a)
   w.figureDims()
-  w.Request_dims = Dims{ width, 50 }
+  w.Request_dims = Dims{width, 50}
   return &w
 }
 
-func (w *TextLine) SetColor(r,g,b,a float64) {
+func (w *TextLine) SetColor(r, g, b, a float64) {
   w.color = color.RGBA{
-    R : uint8(255 * r),
-    G : uint8(255 * g),
-    B : uint8(255 * b),
-    A : uint8(255 * a),
+    R: uint8(255 * r),
+    G: uint8(255 * g),
+    B: uint8(255 * b),
+    A: uint8(255 * a),
   }
 }
 
@@ -162,7 +165,9 @@ func (w *TextLine) SetText(str string) {
 }
 
 func (w *TextLine) DoThink(int64, bool) {
-  if !w.changed { return }
+  if !w.changed {
+    return
+  }
   w.changed = false
   w.figureDims()
 }
@@ -197,31 +202,34 @@ func (w *TextLine) coreDraw(region Region) {
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   req := w.Request_dims
-  if req.Dx > region.Dx { req.Dx = region.Dx }
-  if req.Dy > region.Dy { req.Dy = region.Dy }
-  if req.Dx * region.Dy < req.Dy * region.Dx {
+  if req.Dx > region.Dx {
+    req.Dx = region.Dx
+  }
+  if req.Dy > region.Dy {
+    req.Dy = region.Dy
+  }
+  if req.Dx*region.Dy < req.Dy*region.Dx {
     req.Dy = (region.Dy * req.Dx) / region.Dx
   } else {
     req.Dx = (region.Dx * req.Dy) / region.Dy
   }
   w.Render_region.Dims = req
   w.Render_region.Point = region.Point
-  tx := float64(w.rdims.Dx)/float64(w.rgba.Bounds().Dx())
-  ty := float64(w.rdims.Dy)/float64(w.rgba.Bounds().Dy())
-//  w.scale = float64(w.Render_region.Dx) / float64(w.rdims.Dx)
+  tx := float64(w.rdims.Dx) / float64(w.rgba.Bounds().Dx())
+  ty := float64(w.rdims.Dy) / float64(w.rgba.Bounds().Dy())
+  //  w.scale = float64(w.Render_region.Dx) / float64(w.rdims.Dx)
   {
-    r,g,b,a := w.color.RGBA()
-    gl.Color4d(float64(r) / 65535, float64(g) / 65535, float64(b) / 65535, float64(a) / 65535)
+    r, g, b, a := w.color.RGBA()
+    gl.Color4d(float64(r)/65535, float64(g)/65535, float64(b)/65535, float64(a)/65535)
   }
   gl.Begin(gl.QUADS)
-    gl.TexCoord2d(0,0)
-    gl.Vertex2i(region.X,          region.Y)
-    gl.TexCoord2d(0,-ty)
-    gl.Vertex2i(region.X,          region.Y + w.rdims.Dy)
-    gl.TexCoord2d(tx,-ty)
-    gl.Vertex2i(region.X + w.rdims.Dx, region.Y + w.rdims.Dy)
-    gl.TexCoord2d(tx,0)
-    gl.Vertex2i(region.X + w.rdims.Dx, region.Y)
+  gl.TexCoord2d(0, 0)
+  gl.Vertex2i(region.X, region.Y)
+  gl.TexCoord2d(0, -ty)
+  gl.Vertex2i(region.X, region.Y+w.rdims.Dy)
+  gl.TexCoord2d(tx, -ty)
+  gl.Vertex2i(region.X+w.rdims.Dx, region.Y+w.rdims.Dy)
+  gl.TexCoord2d(tx, 0)
+  gl.Vertex2i(region.X+w.rdims.Dx, region.Y)
   gl.End()
 }
-

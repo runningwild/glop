@@ -40,7 +40,6 @@ type Terrain struct {
   NonThinker
   NonFocuser
 
-
   // Length of the side of block in the source image.
   block_size int
 
@@ -48,7 +47,7 @@ type Terrain struct {
   handler gin.EventHandler
 
   // Focus, in map coordinates
-  fx,fy float32
+  fx, fy float32
 
   // The viewing angle, 0 means the map is viewed head-on, 90 means the map is viewed
   // on its edge (i.e. it would not be visible)
@@ -82,29 +81,29 @@ func (t *Terrain) String() string {
   return "terrain"
 }
 
-func (t *Terrain) AddUprightDrawable(x,y float32, zd sprite.ZDrawable) {
+func (t *Terrain) AddUprightDrawable(x, y float32, zd sprite.ZDrawable) {
   t.upright_drawables = append(t.upright_drawables, zd)
-  t.upright_positions = append(t.upright_positions, mathgl.Vec3{ x, y, 0 })
+  t.upright_positions = append(t.upright_positions, mathgl.Vec3{x, y, 0})
 }
 
 // x,y: board coordinates that the drawable should be drawn at.
 // zd: drawable that will be rendered after the terrain has been rendered, it will be rendered
 //     with the same modelview matrix as the rest of the terrain
-func (t *Terrain) AddFlattenedDrawable(x,y float32, zd sprite.ZDrawable) {
+func (t *Terrain) AddFlattenedDrawable(x, y float32, zd sprite.ZDrawable) {
   t.flattened_drawables = append(t.flattened_drawables, zd)
-  t.flattened_positions = append(t.flattened_positions, mathgl.Vec3{ x, y, 0 })
+  t.flattened_positions = append(t.flattened_positions, mathgl.Vec3{x, y, 0})
 }
 
-func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain, os.Error) {
+func MakeTerrain(bg_path string, block_size, dx, dy int, angle float32) (*Terrain, error) {
   var t Terrain
-  t.EmbeddedWidget = &BasicWidget{ CoreWidget : &t }
+  t.EmbeddedWidget = &BasicWidget{CoreWidget: &t}
 
-  f,err := os.Open(bg_path)
+  f, err := os.Open(bg_path)
   if err != nil {
     return nil, err
   }
   defer f.Close()
-  bg,_,err := image.Decode(f)
+  bg, _, err := image.Decode(f)
   if err != nil {
     return nil, err
   }
@@ -115,7 +114,7 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
   t.bg_dims.Dx = bg.Bounds().Dx()
   t.bg_dims.Dy = bg.Bounds().Dy()
   rgba := image.NewRGBA(image.Rect(0, 0, t.bg_dims.Dx, t.bg_dims.Dy))
-  draw.Draw(rgba, bg.Bounds(), bg, image.Point{0,0}, draw.Over)
+  draw.Draw(rgba, bg.Bounds(), bg, image.Point{0, 0}, draw.Over)
 
   gl.Enable(gl.TEXTURE_2D)
   t.texture = gl.GenTexture()
@@ -128,7 +127,7 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
   glu.Build2DMipmaps(gl.TEXTURE_2D, 4, t.bg_dims.Dx, t.bg_dims.Dy, gl.RGBA, rgba.Pix)
 
   if err != nil {
-    return nil,err
+    return nil, err
   }
   t.Zoom(-1)
   t.fx = float32(t.bg_dims.Dx / t.block_size / 2)
@@ -144,10 +143,10 @@ func MakeTerrain(bg_path string, block_size,dx,dy int, angle float32) (*Terrain,
 
 func (t *Terrain) makeMat() {
   var m mathgl.Mat4
-  t.mat.Translation(float32(t.Render_region.Dx/2 + t.Render_region.X), float32(t.Render_region.Dy/2 + t.Render_region.Y), 0)
+  t.mat.Translation(float32(t.Render_region.Dx/2+t.Render_region.X), float32(t.Render_region.Dy/2+t.Render_region.Y), 0)
   m.RotationZ(45 * math.Pi / 180)
   t.mat.Multiply(&m)
-  m.RotationAxisAngle(mathgl.Vec3{ X : -1, Y : 1}, -float32(t.angle) * math.Pi / 180)
+  m.RotationAxisAngle(mathgl.Vec3{X: -1, Y: 1}, -float32(t.angle)*math.Pi/180)
   t.mat.Multiply(&m)
 
   s := float32(t.zoom)
@@ -167,48 +166,56 @@ func (t *Terrain) makeMat() {
 
 // Transforms a cursor position in window coordinates to board coordinates.  Does not check
 // to make sure that the values returned represent a valid position on the board.
-func (t *Terrain) WindowToBoard(wx,wy int) (float32, float32) {
+func (t *Terrain) WindowToBoard(wx, wy int) (float32, float32) {
   mx := float32(wx)
   my := float32(wy)
   return t.modelviewToBoard(mx, my)
 }
 
-func (t *Terrain) modelviewToBoard(mx,my float32) (float32,float32) {
-  mz := (my - float32(t.Render_region.Y + t.Render_region.Dy/2)) * float32(math.Tan(float64(t.angle * math.Pi / 180)))
-  v := mathgl.Vec4{ X : mx, Y : my, Z : mz, W : 1 }
+func (t *Terrain) modelviewToBoard(mx, my float32) (float32, float32) {
+  mz := (my - float32(t.Render_region.Y+t.Render_region.Dy/2)) * float32(math.Tan(float64(t.angle*math.Pi/180)))
+  v := mathgl.Vec4{X: mx, Y: my, Z: mz, W: 1}
   v.Transform(&t.imat)
   return v.X / float32(t.block_size), v.Y / float32(t.block_size)
 }
 
-func (t *Terrain) boardToModelview(mx,my float32) (x,y,z float32) {
-  v := mathgl.Vec4{ X : mx * float32(t.block_size), Y : my * float32(t.block_size), W : 1 }
+func (t *Terrain) boardToModelview(mx, my float32) (x, y, z float32) {
+  v := mathgl.Vec4{X: mx * float32(t.block_size), Y: my * float32(t.block_size), W: 1}
   v.Transform(&t.mat)
-  x,y,z = v.X, v.Y, v.Z
+  x, y, z = v.X, v.Y, v.Z
   return
 }
 
-func clamp(f,min,max float32) float32 {
-  if f < min { return min }
-  if f > max { return max }
+func clamp(f, min, max float32) float32 {
+  if f < min {
+    return min
+  }
+  if f > max {
+    return max
+  }
   return f
 }
 
 // The change in x and y screen coordinates to apply to point on the terrain the is in
 // focus.  These coordinates will be scaled by the current zoom.
-func (t *Terrain) Move(dx,dy float64) {
-  if dx == 0 && dy == 0 { return }
+func (t *Terrain) Move(dx, dy float64) {
+  if dx == 0 && dy == 0 {
+    return
+  }
   dy /= math.Sin(float64(t.angle) * math.Pi / 180)
-  dx,dy = dy+dx, dy-dx
+  dx, dy = dy+dx, dy-dx
   t.fx += float32(dx) / t.zoom
   t.fy += float32(dy) / t.zoom
-  t.fx = clamp(t.fx, 0, float32(t.bg_dims.Dx / t.block_size))
-  t.fy = clamp(t.fy, 0, float32(t.bg_dims.Dy / t.block_size))
+  t.fx = clamp(t.fx, 0, float32(t.bg_dims.Dx/t.block_size))
+  t.fy = clamp(t.fy, 0, float32(t.bg_dims.Dy/t.block_size))
   t.makeMat()
 }
 
 // Changes the current zoom from e^(zoom) to e^(zoom+dz)
 func (t *Terrain) Zoom(dz float64) {
-  if dz == 0 { return }
+  if dz == 0 {
+    return
+  }
   exp := math.Log(float64(t.zoom)) + dz
   exp = float64(clamp(float32(exp), -1.25, 1.25))
   t.zoom = float32(math.Exp(exp))
@@ -238,31 +245,31 @@ func (t *Terrain) Draw(region Region) {
   fdy := float32(t.bg_dims.Dy)
 
   // Draw a simple border around the terrain
-  gl.Color4d(1,.3,.3,1)
+  gl.Color4d(1, .3, .3, 1)
   gl.Begin(gl.QUADS)
-    fbs := float32(t.block_size)
-    gl.Vertex2f(   -fbs,    -fbs)
-    gl.Vertex2f(   -fbs, fdy+fbs)
-    gl.Vertex2f(fdx+fbs, fdy+fbs)
-    gl.Vertex2f(fdx+fbs,    -fbs)
+  fbs := float32(t.block_size)
+  gl.Vertex2f(-fbs, -fbs)
+  gl.Vertex2f(-fbs, fdy+fbs)
+  gl.Vertex2f(fdx+fbs, fdy+fbs)
+  gl.Vertex2f(fdx+fbs, -fbs)
   gl.End()
 
   gl.Enable(gl.TEXTURE_2D)
   t.texture.Bind(gl.TEXTURE_2D)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   gl.Begin(gl.QUADS)
-    gl.TexCoord2f(0, 0)
-    gl.Vertex2f(0, 0)
-    gl.TexCoord2f(0, -1)
-    gl.Vertex2f(0, fdy)
-    gl.TexCoord2f(1, -1)
-    gl.Vertex2f(fdx, fdy)
-    gl.TexCoord2f(1, 0)
-    gl.Vertex2f(fdx, 0)
+  gl.TexCoord2f(0, 0)
+  gl.Vertex2f(0, 0)
+  gl.TexCoord2f(0, -1)
+  gl.Vertex2f(0, fdy)
+  gl.TexCoord2f(1, -1)
+  gl.Vertex2f(fdx, fdy)
+  gl.TexCoord2f(1, 0)
+  gl.Vertex2f(fdx, 0)
   gl.End()
 
   gl.Disable(gl.TEXTURE_2D)
-  gl.Color4f(0,0,0, 0.5)
+  gl.Color4f(0, 0, 0, 0.5)
   gl.Begin(gl.LINES)
   for i := float32(0); i < float32(t.bg_dims.Dx); i += float32(t.block_size) {
     gl.Vertex2f(i, 0)
@@ -282,8 +289,8 @@ func (t *Terrain) Draw(region Region) {
   t.flattened_drawables = t.flattened_drawables[0:0]
 
   for i := range t.upright_positions {
-    vx,vy,vz := t.boardToModelview(t.upright_positions[i].X, t.upright_positions[i].Y)
-    t.upright_positions[i] = mathgl.Vec3{ vx, vy, vz }
+    vx, vy, vz := t.boardToModelview(t.upright_positions[i].X, t.upright_positions[i].Y)
+    t.upright_positions[i] = mathgl.Vec3{vx, vy, vz}
   }
   sprite.ZSort(t.upright_positions, t.upright_drawables)
   gl.Disable(gl.TEXTURE_2D)
@@ -302,10 +309,9 @@ func (t *Terrain) SetEventHandler(handler gin.EventHandler) {
   t.handler = handler
 }
 
-func (t *Terrain) DoRespond(event_group EventGroup) (bool,bool) {
+func (t *Terrain) DoRespond(event_group EventGroup) (bool, bool) {
   if t.handler != nil {
     t.handler.HandleEventGroup(event_group.EventGroup)
   }
-  return false,false
+  return false, false
 }
-

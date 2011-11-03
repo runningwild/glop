@@ -4,7 +4,6 @@ import (
   "fmt"
 )
 
-
 type Key interface {
   // Human readable name
   String() string
@@ -51,8 +50,9 @@ type keyStats struct {
 }
 
 type baseAggregator struct {
-  this,prev  keyStats
+  this, prev keyStats
 }
+
 func (a *baseAggregator) FramePressCount() int {
   return a.prev.press_count
 }
@@ -82,10 +82,10 @@ func (a *baseAggregator) CurPressSum() float64 {
 }
 func (a *baseAggregator) handleEventType(event_type EventType) {
   switch event_type {
-    case Press:
-      a.this.press_count++
-    case Release:
-      a.this.release_count++
+  case Press:
+    a.this.press_count++
+  case Release:
+    a.this.release_count++
   }
 }
 
@@ -95,21 +95,22 @@ type standardAggregator struct {
   last_press int64
   last_think int64
 }
+
 func (sa *standardAggregator) IsDown() bool {
   return sa.this.press_amt != 0
 }
 func (sa *standardAggregator) SetPressAmt(amt float64, ms int64, event_type EventType) {
-  sa.this.press_sum += sa.this.press_amt * float64(ms - sa.last_press)
+  sa.this.press_sum += sa.this.press_amt * float64(ms-sa.last_press)
   sa.this.press_amt = amt
   sa.last_press = ms
   sa.handleEventType(event_type)
 }
 func (sa *standardAggregator) Think(ms int64) {
-  sa.this.press_sum += sa.this.press_amt * float64(ms - sa.last_press)
-  sa.this.press_avg = sa.this.press_sum / float64(ms - sa.last_think)
+  sa.this.press_sum += sa.this.press_amt * float64(ms-sa.last_press)
+  sa.this.press_avg = sa.this.press_sum / float64(ms-sa.last_think)
   sa.prev = sa.this
   sa.this = keyStats{
-    press_amt : sa.prev.press_amt,
+    press_amt: sa.prev.press_amt,
   }
   sa.last_press = ms
   sa.last_think = ms
@@ -119,8 +120,9 @@ func (sa *standardAggregator) Think(ms int64) {
 // FramePressAvg() returns the same value as FramePressSum()
 type axisAggregator struct {
   baseAggregator
-  is_down    bool
+  is_down bool
 }
+
 func (aa *axisAggregator) IsDown() bool {
   return aa.is_down
 }
@@ -140,7 +142,6 @@ func (aa *axisAggregator) Think(ms int64) {
   }
   aa.prev.press_avg = aa.prev.press_sum
 }
-
 
 type KeyId int
 
@@ -166,7 +167,6 @@ func (ks *keyState) Cursor() Cursor {
   }
   return ks.cursor
 }
-
 
 // Tells this key that how much it was pressed at a particular time.  Times must be
 // monotonically increasing.

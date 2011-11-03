@@ -15,7 +15,7 @@ import (
 // and bx,by represent a point on the AnchorBox.  During layout the widget will be positioned
 // such that these points line up.
 type Anchor struct {
-  Wx,Wy,Bx,By float64
+  Wx, Wy, Bx, By float64
 }
 
 // An AnchorBox does layout according to Anchors.  An anchor must be specified when installing
@@ -29,9 +29,10 @@ type AnchorBox struct {
   children []Widget
   anchors  []Anchor
 }
+
 func MakeAnchorBox(dims Dims) *AnchorBox {
   var box AnchorBox
-  box.EmbeddedWidget = &BasicWidget{ CoreWidget : &box }
+  box.EmbeddedWidget = &BasicWidget{CoreWidget: &box}
   box.Request_dims = dims
   return &box
 }
@@ -63,8 +64,8 @@ func (w *AnchorBox) Draw(region Region) {
     anchor := w.anchors[i]
     var child_region Region
     child_region.Dims = widget.Requested()
-    xoff := int(anchor.Bx * float64(region.Dx) - anchor.Wx * float64(child_region.Dx) + 0.5)
-    yoff := int(anchor.By * float64(region.Dy) - anchor.Wy * float64(child_region.Dy) + 0.5)
+    xoff := int(anchor.Bx*float64(region.Dx) - anchor.Wx*float64(child_region.Dx) + 0.5)
+    yoff := int(anchor.By*float64(region.Dy) - anchor.Wy*float64(child_region.Dy) + 0.5)
     if xoff < 0 {
       child_region.Dx += xoff
       xoff = 0
@@ -73,10 +74,10 @@ func (w *AnchorBox) Draw(region Region) {
       child_region.Dy += yoff
       yoff = 0
     }
-    if xoff + child_region.Dx > w.Render_region.Dx {
+    if xoff+child_region.Dx > w.Render_region.Dx {
       child_region.Dx -= (xoff + child_region.Dx) - w.Render_region.Dx
     }
-    if yoff + child_region.Dy > w.Render_region.Dy {
+    if yoff+child_region.Dy > w.Render_region.Dy {
       child_region.Dy -= (yoff + child_region.Dy) - w.Render_region.Dy
     }
     child_region.X = xoff
@@ -93,13 +94,14 @@ type ImageBox struct {
   BasicZone
   Childless
 
-  active  bool
-  texture gl.Texture
-  r,g,b,a float64
+  active     bool
+  texture    gl.Texture
+  r, g, b, a float64
 }
+
 func MakeImageBox() *ImageBox {
   var ib ImageBox
-  ib.EmbeddedWidget = &BasicWidget{ CoreWidget : &ib }
+  ib.EmbeddedWidget = &BasicWidget{CoreWidget: &ib}
   runtime.SetFinalizer(&ib, freeTexture)
   ib.r, ib.g, ib.b, ib.a = 1, 1, 1, 1
   return &ib
@@ -107,8 +109,8 @@ func MakeImageBox() *ImageBox {
 func (w *ImageBox) String() string {
   return "image box"
 }
-func (w *ImageBox) SetShading(r,g,b,a float64) {
-  w.r,w.g,w.b,w.a = r,g,b,a
+func (w *ImageBox) SetShading(r, g, b, a float64) {
+  w.r, w.g, w.b, w.a = r, g, b, a
 }
 func freeTexture(w *ImageBox) {
   if w.active {
@@ -120,7 +122,7 @@ func freeTexture(w *ImageBox) {
 
 // Does not take ownserhip of the texture, you must still free the texture
 // when you are done with it.
-func (w *ImageBox) SetImageByTexture(texture gl.Texture, dx,dy int) {
+func (w *ImageBox) SetImageByTexture(texture gl.Texture, dx, dy int) {
   w.UnsetImage()
   w.texture = texture
   w.Request_dims.Dx = dx
@@ -132,14 +134,14 @@ func (w *ImageBox) UnsetImage() {
 }
 func (w *ImageBox) SetImage(path string) {
   w.UnsetImage()
-  data,err := os.Open(path)
+  data, err := os.Open(path)
   if err != nil {
     // TODO: Log error
     return
   }
 
   var img image.Image
-  img,_,err = image.Decode(data)
+  img, _, err = image.Decode(data)
   if err != nil {
     // TODO: Log error
     return
@@ -150,9 +152,9 @@ func (w *ImageBox) SetImage(path string) {
   canvas := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
   for y := 0; y < canvas.Bounds().Dy(); y++ {
     for x := 0; x < canvas.Bounds().Dx(); x++ {
-      r,g,b,a := img.At(x,y).RGBA()
+      r, g, b, a := img.At(x, y).RGBA()
       base := 4*x + canvas.Stride*y
-      canvas.Pix[base]   = uint8(r)
+      canvas.Pix[base] = uint8(r)
       canvas.Pix[base+1] = uint8(g)
       canvas.Pix[base+2] = uint8(b)
       canvas.Pix[base+3] = uint8(a)
@@ -177,21 +179,23 @@ func (w *ImageBox) Draw(region Region) {
   // We check texture == 0 and not active because active only indicates if we
   // have a texture that we need to free later.  It's possible for us to have
   // a texture that someone else owns.
-  if w.texture == 0 { return }
+  if w.texture == 0 {
+    return
+  }
 
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.Color4d(w.r, w.g, w.b, w.a)
   gl.Begin(gl.QUADS)
-    gl.TexCoord2f(0, 0)
-    gl.Vertex2i(region.X, region.Y)
-    gl.TexCoord2f(0, -1)
-    gl.Vertex2i(region.X, region.Y + region.Dy)
-    gl.TexCoord2f(1, -1)
-    gl.Vertex2i(region.X + region.Dx, region.Y + region.Dy)
-    gl.TexCoord2f(1, 0)
-    gl.Vertex2i(region.X + region.Dx, region.Y)
+  gl.TexCoord2f(0, 0)
+  gl.Vertex2i(region.X, region.Y)
+  gl.TexCoord2f(0, -1)
+  gl.Vertex2i(region.X, region.Y+region.Dy)
+  gl.TexCoord2f(1, -1)
+  gl.Vertex2i(region.X+region.Dx, region.Y+region.Dy)
+  gl.TexCoord2f(1, 0)
+  gl.Vertex2i(region.X+region.Dx, region.Y)
   gl.End()
   gl.Disable(gl.TEXTURE_2D)
 }
@@ -206,7 +210,7 @@ type CollapseWrapper struct {
 
 func MakeCollapseWrapper(w Widget) *CollapseWrapper {
   var cw CollapseWrapper
-  cw.EmbeddedWidget = &BasicWidget{ CoreWidget : &cw }
+  cw.EmbeddedWidget = &BasicWidget{CoreWidget: &cw}
   cw.Child = w
   return &cw
 }
@@ -214,7 +218,6 @@ func MakeCollapseWrapper(w Widget) *CollapseWrapper {
 func (w *CollapseWrapper) String() string {
   return "collapse wrapper"
 }
-
 
 func (w *CollapseWrapper) DoThink(int64, bool) {
   w.Request_dims = w.Child.Requested()
@@ -229,7 +232,6 @@ func (w *CollapseWrapper) Draw(region Region) {
   w.Child.Draw(region)
   w.Render_region = region
 }
-
 
 type OptionContainer interface {
   SetSelectedOption(Widget)
@@ -247,9 +249,10 @@ type SelectableWidget interface {
 
 type selectableOption struct {
   Clickable
-  data interface{}
+  data   interface{}
   parent OptionContainer
 }
+
 func (so *selectableOption) GetData() interface{} {
   return so.data
 }
@@ -262,7 +265,7 @@ type textOption struct {
   selectableOption
 }
 
-func (w *textOption) DoRespond(event_group EventGroup) (consume,change_focus bool) {
+func (w *textOption) DoRespond(event_group EventGroup) (consume, change_focus bool) {
   w.selectableOption.DoRespond(event_group)
   return
 }
@@ -279,7 +282,7 @@ func makeTextOption(text string, width int) SelectableWidget {
   var so textOption
   so.TextLine = *MakeTextLine("standard", text, width, 1, 1, 1, 1)
   so.data = text
-  so.EmbeddedWidget = &BasicWidget{ CoreWidget : &so }
+  so.EmbeddedWidget = &BasicWidget{CoreWidget: &so}
   return &so
 }
 
@@ -288,7 +291,7 @@ type imageOption struct {
   selectableOption
 }
 
-func (w *imageOption) DoRespond(event_group EventGroup) (consume,change_focus bool) {
+func (w *imageOption) DoRespond(event_group EventGroup) (consume, change_focus bool) {
   w.selectableOption.DoRespond(event_group)
   return
 }
@@ -306,7 +309,7 @@ func makeImageOption(path string, data interface{}) SelectableWidget {
   sio.ImageBox = *MakeImageBox()
   sio.ImageBox.SetImage(path)
   sio.data = data
-  sio.EmbeddedWidget = &BasicWidget{ CoreWidget : &sio }
+  sio.EmbeddedWidget = &BasicWidget{CoreWidget: &sio}
   return &sio
 }
 
@@ -362,7 +365,9 @@ func (w *SelectBox) SetSelectedIndex(index int) {
 }
 
 func (w *SelectBox) GetSelectedOption() interface{} {
-  if w.selected == -1 { return "" }
+  if w.selected == -1 {
+    return ""
+  }
   return w.GetChildren()[w.selected].(SelectableWidget).GetData()
 }
 
@@ -387,4 +392,3 @@ func (w *SelectBox) selectIndex(index int) {
   }
   w.selected = index
 }
-

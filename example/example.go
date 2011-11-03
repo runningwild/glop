@@ -19,18 +19,18 @@ import (
 )
 
 var (
-  sys system.System
+  sys       system.System
   font_path *string = flag.String("font", "fonts/skia.ttf", "relative path of a font")
-  quit chan bool
+  quit      chan bool
 )
 
-func LoadUnit(path string) (*game.UnitType, os.Error) {
-  f,err := os.Open(path)
+func LoadUnit(path string) (*game.UnitType, error) {
+  f, err := os.Open(path)
   if err != nil {
     return nil, err
   }
   defer f.Close()
-  data,err := ioutil.ReadAll(f)
+  data, err := ioutil.ReadAll(f)
   if err != nil {
     return nil, err
   }
@@ -56,7 +56,7 @@ func actualMain() {
   // Running a binary via osx's package mechanism will add a flag that begins with
   // '-psn' so we have to find it and pretend like we were expecting it so that go
   // doesn't asplode because of an unexpected flag.
-  for _,arg := range os.Args {
+  for _, arg := range os.Args {
     if len(arg) >= 4 && arg[0:4] == "-psn" {
       flag.Bool(arg[1:], false, "HERE JUST TO APPEASE GO'S FLAG PACKAGE")
     }
@@ -68,29 +68,29 @@ func actualMain() {
 
   // TODO: Loading weapon specs should be done automatically - it just needs the datadir
   // Load weapon files
-  weapons,err := os.Open(filepath.Join(basedir, "weapons", "guns.json"))
+  weapons, err := os.Open(filepath.Join(basedir, "weapons", "guns.json"))
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
   err = game.LoadWeaponSpecs(weapons)
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
-  weapons,err = os.Open(filepath.Join(basedir, "weapons", "melee.json"))
+  weapons, err = os.Open(filepath.Join(basedir, "weapons", "melee.json"))
   if err != nil {
-    panic(err.String())
-  }
-  err = game.LoadWeaponSpecs(weapons)
-  if err != nil {
-    panic(err.String())
-  }
-  weapons,err = os.Open(filepath.Join(basedir, "weapons", "aoe.json"))
-  if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
   err = game.LoadWeaponSpecs(weapons)
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
+  }
+  weapons, err = os.Open(filepath.Join(basedir, "weapons", "aoe.json"))
+  if err != nil {
+    panic(err.Error())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.Error())
   }
 
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
@@ -100,19 +100,19 @@ func actualMain() {
   wdy := int(factor * float64(768))
 
   sys.CreateWindow(0, 0, wdx, wdy)
-  _,_,wdx,wdy = sys.GetWindowDims()
+  _, _, wdx, wdy = sys.GetWindowDims()
   ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
-//  table := gui.MakeVerticalTable()
-//  ui.AddChild(table)
+  //  table := gui.MakeVerticalTable()
+  //  ui.AddChild(table)
 
-  level,err := game.LoadLevel(basedir, "bosworth.json")
+  level, err := game.LoadLevel(basedir, "bosworth.json")
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
   ui.AddChild(level.GetGui())
-//  level.Terrain.Move(10,10)
+  //  level.Terrain.Move(10,10)
 
-//  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
+  //  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
   n := 0
 
@@ -120,7 +120,6 @@ func actualMain() {
   // when the window disappears, so we need a safety net to slow it down if necessary
   sys.EnableVSync(true)
   ticker := time.Tick(1e7)
-
 
   level.Setup()
   prev := time.Nanoseconds()
@@ -161,14 +160,14 @@ func actualMain() {
       if gin.In().GetKey('o').FramePressCount() > 0 {
         level.Round()
       }
-      if gin.In().GetKey('e').FramePressCount() % 2 == 1 {
+      if gin.In().GetKey('e').FramePressCount()%2 == 1 {
         level.ToggleEditor()
       }
       if gin.In().GetKey('p').FramePressCount() > 0 {
         if !profiling {
           f, err := os.Create(filepath.Join(basedir, "profiles", "profile.prof"))
           if err != nil {
-            fmt.Printf("Failed to write profile: %s\n", err.String())
+            fmt.Printf("Failed to write profile: %s\n", err.Error())
           }
           pprof.StartCPUProfile(f)
           profiling = true
@@ -183,22 +182,24 @@ func actualMain() {
           load_widget = nil
         } else {
           table := gui.MakeVerticalTable()
-          dir,err := os.Open(filepath.Join(basedir, "maps"))
+          dir, err := os.Open(filepath.Join(basedir, "maps"))
           if err != nil {
-            panic(err.String())
+            panic(err.Error())
           }
-          names,err := dir.Readdir(0)
+          names, err := dir.Readdir(0)
           if err != nil {
-            panic(err.String())
+            panic(err.Error())
           }
-          for _,name := range names {
-            if !strings.HasSuffix(name.Name, "json") { continue }
-            var the_name = name.Name  // closure madness
+          for _, name := range names {
+            if !strings.HasSuffix(name.Name, "json") {
+              continue
+            }
+            var the_name = name.Name // closure madness
             table.AddChild(gui.MakeButton("standard", the_name, 300, 1, 1, 1, 1,
               func(int64) {
-                nlevel,err := game.LoadLevel(basedir, the_name)
+                nlevel, err := game.LoadLevel(basedir, the_name)
                 if err != nil {
-                  panic(err.String())
+                  panic(err.Error())
                 }
                 ui.RemoveChild(level.GetGui())
                 ui.AddChild(nlevel.GetGui())
@@ -206,7 +207,7 @@ func actualMain() {
                 level = nlevel
                 level.Setup()
                 load_widget = nil
-            }))
+              }))
           }
           load_widget = table
           ui.AddChild(load_widget)
@@ -222,4 +223,3 @@ func actualMain() {
 func main() {
   <-quit
 }
-

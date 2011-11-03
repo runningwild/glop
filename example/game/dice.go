@@ -1,6 +1,6 @@
 package game
 
-import(
+import (
   "fmt"
   "rand"
   "strings"
@@ -17,8 +17,8 @@ func init() {
 
 func doRoll(roll string) int {
   vals := strings.Split(roll, "d")
-  n,_ := strconv.Atoi(vals[0])
-  d,_ := strconv.Atoi(vals[1])
+  n, _ := strconv.Atoi(vals[0])
+  d, _ := strconv.Atoi(vals[1])
 
   total := 0
   for i := 0; i < n; i++ {
@@ -33,7 +33,7 @@ func Dice(d string) int {
   }
   rolls := strings.Split(d, "+")
   total := 0
-  for _,roll := range rolls {
+  for _, roll := range rolls {
     total += doRoll(strings.Trim(roll, " \t\r\f\n"))
   }
   return total

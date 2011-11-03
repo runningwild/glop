@@ -11,15 +11,15 @@ type System interface {
   // Call System.Think() every frame
   Think()
 
-  CreateWindow(x,y,width,height int)
+  CreateWindow(x, y, width, height int)
   // TODO: implement this:
   // DestroyWindow(Window)
 
   // Gets the cursor position in window coordinates with the cursor at the bottom left
   // corner of the window
-  GetCursorPos() (x,y int)
+  GetCursorPos() (x, y int)
 
-  GetWindowDims() (x,y,dx,dy int)
+  GetWindowDims() (x, y, dx, dy int)
 
   SwapBuffers()
   GetInputEvents() []gin.EventGroup
@@ -27,8 +27,8 @@ type System interface {
   EnableVSync(bool)
 
   // These probably shouldn't be here, probably always want to do the Think() approach
-//  Run()
-//  Quit()
+  //  Run()
+  //  Quit()
 }
 
 // This is the interface implemented by any operating system that supports
@@ -46,16 +46,16 @@ type Os interface {
   // Currently glop only supports a single window, but this function could be called
   // more than once since a window could be destroyed so it can be recreated at different
   // dimensions or in full sreen mode.
-  CreateWindow(x,y,width,height int)
+  CreateWindow(x, y, width, height int)
 
   // TODO: implement this:
   // DestroyWindow(Window)
 
   // Gets the cursor position in window coordinates with the cursor at the bottom left
   // corner of the window
-  GetCursorPos() (x,y int)
+  GetCursorPos() (x, y int)
 
-  GetWindowDims() (x,y,dx,dy int)
+  GetWindowDims() (x, y, dx, dy int)
 
   // Swap the OpenGl buffers on this window
   SwapBuffers()
@@ -69,8 +69,8 @@ type Os interface {
   EnableVSync(bool)
 
   // These probably shouldn't be here, probably always want to do the Think() approach
-//  Run()
-//  Quit()
+  //  Run()
+  //  Quit()
 }
 
 type sysObj struct {
@@ -78,30 +78,31 @@ type sysObj struct {
   events   []gin.EventGroup
   start_ms int64
 }
+
 func Make(os Os) System {
   return &sysObj{
-    os : os,
+    os: os,
   }
 }
 func (sys *sysObj) Startup() {
   sys.os.Startup()
-  _,sys.start_ms = sys.os.GetInputEvents()
+  _, sys.start_ms = sys.os.GetInputEvents()
 }
 func (sys *sysObj) Think() {
   sys.os.Think()
-  events,horizon := sys.os.GetInputEvents()
+  events, horizon := sys.os.GetInputEvents()
   for i := range events {
     events[i].Timestamp -= sys.start_ms
   }
-  sys.events = gin.In().Think(horizon - sys.start_ms, false, events)
+  sys.events = gin.In().Think(horizon-sys.start_ms, false, events)
 }
-func (sys *sysObj) CreateWindow(x,y,width,height int) {
+func (sys *sysObj) CreateWindow(x, y, width, height int) {
   sys.os.CreateWindow(x, y, width, height)
 }
-func (sys *sysObj) GetCursorPos() (int,int) {
+func (sys *sysObj) GetCursorPos() (int, int) {
   return sys.os.GetCursorPos()
 }
-func (sys *sysObj) GetWindowDims() (int,int,int,int) {
+func (sys *sysObj) GetWindowDims() (int, int, int, int) {
   return sys.os.GetWindowDims()
 }
 func (sys *sysObj) SwapBuffers() {
