@@ -1,6 +1,7 @@
 package game
 
 import (
+  "errors"
   "glop/gin"
   "glop/gui"
   "glop/util/algorithm"
@@ -15,67 +16,24 @@ import (
   "io/ioutil"
   "os"
   "fmt"
-  "sort"
 )
 
-type Terrain interface {
-  Name() string
-}
+type Terrain string
 
-type Grass struct {}
-func (t Grass) Name() string {
-  return "grass"
-}
+type UnitPlacement struct {
+  // What side the unit initially in this cell belongs to.  0 Means that there
+  // is no unit here (hence Name is irrelevant).
+  Side int
 
-type Dirt struct {}
-func (t Dirt) Name() string {
-  return "dirt"
+  // If Side > 0 and Name == "" this cell is available for unit placement for
+  // the specified side.  Otherwise Name indicates the name of the unit that
+  // is initially placed in this cell at the beginning of the game.
+  Name string
 }
-
-type Water struct {}
-func (t Water) Name() string {
-  return "water"
-}
-
-type Brush struct {}
-func (t Brush) Name() string {
-  return "brush"
-}
-
-var terrain_registry map[string]Terrain
-func init() {
-  terrain_registry = make(map[string]Terrain)
-  RegisterTerrain(Water{})
-  RegisterTerrain(Dirt{})
-  RegisterTerrain(Grass{})
-  RegisterTerrain(Brush{})
-}
-func RegisterTerrain(t Terrain) {
-  _,ok := terrain_registry[t.Name()]
-  if ok {
-    panic(fmt.Sprintf("Tried to register the terrain '%s' more than once.", t.Name()))
-  }
-  terrain_registry[t.Name()] = t
-}
-func MakeTerrain(name string) Terrain {
-  t,ok := terrain_registry[name]
-  if !ok {
-    panic(fmt.Sprintf("Cannot load the unregistered terrain '%s'.", name))
-  }
-  return t
-}
-func GetRegisteredTerrains() []string {
-  var terrains []string
-  for t,_ := range terrain_registry {
-    terrains = append(terrains, t)
-  }
-  sort.Strings(terrains)
-  return terrains
-}
-
 
 type staticCellData struct {
-  Terrain
+  Terrain Terrain
+  Unit    UnitPlacement
 }
 type cachedCellData struct {
   highlight Highlight
@@ -87,123 +45,165 @@ type CellData struct {
 }
 
 type Highlight uint32
+
 const (
   None Highlight = 1 << iota
+
   Reachable
+  // If the move action is selected this indicates cells that the unit can reach
+
   Attackable
+  // If the attack action is selected this indicates cells that the unit can attack
+
+  AttackMouseOver
+  // MouseOver effect when in attack mode - could be multiple cells for an AOE
 
   MouseOver
+  // The cell that the mouse is currently position over (should only ever be one)
 
   Selected
+  // The unit currently selected
+
+  NoLOS
+  // indicates that the selected unit does not have visibility to this tile
+
+  FogOfWar
+  // indicates that no unit on a team has visibility to this tile
+
   MaxHighlights
-//  OutOfRange
 )
-const game_highlights =  MouseOver
+const game_highlights = MouseOver
 const combat_highlights = Reachable | Attackable
 const editor_highlights = Selected
+const visibility_highlights = FogOfWar | NoLOS
+const all_highlights = MaxHighlights - 1
 
 func (t *CellData) Clear(mask Highlight) {
   t.cachedCellData.highlight &= ^mask
 }
 
-func (t *CellData) Render(x,y,z,scale float32) {
+func (t *CellData) Render(x, y, z, scale float32) {
   gl.Disable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-  var r,g,b,a float32
+  var r, g, b, a float32
   a = 0.2
-  switch t.Terrain.Name() {
-    case "grass":
-      r,g,b = 0.1, 0.9, 0.4
-    case "brush":
-      r,g,b = 0.0, 0.7, 0.2
-    case "water":
-      r,g,b = 0.0, 0.0, 1.0
-    case "dirt":
-      r,g,b = 0.6, 0.5, 0.3
-    default:
-      r,g,b = 1,0,0
+  switch t.Terrain {
+  case "grass":
+    r, g, b = 0.1, 0.9, 0.4
+  case "brush":
+    r, g, b = 0.2, 0.6, 0.0
+  case "water":
+    r, g, b = 0.0, 0.0, 1.0
+  case "dirt":
+    r, g, b = 0.6, 0.5, 0.3
+  case "forest":
+    r, g, b = 0.0, 0.7, 0.0
+  case "mountain":
+    r, g, b = 0.9, 0.1, 0.3
+  default:
+    r, g, b = 1, 0, 0
   }
   x *= scale
   y *= scale
   gl.Color4f(r, g, b, a)
   gl.Begin(gl.QUADS)
-    gl.Vertex3f(x, y, z)
-    gl.Vertex3f(x, y+scale, z)
-    gl.Vertex3f(x+scale, y+scale, z)
-    gl.Vertex3f(x+scale, y, z)
+  gl.Vertex3f(x, y, z)
+  gl.Vertex3f(x, y+scale, z)
+  gl.Vertex3f(x+scale, y+scale, z)
+  gl.Vertex3f(x+scale, y, z)
   gl.End()
 
   draw_quad := func() {
     gl.Color4f(r, g, b, a)
     gl.Begin(gl.QUADS)
-      gl.Vertex3f(x, y, z)
-      gl.Vertex3f(x, y+scale, z)
-      gl.Vertex3f(x+scale, y+scale, z)
-      gl.Vertex3f(x+scale, y, z)
+    gl.Vertex3f(x, y, z)
+    gl.Vertex3f(x, y+scale, z)
+    gl.Vertex3f(x+scale, y+scale, z)
+    gl.Vertex3f(x+scale, y, z)
     gl.End()
   }
 
   if t.highlight != None {
-    if t.highlight & Reachable != 0 {
-      r,g,b,a = 0, 0.2, 0.9, 0.3
+    if t.highlight&FogOfWar != 0 {
+      r, g, b, a = 0, 0, 0, 0.8
       draw_quad()
-    }
-    if t.highlight & Attackable != 0 {
-      r,g,b,a = 0.7, 0.2, 0.2, 0.9
+    } else if t.highlight&NoLOS != 0 {
+      r, g, b, a = 0, 0, 0, 0.6
       draw_quad()
-    }
-    if t.highlight & MouseOver != 0 {
-      r,g,b,a = 0.1, 0.9, 0.2, 0.4
-      draw_quad()
-    }
-    if t.highlight & Selected != 0 {
-      r,g,b,a = 0.0, 0.7, 0.4, 0.5
-      draw_quad()
+    } else {
+      if t.highlight&Reachable != 0 {
+        r, g, b, a = 0, 0.2, 0.5, 0.2
+        draw_quad()
+      }
+      if t.highlight&AttackMouseOver != 0 {
+        r, g, b, a = 0.7, 0.2, 0.2, 0.5
+        draw_quad()
+      }
+      if t.highlight&Attackable != 0 {
+        r, g, b, a = 0.7, 0.2, 0.2, 0.2
+        draw_quad()
+      }
+      if t.highlight&MouseOver != 0 {
+        r, g, b, a = 0.1, 0.9, 0.2, 0.4
+        draw_quad()
+      }
+      if t.highlight&Selected != 0 {
+        r, g, b, a = 0.0, 0.7, 0.4, 0.5
+        draw_quad()
+      }
     }
   }
 }
 
 // Contains everything about a level that is stored on disk
 type StaticLevelData struct {
-  grid [][]CellData
+  bg_path string
+  grid    [][]CellData
 }
 type unitGraph struct {
   *Level
   move_cost map[string]int
 }
+
 func (s *StaticLevelData) NumVertex() int {
   return len(s.grid) * len(s.grid[0])
 }
-func (s *StaticLevelData) fromVertex(v int) (int,int) {
+func (s *StaticLevelData) fromVertex(v int) (int, int) {
   return v % len(s.grid), v / len(s.grid)
 }
-func (s *StaticLevelData) toVertex(x,y int) int {
-  return x + y * len(s.grid)
+func (s *StaticLevelData) toVertex(x, y int) int {
+  return x + y*len(s.grid)
 }
 
 // Assumes that src and dst are adjacent
-func (l unitGraph) costToMove(src,dst int) float64 {
-  x,y := l.fromVertex(src)
-  x2,y2 := l.fromVertex(dst)
+func (l unitGraph) costToMove(src, dst int) float64 {
+  x, y := l.fromVertex(src)
+  x2, y2 := l.fromVertex(dst)
 
-  cost_c,ok := l.move_cost[l.grid[x2][y2].Terrain.Name()]
-  if !ok { return -1 }
+  cost_c, ok := l.move_cost[string(l.grid[x2][y2].Terrain)]
+  if !ok {
+    return -1
+  }
   if x == x2 || y == y2 {
     return float64(cost_c)
   }
 
-  cost_a,ok := l.move_cost[l.grid[x][y2].Terrain.Name()]
-  if !ok { return - 1 }
-  cost_b,ok := l.move_cost[l.grid[x2][y].Terrain.Name()]
-  if !ok { return - 1 }
+  cost_a, ok := l.move_cost[string(l.grid[x][y2].Terrain)]
+  if !ok {
+    return -1
+  }
+  cost_b, ok := l.move_cost[string(l.grid[x2][y].Terrain)]
+  if !ok {
+    return -1
+  }
 
-  cost_ab := float64(cost_a + cost_b) / 2
-  return math.Fmax(cost_ab, float64(cost_c))
+  cost_ab := float64(cost_a+cost_b) / 2
+  return math.Max(cost_ab, float64(cost_c))
 }
 func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
-  x,y := l.fromVertex(v)
+  x, y := l.fromVertex(v)
   var adj []int
   var weight []float64
 
@@ -213,10 +213,16 @@ func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
   var weight_diag []float64
 
   for dx := -1; dx <= 1; dx++ {
-    if x + dx < 0 || x + dx >= len(l.grid) { continue }
+    if x+dx < 0 || x+dx >= len(l.grid) {
+      continue
+    }
     for dy := -1; dy <= 1; dy++ {
-      if dx == 0 && dy == 0 { continue }
-      if y + dy < 0 || y + dy >= len(l.grid[0]) { continue }
+      if dx == 0 && dy == 0 {
+        continue
+      }
+      if y+dy < 0 || y+dy >= len(l.grid[0]) {
+        continue
+      }
 
       // Don't want to be able to walk through other units
       occupied := false
@@ -226,12 +232,16 @@ func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
           break
         }
       }
-      if occupied { continue }
+      if occupied {
+        continue
+      }
 
       // Prevent moving along a diagonal if we couldn't get to that space normally via
       // either of the non-diagonal paths
-      cost := l.costToMove(l.toVertex(x,y), l.toVertex(x+dx, y+dy))
-      if cost < 0 { continue }
+      cost := l.costToMove(l.toVertex(x, y), l.toVertex(x+dx, y+dy))
+      if cost < 0 {
+        continue
+      }
       if dx != 0 && dy != 0 {
         adj_diag = append(adj_diag, l.toVertex(x+dx, y+dy))
         weight_diag = append(weight_diag, cost)
@@ -245,10 +255,11 @@ func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
     adj = append(adj, adj_diag[i])
     weight = append(weight, weight_diag[i])
   }
-  return adj,weight
+  return adj, weight
 }
 
 type Command int
+
 const (
   NoCommand Command = iota
   Move
@@ -262,6 +273,10 @@ type Level struct {
 
   editor     *Editor
   editor_gui *gui.CollapseWrapper
+
+  // whose turn it is, side 1 goes first, then 2, then back to 1...
+  side     int
+  side_gui *gui.TextLine
 
   // unset when the cache is cleared, lets Think() know it has to refil the cache
   cached bool
@@ -283,12 +298,10 @@ type Level struct {
   hovered  *Entity
 
   // window coords of the mouse
-  winx,winy int
-
+  winx, winy int
 
   // The most recently prepped valid command
   command Command
-
 
   // MOVE data
 
@@ -297,8 +310,9 @@ type Level struct {
   reachable []int
 
   // ATTACK data
-  in_range []int
+  in_range []Target
 }
+
 func (l *Level) GetSelected() *Entity {
   return l.selected
 }
@@ -306,19 +320,31 @@ func (l *Level) GetHovered() *Entity {
   return l.hovered
 }
 func (l *Level) Round() {
+  l.selected = nil
+  l.clearCache(all_highlights)
+  l.side = l.side%2 + 1
+  if l.side == 1 {
+    l.side_gui.SetText("It is The Jungle's turn to move")
+  } else {
+    l.side_gui.SetText("It is The Man's turn to move")
+  }
   for i := range l.Entities {
+    if l.Entities[i].side != l.side {
+      continue
+    }
     l.Entities[i].OnRound()
   }
+  l.updateDependantGuis()
 }
 
 func (l *Level) Setup() {
   for i := range l.Entities {
     l.Entities[i].OnSetup()
   }
+  l.Round()
 }
 
 func (l *Level) clearCache(mask Highlight) {
-  if !l.cached { return }
   for i := range l.grid {
     for j := range l.grid[i] {
       l.grid[i][j].Clear(mask)
@@ -327,126 +353,215 @@ func (l *Level) clearCache(mask Highlight) {
   l.cached = false
 }
 
-func (l *Level) maintainCommand() {
+func (l *Level) refreshCommandHighlights() {
   switch l.command {
-    case Move:
-    for _,v := range l.reachable {
-      x,y := l.fromVertex(v)
-      l.grid[x][y].highlight &= ^combat_highlights
+  case Move:
+    for _, v := range l.reachable {
+      x, y := l.fromVertex(v)
       l.grid[x][y].highlight |= Reachable
     }
 
-    case Attack:
-    for _,v := range l.in_range {
-      x,y := l.fromVertex(v)
-      l.grid[x][y].highlight &= ^combat_highlights
-      l.grid[x][y].highlight |= Attackable
+  case Attack:
+    for _, v := range l.in_range {
+      l.grid[v.X][v.Y].highlight |= Attackable
     }
 
-    case NoCommand:
-    default:
-      panic(fmt.Sprintf("Unknown command: %d", l.command))
+  case NoCommand:
+  default:
+    panic(fmt.Sprintf("Unknown command: %d", l.command))
   }
 }
 
 func (l *Level) PrepAttack() {
-  if l.selected == nil { return }
-  weapon := l.selected.Weapons[0]
-  if weapon.Cost(l.selected) > l.selected.AP { return }
-
-  l.in_range = nil
-  for i := range l.Entities {
-    if l.Entities[i] == l.selected { continue }
-    if !weapon.InRange(l.selected, l.Entities[i]) { continue }
-    l.in_range = append(l.in_range, l.toVertex(l.Entities[i].Coords()))
+  if l.selected == nil {
+    return
+  }
+  item := l.selected_gui.actions.GetSelectedIndex()
+  if item < 0 {
+    item = 0
+    l.selected_gui.actions.SetSelectedIndex(item)
+  }
+  weapon := l.selected.Weapons[item]
+  if weapon.Cost(l.selected) > l.selected.AP {
+    return
   }
 
-  if len(l.in_range) == 0 { return }
+  l.in_range = weapon.ValidTargets(l.selected)
+
+  if len(l.in_range) == 0 {
+    return
+  }
 
   l.command = Attack
   l.clearCache(combat_highlights)
 }
-func (l *Level) DoAttack(target *Entity) {
-  if l.selected == nil { return }
+func (l *Level) DoAttack(target Target) {
+  if l.selected == nil {
+    return
+  }
 
-  // First check range
-  weapon := l.selected.Weapons[0]
+  // First check range, if the target is out of range then just return and
+  // stay in attack mode
+  item := l.selected_gui.actions.GetSelectedIndex()
+  if item < 0 {
+    item = 0
+    l.selected_gui.actions.SetSelectedIndex(item)
+  }
+  weapon := l.selected.Weapons[item]
+  valid_targets := weapon.ValidTargets(l.selected)
+  valid := false
+  for _, valid_target := range valid_targets {
+    if valid_target.Type&target.Type == 0 {
+      continue
+    }
+    if valid_target.X != int(target.X) {
+      continue
+    }
+    if valid_target.Y != int(target.Y) {
+      continue
+    }
+    valid = true
+  }
+  if !valid {
+    return
+  }
+
   cost := weapon.Cost(l.selected)
-  if cost > l.selected.AP { return }
+  if cost > l.selected.AP {
+    return
+  }
   l.selected.AP -= cost
 
-  // TODO: Should probably log a warning, this shouldn't have been able to happen
-  if !weapon.InRange(l.selected, target) { return }
-
-  res := weapon.Damage(l.selected, target)
+  ress := weapon.Damage(l.selected, target)
 
   // Resolve the actual attack here
-  l.selected.turnToFace(target.pos)
+  l.selected.turnToFace(mathgl.Vec2{float32(target.X), float32(target.Y)})
 
-  x := int(target.pos.X)
-  y := int(target.pos.Y)
   x2 := int(l.selected.pos.X)
   y2 := int(l.selected.pos.Y)
-  dist := maxNormi(x, y, x2, y2)
+  dist := maxNormi(target.X, target.Y, x2, y2)
 
-  if dist > 2 {
+  // TODO: Melee/ranged should be determined by the weapon, not by the distance
+  if dist >= 2 {
     l.selected.s.Command("ranged")
   } else {
     l.selected.s.Command("melee")
   }
-  target.s.Command("defend")
 
-  if res.Connect == Hit {
-    target.Health -= res.Damage.Piercing
-    if target.Health <= 0 {
-      target.s.Command("killed")
+  for _, res := range ress {
+    res.Target.s.Command("defend")
+
+    if res.Connect == Hit {
+      res.Target.Health -= res.Damage.Piercing
+      if res.Target.Health <= 0 {
+        res.Target.s.Command("killed")
+      } else {
+        res.Target.s.Command("damaged")
+      }
     } else {
-      target.s.Command("damaged")
+      res.Target.s.Command("undamaged")
     }
-  } else {
-    target.s.Command("undamaged")
   }
 
   l.clearCache(combat_highlights)
   l.command = NoCommand
 }
 func (l *Level) PrepMove() {
-  if l.selected == nil { return }
+  if l.selected == nil {
+    return
+  }
+
+  l.clearCache(combat_highlights)
 
   bx := int(l.selected.pos.X)
   by := int(l.selected.pos.Y)
-  graph := &unitGraph{ l, l.selected.Base.Move_cost }
-  l.reachable = algorithm.ReachableWithinLimit(graph, []int{ l.toVertex(bx, by) }, float64(l.selected.AP))
+  graph := &unitGraph{l, l.selected.Base.movement.Mods}
+  l.reachable = algorithm.ReachableWithinLimit(graph, []int{l.toVertex(bx, by)}, float64(l.selected.AP))
 
-  if len(l.reachable) == 0 { return }
-
+  if len(l.reachable) == 0 {
+    return
+  }
   l.command = Move
-  l.clearCache(game_highlights)
 }
 
-func (l *Level) DoMove(click_x,click_y int) {
-  if l.selected == nil { return }
+func (l *Level) DoMove(click_x, click_y int) {
+  if l.selected == nil {
+    return
+  }
 
   start := l.toVertex(int(l.selected.pos.X), int(l.selected.pos.Y))
   end := l.toVertex(click_x, click_y)
-  graph := &unitGraph{ l, l.selected.Base.Move_cost }
-  ap,path := algorithm.Dijkstra(graph, []int{ start }, []int{ end })
-  fmt.Printf("Found a path: %f %v\n", ap, path)
-  if len(path) == 0 || int(ap) > l.selected.AP { return }
+  graph := &unitGraph{l, l.selected.Base.movement.Mods}
+  ap, path := algorithm.Dijkstra(graph, []int{start}, []int{end})
+  if len(path) == 0 || int(ap) > l.selected.AP {
+    return
+  }
   path = path[1:]
   l.selected.path = l.selected.path[0:0]
   l.reachable = nil
   for i := range path {
-    x,y := l.fromVertex(path[i])
-    l.selected.path = append(l.selected.path, [2]int{x,y})
+    x, y := l.fromVertex(path[i])
+    l.selected.path = append(l.selected.path, [2]int{x, y})
   }
-
-  l.clearCache(game_highlights)
+  l.clearCache(combat_highlights)
   l.command = NoCommand
 }
 
+func (l *Level) figureVisible() {
+  if !l.editor_gui.Collapsed {
+    return
+  }
+
+  // If the player hasn't selected a unit we will just show all tiles that are
+  // visible to any unit on that side as being equally visible, but if the
+  // player has selcted a unit we will put a very light fog over the cells
+  // that unit doesn't have LOS to.
+
+  l.clearCache(visibility_highlights)
+
+  // First do the selected unit's visibility stuff
+  if l.selected != nil {
+    for x := range l.grid {
+      for y := range l.grid[0] {
+        if _, ok := l.selected.visible[l.toVertex(x, y)]; !ok {
+          l.grid[x][y].highlight |= NoLOS
+        }
+      }
+    }
+  }
+
+  // Now do the visibility for all units on that side, have to first find the
+  // union of all visible vertices.
+  visible := make(map[int]bool, 100)
+  for i := range l.Entities {
+    if l.Entities[i].side != l.side {
+      continue
+    }
+    for v, _ := range l.Entities[i].visible {
+      visible[v] = true
+    }
+  }
+  for x := range l.grid {
+    for y := range l.grid[0] {
+      if _, ok := visible[l.toVertex(x, y)]; !ok {
+        l.grid[x][y].highlight |= FogOfWar
+      }
+    }
+  }
+}
+
 func (l *Level) Think(dt int64) {
-  l.clearCache(MouseOver)
+  l.clearCache(MouseOver | AttackMouseOver)
+  l.figureVisible()
+
+  // If the selected entity isn't moving and we don't have a command selected
+  // then set the command to Move
+  // TODO: Might be better to just leave move selected but only refresh the
+  // reachable tiles when the entity reaches it's final position.
+  if l.selected != nil && len(l.selected.path) == 0 && l.command == NoCommand {
+    l.PrepMove()
+  }
+
   // Draw all sprites
   for i := range l.Entities {
     e := l.Entities[i]
@@ -456,11 +571,39 @@ func (l *Level) Think(dt int64) {
     if pbx != int(e.pos.X) || pby != int(e.pos.Y) {
       l.clearCache(game_highlights)
     }
-    l.Terrain.AddUprightDrawable(e.pos.X + 0.25, e.pos.Y + 0.25, e.s)
+    if l.grid[int(e.pos.X)][int(e.pos.Y)].highlight&FogOfWar == 0 {
+      l.Terrain.AddUprightDrawable(e.pos.X+0.25, e.pos.Y+0.25, e.s)
+    }
   }
 
-  l.maintainCommand()
+  l.refreshCommandHighlights()
   l.editor.Think()
+
+  // Highlight selected entity
+  if l.selected != nil && len(l.selected.path) == 0 {
+    cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
+    cell.highlight |= Reachable
+    //    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
+  }
+
+  bx, by := l.Terrain.WindowToBoard(l.winx, l.winy)
+  // mouseovers
+  if l.selected != nil && l.command == Attack {
+    index := l.selected_gui.actions.GetSelectedIndex()
+    if index != -1 {
+      l.selected.Weapons[index].MouseOver(l.selected, float64(bx), float64(by))
+    }
+  } else {
+    // Highlight the square under the cursor
+    mx := int(bx)
+    my := int(by)
+    if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
+      cell := &l.grid[mx][my]
+      cell.highlight |= MouseOver
+    }
+  }
+
+  l.cached = true
 
   // Draw tiles
   for i := range l.grid {
@@ -468,34 +611,22 @@ func (l *Level) Think(dt int64) {
       l.Terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
     }
   }
+}
 
-  // Highlight the square under the cursor
-  bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
-  mx := int(bx)
-  my := int(by)
-  if mx >= 0 && my >= 0 && mx < len(l.grid) && my < len(l.grid[0]) {
-    cell := &l.grid[mx][my]
-    cell.highlight |= MouseOver
-//    l.Terrain.AddFlattenedDrawable(float32(mx), float32(my), &cell)
-    l.hovered = nil
-    for i := range l.Entities {
-      x,y := l.Entities[i].Coords()
-      if x == mx && y == my {
-        l.hovered = l.Entities[i]
-      }
-    }
-  }
-
-  // Highlight selected entity
-  if l.selected != nil {
-    cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
-    cell.highlight |= Reachable
-//    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
-  }
+// Some gui elements are dependent on entities we have selected, etc...
+// We need to be very careful when we modify these things, if we modified them
+// in Think() then the gui would be modified between layout and render which
+// would cause a single-frame gui glitch.  This is the only function that
+// directly modifies the gui elements so that we can easily isolate these
+// calls.  This function should only be called during event-handling or
+// Round()
+func (l *Level) updateDependantGuis() {
   l.selected_gui.SetEntity(l.selected)
-  l.targeted_gui.SetEntity(l.hovered)
-
-  l.cached = true
+  if l.hovered == l.selected {
+    l.targeted_gui.SetEntity(nil)
+  } else {
+    l.targeted_gui.SetEntity(l.hovered)
+  }
 }
 
 func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
@@ -504,60 +635,71 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
   for i := range l.Entities {
     var cc mathgl.Vec2
     cc.Assign(&click)
-    cc.Subtract(&mathgl.Vec2{ l.Entities[i].pos.X + 0.5, l.Entities[i].pos.Y + 0.5 })
+    cc.Subtract(&mathgl.Vec2{l.Entities[i].pos.X + 0.5, l.Entities[i].pos.Y + 0.5})
     dx := cc.X
-    if dx < 0 { dx = -dx }
+    if dx < 0 {
+      dx = -dx
+    }
     dy := cc.Y
-    if dy < 0 { dy = -dy }
-    d := float32(math.Fmax(float64(dx), float64(dy)))
+    if dy < 0 {
+      dy = -dy
+    }
+    d := float32(math.Max(float64(dx), float64(dy)))
     if d < dist {
       dist = d
       ent = l.Entities[i]
     }
   }
+  // At this point ent is the entity closest to the point that the user clicked
+  // and dist is the distance from the click to the center of the entity's cell
 
-  if l.selected == nil && dist < 3 {
-    l.selected = ent
-    l.clearCache(game_highlights)
-    l.command = NoCommand
-    return
-  }
-
-  var target *Entity
-  if l.selected != nil && dist < 0.5 {
-    target = ent
+  if dist > 0.5 {
+    ent = nil
   }
 
   switch l.command {
-    case Move:
-      if target == nil {
-        l.DoMove(int(click.X), int(click.Y))
-      }
+  case Move:
+    if ent == nil {
+      l.DoMove(int(click.X), int(click.Y))
+    } else if ent.side == l.side {
+      l.selected = ent
+      l.PrepMove()
+    }
 
-    case Attack:
-      if target != nil {
-        l.DoAttack(target)
-        target = nil
-      }
+  case Attack:
+    target := Target{CellTarget, int(click.X), int(click.Y)}
+    if ent != nil {
+      target.Type |= EntityTarget
+    }
+    l.DoAttack(target)
 
-    case NoCommand:
-    default:
+  case NoCommand:
+    if ent != nil && ent.side == l.side {
+      l.selected = ent
+      l.PrepMove()
+    }
   }
-
-  if target != nil {
-    l.selected = target
-  }
-  l.clearCache(game_highlights)
-  l.command = NoCommand
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
+  defer l.updateDependantGuis()
+
   cursor := event_group.Events[0].Key.Cursor()
-  if cursor == nil { return }
+  if cursor == nil {
+    return
+  }
   l.winx, l.winy = cursor.Point()
-  bx,by := l.Terrain.WindowToBoard(l.winx, l.winy)
+  bx, by := l.Terrain.WindowToBoard(l.winx, l.winy)
   if bx < 0 || by < 0 || int(bx) >= len(l.grid) || int(by) >= len(l.grid[0]) {
     return
+  }
+
+  l.hovered = nil
+  for i := range l.Entities {
+    x, y := l.Entities[i].Coords()
+    if x == int(bx) && y == int(by) {
+      l.hovered = l.Entities[i]
+    }
   }
 
   if !l.editor_gui.Collapsed {
@@ -565,14 +707,17 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
     return
   }
 
-  found,event := event_group.FindEvent(gin.MouseLButton)
-  if !found || event.Type != gin.Press { return }
-  click := mathgl.Vec2{ bx, by }
+  found, event := event_group.FindEvent(gin.MouseLButton)
+  if !found || event.Type != gin.Press {
+    return
+  }
+  click := mathgl.Vec2{bx, by}
   l.handleClickInGameMode(click)
 }
 
 type levelDataCell struct {
-  Terrain string
+  Terrain Terrain
+  Unit    UnitPlacement
 }
 type levelData struct {
   // TOOD: Need to track the file this came from so we can copy it when
@@ -588,70 +733,82 @@ type levelDataContainer struct {
 
 func (sld *StaticLevelData) makeLevelDataContainer() *levelDataContainer {
   var ldc levelDataContainer
-  ldc.Level.Image = "fudgecake.png"
+  ldc.Level.Image = sld.bg_path
   ldc.Level.Cells = make([][]levelDataCell, len(sld.grid))
   for i := range ldc.Level.Cells {
     ldc.Level.Cells[i] = make([]levelDataCell, len(sld.grid[0]))
   }
   for i := range ldc.Level.Cells {
     for j := range ldc.Level.Cells[i] {
-      ldc.Level.Cells[i][j].Terrain = sld.grid[i][j].Name()
+      ldc.Level.Cells[i][j].Terrain = sld.grid[i][j].Terrain
+      ldc.Level.Cells[i][j].Unit = sld.grid[i][j].Unit
     }
   }
   return &ldc
 }
 
-func (ldc *levelDataContainer) Write(out io.Writer) os.Error {
-  data,err := json.Marshal(&ldc)
-  if err != nil { return err }
-  _,err = out.Write(data)
+func (ldc *levelDataContainer) Write(out io.Writer) error {
+  data, err := json.Marshal(&ldc)
+  if err != nil {
+    return err
+  }
+  _, err = out.Write(data)
   return err
 }
 
-func (l *Level) SaveLevel(pathname string) os.Error {
-  out,err := os.Create(pathname)
-  if err != nil { return nil }
+// TODO: Should save everything to a temporary directory and then copy
+// from there to the appropriate place.  In the event that the save
+// fails we don't want to be left with something inconsistent.
+func (l *Level) SaveLevel(pathname string) error {
+  out, err := os.Create(pathname)
+  if err != nil {
+    return nil
+  }
   defer out.Close()
   var ldc levelDataContainer
-  ldc.Level.Image = "fudgecake.png"
+  ldc.Level.Image = l.bg_path
   ldc.Level.Cells = make([][]levelDataCell, len(l.grid))
   for i := range ldc.Level.Cells {
     ldc.Level.Cells[i] = make([]levelDataCell, len(l.grid[0]))
   }
   for i := range ldc.Level.Cells {
     for j := range ldc.Level.Cells[i] {
-      ldc.Level.Cells[i][j].Terrain = l.grid[i][j].Name()
+      ldc.Level.Cells[i][j].Terrain = l.grid[i][j].Terrain
     }
   }
-  data,err := json.Marshal(&ldc)
-  if err != nil { return err }
-  _,err = out.Write(data)
+  data, err := json.Marshal(&ldc)
+  if err != nil {
+    return err
+  }
+  _, err = out.Write(data)
   return err
 }
 
-func LoadLevel(pathname string) (*Level, os.Error) {
-  datapath := filepath.Join(filepath.Clean(pathname), "data.json")
-  datafile,err := os.Open(datapath)
+func LoadLevel(datadir, mapname string) (*Level, error) {
+  datapath := filepath.Join(datadir, "maps", mapname)
+  datafile, err := os.Open(datapath)
   if err != nil {
     return nil, err
   }
-  data,err := ioutil.ReadAll(datafile)
+  data, err := ioutil.ReadAll(datafile)
   if err != nil {
     return nil, err
   }
   var ldc levelDataContainer
-  json.Unmarshal(data, &ldc)
+  err = json.Unmarshal(data, &ldc)
+  if err != nil {
+    fmt.Printf("err: %s\n", err.Error())
+  }
 
   var level Level
-
   // level.directory should be the directory that contains the level, but the
   // level itself, pathname, is a directory, so we have to properly strip that
   // out.
-  base := path.Base(pathname)
+  base := path.Base(datapath)
   if base == "" {
-    level.directory = pathname
+    level.directory = datapath
   } else {
-    level.directory = pathname[0 : len(pathname) - len(base) - 1]
+    level.directory = datapath[0 : len(datapath)-len(base)-1]
   }
 
   dx := len(ldc.Level.Cells)
@@ -661,28 +818,52 @@ func LoadLevel(pathname string) (*Level, os.Error) {
   for i := range level.grid {
     level.grid[i] = all_cells[i*dy : (i+1)*dy]
   }
+  all_units, err := LoadAllUnits(datadir)
+  if err != nil {
+    return nil, err
+  }
+  unit_map := make(map[string]*UnitType)
+  for _, unit := range all_units {
+    unit_map[unit.Name] = unit
+  }
   for i := range level.grid {
     for j := range level.grid[i] {
-      level.grid[i][j].Terrain = MakeTerrain(ldc.Level.Cells[i][j].Terrain)
+      level.grid[i][j].Terrain = ldc.Level.Cells[i][j].Terrain
+      level.grid[i][j].Unit = ldc.Level.Cells[i][j].Unit
+      if level.grid[i][j].Unit.Name != "" {
+        if unit, ok := unit_map[level.grid[i][j].Unit.Name]; !ok {
+          return nil, errors.New(fmt.Sprintf("Unable to find unit definition for '%s'.", level.grid[i][j].Unit))
+        } else {
+          sprite, err := sprite.LoadSprite(filepath.Join(datadir, "sprites", unit.Sprite))
+          if err != nil {
+            return nil, err
+          }
+          side := level.grid[i][j].Unit.Side
+          level.addEntity(*unit, i, j, side, 0.0075, sprite)
+        }
+      }
     }
   }
-  bg_path := filepath.Join(filepath.Clean(pathname), ldc.Level.Image)
-  terrain,err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
+  level.bg_path = ldc.Level.Image
+  bg_path := filepath.Join(filepath.Clean(level.directory), level.bg_path)
+  terrain, err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
   if err != nil {
     return nil, err
   }
   level.Terrain = terrain
   terrain.SetEventHandler(&level)
 
-  level.editor = MakeEditor(&level.StaticLevelData, level.directory)
+  level.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
+  level.editor = MakeEditor(&level.StaticLevelData, datadir, base)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
-  level.selected_gui = MakeStatsWindow()
-  level.targeted_gui = MakeStatsWindow()
+  level.selected_gui = MakeStatsWindow(true)
+  level.targeted_gui = MakeStatsWindow(false)
   entity_guis := gui.MakeHorizontalTable()
   entity_guis.AddChild(level.selected_gui)
   entity_guis.AddChild(level.targeted_gui)
   game_only_gui.AddChild(level.Terrain)
+  game_only_gui.AddChild(level.side_gui)
   game_only_gui.AddChild(entity_guis)
   level.game_gui.AddChild(game_only_gui)
   level.editor_gui = gui.MakeCollapseWrapper(level.editor.GetGui())
@@ -698,19 +879,20 @@ func (l *Level) ToggleEditor() {
   l.editor_gui.Collapsed = !l.editor_gui.Collapsed
 }
 
-func (l *Level) AddEntity(unit_type UnitType, x,y int, move_speed float32, sprite *sprite.Sprite) *Entity  {
+func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32, sprite *sprite.Sprite) *Entity {
   ent := &Entity{
-    UnitStats : UnitStats {
-      Base : &unit_type,
+    UnitStats: UnitStats{
+      Base: &unit_type,
     },
-    pos : mathgl.Vec2{ float32(x), float32(y) },
-    s : sprite,
-    level : l,
-    CosmeticStats : CosmeticStats{
-      Move_speed : move_speed,
+    pos:   mathgl.Vec2{float32(x), float32(y)},
+    side:  side,
+    s:     sprite,
+    level: l,
+    CosmeticStats: CosmeticStats{
+      Move_speed: move_speed,
     },
   }
-  for _,name := range unit_type.Weapons {
+  for _, name := range unit_type.Weapons {
     ent.Weapons = append(ent.Weapons, MakeWeapon(name))
   }
   l.Entities = append(l.Entities, ent)

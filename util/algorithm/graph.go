@@ -11,8 +11,8 @@ type Graph interface {
 }
 
 type dNode struct {
-  v int  // current vertex
-  p int  // previous vertex (for extracting path)
+  v      int // current vertex
+  p      int // previous vertex (for extracting path)
   weight float64
 
   // If every node is inserted with a unique count that is monotonically increasing then
@@ -21,13 +21,14 @@ type dNode struct {
 }
 
 type dArray []dNode
+
 func (da *dArray) Len() int {
   return len(*da)
 }
-func (da *dArray) Swap(i,j int) {
-  (*da)[i],(*da)[j] = (*da)[j],(*da)[i]
+func (da *dArray) Swap(i, j int) {
+  (*da)[i], (*da)[j] = (*da)[j], (*da)[i]
 }
-func (da *dArray) Less(i,j int) bool {
+func (da *dArray) Less(i, j int) bool {
   if (*da)[i].weight != (*da)[j].weight {
     return (*da)[i].weight < (*da)[j].weight
   }
@@ -38,7 +39,7 @@ func (da *dArray) Push(x interface{}) {
 }
 func (da *dArray) Pop() interface{} {
   val := (*da)[len(*da)-1]
-  *da = (*da)[0:len(*da)-1]
+  *da = (*da)[0 : len(*da)-1]
   return val
 }
 
@@ -47,18 +48,22 @@ func (da *dArray) Pop() interface{} {
 func ReachableWithinLimit(g Graph, src []int, limit float64) []int {
   used := make([]bool, g.NumVertex())
   h := make(dArray, len(src))
-  for i,s := range src {
-    h[i] = dNode{ v:s, weight:0 }
+  for i, s := range src {
+    h[i] = dNode{v: s, weight: 0}
   }
 
   for len(h) > 0 {
     cur := heap.Pop(&h).(dNode)
-    if used[cur.v] { continue }
-    if cur.weight > limit { break }
+    if used[cur.v] {
+      continue
+    }
+    if cur.weight > limit {
+      break
+    }
     used[cur.v] = true
-    adj,weights := g.Adjacent(cur.v)
+    adj, weights := g.Adjacent(cur.v)
     for i := range adj {
-      heap.Push(&h, dNode{ v:adj[i], weight:weights[i]+cur.weight })
+      heap.Push(&h, dNode{v: adj[i], weight: weights[i] + cur.weight})
     }
   }
 
@@ -77,21 +82,23 @@ func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
   used := make([]bool, g.NumVertex())
   conn := make([]int, g.NumVertex())
   h := make(dArray, len(src))
-  for i,s := range src {
-    h[i] = dNode{ v:s, p:-1, weight:0 }
+  for i, s := range src {
+    h[i] = dNode{v: s, p: -1, weight: 0}
   }
   target := make(map[int]bool, len(dst))
-  for _,d := range dst {
+  for _, d := range dst {
     target[d] = true
   }
 
   node_count := 0
   for len(h) > 0 {
     cur := heap.Pop(&h).(dNode)
-    if used[cur.v] { continue }
+    if used[cur.v] {
+      continue
+    }
     used[cur.v] = true
     conn[cur.v] = cur.p
-    if _,ok := target[cur.v]; ok {
+    if _, ok := target[cur.v]; ok {
       // Extract the path
       var path []int
       c := cur.v
@@ -101,16 +108,15 @@ func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
       }
       // The path comes out backwards, so reverse it
       for i := 0; i < len(path)/2; i++ {
-        path[i],path[len(path) - i - 1] = path[len(path) - i - 1],path[i]
+        path[i], path[len(path)-i-1] = path[len(path)-i-1], path[i]
       }
       return cur.weight, path
     }
-    adj,weights := g.Adjacent(cur.v)
+    adj, weights := g.Adjacent(cur.v)
     for i := range adj {
-      heap.Push(&h, dNode{ v:adj[i], p:cur.v, weight:weights[i]+cur.weight, count : node_count })
+      heap.Push(&h, dNode{v: adj[i], p: cur.v, weight: weights[i] + cur.weight, count: node_count})
       node_count++
     }
   }
   return -1, nil
 }
-

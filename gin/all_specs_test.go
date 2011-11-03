@@ -5,7 +5,6 @@ import (
   "testing"
 )
 
-
 func TestAllSpecs(t *testing.T) {
   r := gospec.NewRunner()
   r.AddSpec(NaturalKeySpec)
@@ -16,4 +15,3 @@ func TestAllSpecs(t *testing.T) {
   r.AddSpec(AxisSpec)
   gospec.MainGoTest(r, t)
 }
-

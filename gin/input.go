@@ -5,75 +5,78 @@ import (
 )
 
 const (
-  Space = 32
-  Backspace = 8
-  Tab = 9
-  Return = 13
-  Escape = 27
-  F1 = 129
-  F2 = 130
-  F3 = 131
-  F4 = 132
-  F5 = 133
-  F6 = 134
-  F7 = 135
-  F8 = 136
-  F9 = 137
-  F10 = 138
-  F11 = 139
-  F12 = 140
-  CapsLock = 150
-  NumLock = 151
-  ScrollLock = 152
-  PrintScreen = 153
-  Pause = 154
-  LeftShift = 155
-  RightShift = 156
-  LeftControl = 157
-  RightControl = 158
-  LeftAlt = 159
-  RightAlt = 160
-  LeftGui = 161
-  RightGui = 162
-  Right = 166
-  Left = 167
-  Up = 168
-  Down = 169
-  KeyPadDivide = 170
+  Space          = 32
+  Backspace      = 8
+  Tab            = 9
+  Return         = 13
+  Escape         = 27
+  F1             = 129
+  F2             = 130
+  F3             = 131
+  F4             = 132
+  F5             = 133
+  F6             = 134
+  F7             = 135
+  F8             = 136
+  F9             = 137
+  F10            = 138
+  F11            = 139
+  F12            = 140
+  CapsLock       = 150
+  NumLock        = 151
+  ScrollLock     = 152
+  PrintScreen    = 153
+  Pause          = 154
+  LeftShift      = 155
+  RightShift     = 156
+  LeftControl    = 157
+  RightControl   = 158
+  LeftAlt        = 159
+  RightAlt       = 160
+  LeftGui        = 161
+  RightGui       = 162
+  Right          = 166
+  Left           = 167
+  Up             = 168
+  Down           = 169
+  KeyPadDivide   = 170
   KeyPadMultiply = 171
   KeyPadSubtract = 172
-  KeyPadAdd = 173
-  KeyPadEnter = 174
-  KeyPadDecimal = 175
-  KeyPadEquals = 176
-  KeyPad0 = 177
-  KeyPad1 = 178
-  KeyPad2 = 179
-  KeyPad3 = 180
-  KeyPad4 = 181
-  KeyPad5 = 182
-  KeyPad6 = 183
-  KeyPad7 = 184
-  KeyPad8 = 185
-  KeyPad9 = 186
-  KeyDelete = 190
-  KeyHome = 191
-  KeyInsert = 192
-  KeyEnd = 193
-  KeyPageUp = 194
-  KeyPageDown = 195
-  MouseXAxis = 300
-  MouseYAxis = 301
-  MouseWheelUp = 302
+  KeyPadAdd      = 173
+  KeyPadEnter    = 174
+  KeyPadDecimal  = 175
+  KeyPadEquals   = 176
+  KeyPad0        = 177
+  KeyPad1        = 178
+  KeyPad2        = 179
+  KeyPad3        = 180
+  KeyPad4        = 181
+  KeyPad5        = 182
+  KeyPad6        = 183
+  KeyPad7        = 184
+  KeyPad8        = 185
+  KeyPad9        = 186
+  KeyDelete      = 190
+  KeyHome        = 191
+  KeyInsert      = 192
+  KeyEnd         = 193
+  KeyPageUp      = 194
+  KeyPageDown    = 195
+  MouseXAxis     = 300
+  MouseYAxis     = 301
+  MouseWheelUp   = 302
   MouseWheelDown = 303
-  MouseLButton = 304
-  MouseRButton = 305
-  MouseMButton = 306
+  MouseLButton   = 304
+  MouseRButton   = 305
+  MouseMButton   = 306
+
+  // standard derived keys start here
+  EitherShift = 1000 + iota
 )
 
 type Cursor interface {
   Name() string
-  Point() (int,int)
+  Point() (int, int)
 }
 
 type cursor struct {
@@ -81,8 +84,9 @@ type cursor struct {
 
   // Window coordinates of the cursor with the origin set as the lower-left
   // corner of the window.
-  X,Y  int
+  X, Y int
 }
+
 func (c *cursor) Name() string {
   return c.name
 }
@@ -99,7 +103,7 @@ type OsEvent struct {
   // coordinates when the event happened.  For mouse motion and mouse clicks this
   // is the location of the mouse.  For non-cursor-based events these values are
   // meaningless
-  X,Y int
+  X, Y int
 
   Timestamp int64
   Num_lock  int
@@ -110,7 +114,7 @@ type OsEvent struct {
 // on each other
 type Input struct {
   all_keys []Key
-  key_map map[KeyId]Key
+  key_map  map[KeyId]Key
 
   // map from keyId to list of (derived) Keys that depend on it in some way
   dep_map map[KeyId][]Key
@@ -158,7 +162,7 @@ func Make() *Input {
     input.registerNaturalKey(KeyId(c), fmt.Sprintf("%c", c))
   }
   ascii_keys := "`[]\\-=;',./"
-  for _,key := range ascii_keys {
+  for _, key := range ascii_keys {
     input.registerNaturalKey(KeyId(key), fmt.Sprintf("%c", key))
   }
   input.registerNaturalKey(Space, "Space")
@@ -228,35 +232,39 @@ func Make() *Input {
   input.registerCursorKey(MouseRButton, "MouseRButton", "Mouse")
   input.registerCursorKey(MouseMButton, "MouseMButton", "Mouse")
 
+  input.bindDerivedKeyWithId("EitherShift", EitherShift, input.MakeBinding(LeftShift, nil, nil), input.MakeBinding(RightShift, nil, nil))
   return input
 }
 
 type EventType int
+
 const (
-  Press   EventType = iota
+  Press EventType = iota
   Release
-  Adjust   // The key was and is down, but the value of it has changed
+  Adjust // The key was and is down, but the value of it has changed
   NoEvent
 )
+
 func (event EventType) String() string {
   switch event {
-    case Press:
-      return "press"
-    case Release:
-      return "release"
-    case NoEvent:
-      return "noevent"
-    case Adjust:
-      return "adjust"
+  case Press:
+    return "press"
+  case Release:
+    return "release"
+  case NoEvent:
+    return "noevent"
+  case Adjust:
+    return "adjust"
   }
   panic(fmt.Sprintf("%d is not a valid EventType", event))
   return ""
 }
 // TODO: Consider making a Timestamp type (int64)
 type Event struct {
-  Key      Key
-  Type     EventType
+  Key  Key
+  Type EventType
 }
+
 func (e Event) String() string {
   if e.Key == nil || e.Type == NoEvent {
     return fmt.Sprintf("NoEvent")
@@ -284,13 +292,13 @@ func (eg *EventGroup) FindEvent(id KeyId) (bool, Event) {
 }
 
 func (input *Input) registerCursor(name string) {
-  input.cursors[name] = &cursor{ name : name }
+  input.cursors[name] = &cursor{name: name}
 }
 func (input *Input) registerKey(key Key, id KeyId, cursor_name string) {
   if id <= 0 {
     panic(fmt.Sprintf("Cannot register a key with id %d, ids must be greater than 0.", id))
   }
-  if prev,ok := input.key_map[id]; ok {
+  if prev, ok := input.key_map[id]; ok {
     panic(fmt.Sprintf("Cannot register key '%v' with id %d, '%v' is already registered with that id.", key, id, prev))
   }
   input.key_map[id] = key
@@ -303,23 +311,23 @@ func (input *Input) registerKey(key Key, id KeyId, cursor_name string) {
 }
 
 func (input *Input) registerNaturalKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}}, id, "")
+  input.registerKey(&keyState{id: id, name: name, aggregator: &standardAggregator{}}, id, "")
 }
 
 func (input *Input) registerCursorKey(id KeyId, name string, cursor_name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &standardAggregator{}, cursor : input.cursors[cursor_name]}, id, cursor_name)
+  input.registerKey(&keyState{id: id, name: name, aggregator: &standardAggregator{}, cursor: input.cursors[cursor_name]}, id, cursor_name)
 }
 
 func (input *Input) registerAxisKey(id KeyId, name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}}, id, "")
+  input.registerKey(&keyState{id: id, name: name, aggregator: &axisAggregator{}}, id, "")
 }
 
 func (input *Input) registerCursorAxisKey(id KeyId, name string, cursor_name string) {
-  input.registerKey(&keyState{id : id, name : name, aggregator : &axisAggregator{}, cursor : input.cursors[cursor_name]}, id, cursor_name)
+  input.registerKey(&keyState{id: id, name: name, aggregator: &axisAggregator{}, cursor: input.cursors[cursor_name]}, id, cursor_name)
 }
 
 func (input *Input) GetCursor(name string) Cursor {
-  cursor,ok := input.cursors[name]
+  cursor, ok := input.cursors[name]
   if !ok {
     panic(fmt.Sprintf("No cursor registered with name == '%s'.", name))
     return nil
@@ -327,7 +335,7 @@ func (input *Input) GetCursor(name string) Cursor {
   return cursor
 }
 func (input *Input) GetKey(id KeyId) Key {
-  key,ok := input.key_map[id]
+  key, ok := input.key_map[id]
   if !ok {
     panic(fmt.Sprintf("No key registered with id == %d.", id))
     return nil
@@ -339,7 +347,7 @@ func (input *Input) pressKey(k Key, amt float64, t int64, cause Event, group *Ev
   event := k.SetPressAmt(amt, t, cause)
   deps := input.dep_map[k.Id()]
 
-  for _,dep := range deps {
+  for _, dep := range deps {
     input.pressKey(dep, dep.CurPressAmt(), t, event, group)
   }
   if event.Type != NoEvent {
@@ -363,30 +371,31 @@ type Listener interface {
 type EventDispatcher interface {
   RegisterEventListener(Listener)
 }
+
 func (input *Input) RegisterEventListener(listener Listener) {
   input.listeners = append(input.listeners, listener)
 }
 
-func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]EventGroup) {
+func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []EventGroup {
   // If we have lost focus, clear all key state. Note that down_keys_frame_ is rebuilt every frame
   // regardless, so we do not need to worry about it here.
   if lost_focus {
-//    clearAllKeyState()
+    //    clearAllKeyState()
   }
   // Generate all key events here.  Derived keys are handled through pressKey and all
   // events are aggregated into one array.  Events in this array will necessarily be in
   // sorted order.
   var groups []EventGroup
-  for _,os_event := range os_events {
+  for _, os_event := range os_events {
     group := EventGroup{
-      Timestamp : os_event.Timestamp,
+      Timestamp: os_event.Timestamp,
     }
     input.pressKey(
-        input.GetKey(os_event.KeyId),
-        os_event.Press_amt,
-        os_event.Timestamp,
-        Event{},
-        &group)
+      input.GetKey(os_event.KeyId),
+      os_event.Press_amt,
+      os_event.Timestamp,
+      Event{},
+      &group)
 
     // Sets the cursor position if this is a cursor based event.
     // TODO: Currently only the mouse is supported as a cursor, but if we want to support
@@ -398,23 +407,23 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) ([]Even
       cursor.Y = os_event.Y
     }
 
-//    for i := range group.Events {
-//      group.Events[i].Mouse = os_event.Mouse
-//    }
+    //    for i := range group.Events {
+    //      group.Events[i].Mouse = os_event.Mouse
+    //    }
 
     if len(group.Events) > 0 {
       groups = append(groups, group)
-      for _,listener := range input.listeners {
+      for _, listener := range input.listeners {
         listener.HandleEventGroup(group)
       }
     }
   }
 
-  for _,key := range input.all_keys {
+  for _, key := range input.all_keys {
     key.Think(t)
   }
 
-  for _,listener := range input.listeners {
+  for _, listener := range input.listeners {
     listener.Think(t)
   }
   return groups

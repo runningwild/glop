@@ -6,34 +6,31 @@ import (
   "glop/gin"
   "glop/gui"
   "glop/system"
-  "glop/sprite"
   "game"
   "runtime"
+  "runtime/pprof"
   "fmt"
   "io/ioutil"
   "os"
   "flag"
   "time"
-  "path"
   "path/filepath"
+  "strings"
 )
 
 var (
-  sys system.System
+  sys       system.System
   font_path *string = flag.String("font", "fonts/skia.ttf", "relative path of a font")
+  quit      chan bool
 )
 
-func init() {
-  sys = system.Make(gos.GetSystemInterface())
-}
-
-func LoadUnit(path string) (*game.UnitType, os.Error) {
-  f,err := os.Open(path)
+func LoadUnit(path string) (*game.UnitType, error) {
+  f, err := os.Open(path)
   if err != nil {
     return nil, err
   }
   defer f.Close()
-  data,err := ioutil.ReadAll(f)
+  data, err := ioutil.ReadAll(f)
   if err != nil {
     return nil, err
   }
@@ -45,12 +42,21 @@ func LoadUnit(path string) (*game.UnitType, os.Error) {
   return &unit, nil
 }
 
-func main() {
+func init() {
+  sys = system.Make(gos.GetSystemInterface())
+  quit = make(chan bool)
+  go actualMain()
+}
+
+func actualMain() {
   runtime.LockOSThread()
+  defer func() {
+    quit <- true
+  }()
   // Running a binary via osx's package mechanism will add a flag that begins with
   // '-psn' so we have to find it and pretend like we were expecting it so that go
   // doesn't asplode because of an unexpected flag.
-  for _,arg := range os.Args {
+  for _, arg := range os.Args {
     if len(arg) >= 4 && arg[0:4] == "-psn" {
       flag.Bool(arg[1:], false, "HERE JUST TO APPEASE GO'S FLAG PACKAGE")
     }
@@ -60,6 +66,33 @@ func main() {
 
   basedir := filepath.Join(os.Args[0], "..", "..")
 
+  // TODO: Loading weapon specs should be done automatically - it just needs the datadir
+  // Load weapon files
+  weapons, err := os.Open(filepath.Join(basedir, "weapons", "guns.json"))
+  if err != nil {
+    panic(err.Error())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.Error())
+  }
+  weapons, err = os.Open(filepath.Join(basedir, "weapons", "melee.json"))
+  if err != nil {
+    panic(err.Error())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.Error())
+  }
+  weapons, err = os.Open(filepath.Join(basedir, "weapons", "aoe.json"))
+  if err != nil {
+    panic(err.Error())
+  }
+  err = game.LoadWeaponSpecs(weapons)
+  if err != nil {
+    panic(err.Error())
+  }
+
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
 
   factor := 1.0
@@ -67,89 +100,45 @@ func main() {
   wdy := int(factor * float64(768))
 
   sys.CreateWindow(0, 0, wdx, wdy)
-  _,_,wdx,wdy = sys.GetWindowDims()
+  _, _, wdx, wdy = sys.GetWindowDims()
   ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
-//  table := gui.MakeVerticalTable()
-//  ui.AddChild(table)
+  //  table := gui.MakeVerticalTable()
+  //  ui.AddChild(table)
 
-  mappath := filepath.Join(os.Args[0], "..", "..", "maps", "bosworth")
-  mappath = path.Clean(mappath)
-  level,err := game.LoadLevel(mappath)
+  level, err := game.LoadLevel(basedir, "bosworth.json")
   if err != nil {
-    panic(err.String())
+    panic(err.Error())
   }
   ui.AddChild(level.GetGui())
-//  level.Terrain.Move(10,10)
+  //  level.Terrain.Move(10,10)
 
-//  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
+  //  table := anch.InstallWidget(&gui.VerticalTable{}, gui.Anchor{0,0, 0,0})
 
   n := 0
 
   // TODO: Would be better to only be vsynced, but apparently it can turn itself off
   // when the window disappears, so we need a safety net to slow it down if necessary
   sys.EnableVSync(true)
-  ticker := time.Tick(10e6)
+  ticker := time.Tick(1e7)
 
-
-  // Load weapon files
-  weaponpath := filepath.Join(basedir, "weapons", "guns.json")
-  weapons,err := os.Open(weaponpath)
-  if err != nil {
-    panic(err.String())
-  }
-  err = game.LoadWeaponSpecs(weapons)
-  if err != nil {
-    panic(err.String())
-  }
-
-  seal,err := LoadUnit(filepath.Join(basedir, "units", "seal.json"))
-  if err != nil { panic(err.String()) }
-  rifleman,err := LoadUnit(filepath.Join(basedir, "units", "rifleman.json"))
-  if err != nil { panic(err.String()) }
-
-  bluepath := filepath.Join(basedir, "sprites", "blue")
-  purplepath := filepath.Join(basedir, "sprites", "purple")
-  var ents []*game.Entity
-  guy,_ := sprite.LoadSprite(bluepath)
-  ents = append(ents, level.AddEntity(*seal, 1, 2, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(bluepath)
-  ents = append(ents, level.AddEntity(*seal, 2, 4, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(bluepath)
-  ents = append(ents, level.AddEntity(*seal, 5, 1, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(purplepath)
-  ents = append(ents, level.AddEntity(*rifleman, 25, 20, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(purplepath)
-  ents = append(ents, level.AddEntity(*rifleman, 25, 29, 0.0075, guy))
-  guy,_ = sprite.LoadSprite(purplepath)
-  ents = append(ents, level.AddEntity(*rifleman, 25, 25, 0.0075, guy))
-
-//  var texts []*gui.SingleLineText
-//  for i := range ents {
-//    texts = append(texts, gui.MakeSingleLineText("standard", "", 1, 1, 1, 1))
-//    table.InstallWidget(texts[i], nil)
-//  }
-//  table.InstallWidget(gui.MakeTextEntry("standard", "", 1,1,1,1), nil)
   level.Setup()
   prev := time.Nanoseconds()
 
+  profiling := false
+  var load_widget gui.Widget
   for {
     n++
     next := time.Nanoseconds()
     dt := (next - prev) / 1000000
     prev = next
 
-//    for i := range ents {
-//      texts[i].SetText(fmt.Sprintf("%s: Health: %d, AP: %d", ents[i].Base.Name, ents[i].Health, ents[i].AP))
-//    }
     sys.Think()
+    level.Think(dt)
     ui.Draw()
     sys.SwapBuffers()
     <-ticker
-    groups := sys.GetInputEvents()
-    for _,group := range groups {
-      if found,_ := group.FindEvent('q'); found {
-        return
-      }
+    if gin.In().GetKey('q').FramePressCount() > 0 {
+      return
     }
 
     if ui.FocusWidget() == nil {
@@ -171,13 +160,66 @@ func main() {
       if gin.In().GetKey('o').FramePressCount() > 0 {
         level.Round()
       }
-      if gin.In().GetKey('e').FramePressCount() % 2 == 1 {
+      if gin.In().GetKey('e').FramePressCount()%2 == 1 {
         level.ToggleEditor()
+      }
+      if gin.In().GetKey('p').FramePressCount() > 0 {
+        if !profiling {
+          f, err := os.Create(filepath.Join(basedir, "profiles", "profile.prof"))
+          if err != nil {
+            fmt.Printf("Failed to write profile: %s\n", err.Error())
+          }
+          pprof.StartCPUProfile(f)
+          profiling = true
+        } else {
+          pprof.StopCPUProfile()
+          profiling = false
+        }
+      }
+      if gin.In().GetKey('l').FramePressCount() > 0 {
+        if load_widget != nil {
+          ui.RemoveChild(load_widget)
+          load_widget = nil
+        } else {
+          table := gui.MakeVerticalTable()
+          dir, err := os.Open(filepath.Join(basedir, "maps"))
+          if err != nil {
+            panic(err.Error())
+          }
+          names, err := dir.Readdir(0)
+          if err != nil {
+            panic(err.Error())
+          }
+          for _, name := range names {
+            if !strings.HasSuffix(name.Name, "json") {
+              continue
+            }
+            var the_name = name.Name // closure madness
+            table.AddChild(gui.MakeButton("standard", the_name, 300, 1, 1, 1, 1,
+              func(int64) {
+                nlevel, err := game.LoadLevel(basedir, the_name)
+                if err != nil {
+                  panic(err.Error())
+                }
+                ui.RemoveChild(level.GetGui())
+                ui.AddChild(nlevel.GetGui())
+                ui.RemoveChild(table)
+                level = nlevel
+                level.Setup()
+                load_widget = nil
+              }))
+          }
+          load_widget = table
+          ui.AddChild(load_widget)
+        }
       }
       level.Terrain.Zoom(zoom * 0.0025)
     }
-    level.Think(dt)
   }
 
   fmt.Printf("")
+}
+
+func main() {
+  <-quit
 }

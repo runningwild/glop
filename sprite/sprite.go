@@ -1,6 +1,7 @@
 package sprite
 
 import (
+  "errors"
   "os"
   "fmt"
   "strconv"
@@ -18,21 +19,22 @@ type zArray struct {
   vs        []mathgl.Vec3
   drawables []ZDrawable
 }
+
 func (za *zArray) Len() int {
   return len(za.vs)
 }
-func (za *zArray) Swap(i,j int) {
-  za.vs[i],za.vs[j] = za.vs[j],za.vs[i]
-  za.drawables[i],za.drawables[j] = za.drawables[j],za.drawables[i]
+func (za *zArray) Swap(i, j int) {
+  za.vs[i], za.vs[j] = za.vs[j], za.vs[i]
+  za.drawables[i], za.drawables[j] = za.drawables[j], za.drawables[i]
 }
-func (za *zArray) Less(i,j int) bool {
+func (za *zArray) Less(i, j int) bool {
   return za.vs[i].Z > za.vs[j].Z
 }
 
 // Convenience function that sorts the elements in drawables and vs by decreasing
 // order of the Z component of the vectors in vs
 func ZSort(vs []mathgl.Vec3, drawables []ZDrawable) {
-  sort.Sort(&zArray{vs,drawables})
+  sort.Sort(&zArray{vs, drawables})
 }
 
 // A ZDrawable is anything that can draw itself on an XY plane at a particular
@@ -40,7 +42,7 @@ func ZSort(vs []mathgl.Vec3, drawables []ZDrawable) {
 type ZDrawable interface {
   // Renders the drawable on the XY plane specified by z.  The values x and y
   // indicate an anchor point the the drawable can render itself relative to.
-  Render(x,y,z,scale float32)
+  Render(x, y, z, scale float32)
 }
 
 // frameIndexes are used so that we can have maps that are keyed on the pair
@@ -49,31 +51,34 @@ type frameIndex struct {
   facing  uint8
   anim_id uint16
 }
+
 func (f frameIndex) Int() int {
   n := int(f.anim_id)
   n = n | (int(f.facing) << 16)
   return n
 }
-func makeFrameIndex(facing,anim_id int) frameIndex {
-  return frameIndex{ facing:uint8(facing), anim_id:uint16(anim_id) }
+func makeFrameIndex(facing, anim_id int) frameIndex {
+  return frameIndex{facing: uint8(facing), anim_id: uint16(anim_id)}
 }
 
 // Texture coordinates of a frame in a sprite sheet, as well as the anchor point
 // for that frame.
 type spriteRect struct {
-  x,y,x2,y2     float32
-  anch_x,anch_y float32
+  x, y, x2, y2   float32
+  anch_x, anch_y float32
 
   // width and height of the rect in pixels
-  dx,dy float32
+  dx, dy float32
 }
 type renderParams struct {
-  index frameIndex
-  x,y,z,scale float32
+  index          frameIndex
+  x, y, z, scale float32
 }
-func (rp renderParams) params() (index frameIndex, x,y,z,scale float32) {
+
+func (rp renderParams) params() (index frameIndex, x, y, z, scale float32) {
   return rp.index, rp.x, rp.y, rp.z, rp.scale
 }
+
 type spriteLevel struct {
   // indexes[i] is the frame of animation the corresponds to the image from filenames[i]
   indexes   []frameIndex
@@ -82,18 +87,18 @@ type spriteLevel struct {
   // when the spriteLevel is loaded a sprite sheet is generated using all of the images
   // listed in filenames.  rects is a map from the frameIndexes in indexes to the region
   // in the sprite sheet corresponding to that frameIndex.
-  rects   map[int]spriteRect
+  rects map[int]spriteRect
 
   // Texture that holds the sprite sheet when this spriteLevel is loaded
   texture gl.Texture
 
   // number of Load() calls - number of Unload() calls.  When this reaches
   // zero it will free its data
-  count   int
+  count int
 
   // channels used to manage the loading/unloading/rendering in a safe way
-  load_count     chan int
-  render         chan renderParams
+  load_count chan int
+  render     chan renderParams
 
   // Loaded when load() is called, but not actually bound to a texture until the
   // first time it is rendered.
@@ -118,23 +123,23 @@ func makeSpriteLevel(indexes []frameIndex, filenames []string) *spriteLevel {
 func (sl *spriteLevel) routine() {
   for {
     select {
-      case count := <-sl.load_count:
-        prev := sl.count
-        sl.count += count
-        if (prev == 0) != (sl.count == 0) {
-          if sl.count == 0 {
-            sl.unload()
-          } else {
-            sl.load()
-          }
+    case count := <-sl.load_count:
+      prev := sl.count
+      sl.count += count
+      if (prev == 0) != (sl.count == 0) {
+        if sl.count == 0 {
+          sl.unload()
+        } else {
+          sl.load()
         }
-        if sl.count < 0 {
-          panic("Cannot unload a sprite level more times than it is loaded.")
-        }
+      }
+      if sl.count < 0 {
+        panic("Cannot unload a sprite level more times than it is loaded.")
+      }
 
-      case data := <-sl.render:
-        sl.renderToQuad(data.params())
-        sl.render <- renderParams{}
+    case data := <-sl.render:
+      sl.renderToQuad(data.params())
+      sl.render <- renderParams{}
     }
   }
 }
@@ -156,15 +161,15 @@ func (sl *spriteLevel) load() {
   var images []image.Image
   for i := range sl.indexes {
     filename := sl.filenames[i]
-    file,err := os.Open(filename)
+    file, err := os.Open(filename)
     if err != nil {
-      panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.String()))
+      panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.Error()))
       return
     }
-    im,_,err := image.Decode(file)
+    im, _, err := image.Decode(file)
     file.Close()
     if err != nil {
-      panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.String()))
+      panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.Error()))
       return
     }
     images = append(images, im)
@@ -172,7 +177,7 @@ func (sl *spriteLevel) load() {
 
   dx := 0
   dy := 0
-  for _,im := range images {
+  for _, im := range images {
     bounds := im.Bounds()
     if bounds.Dy() > dy {
       dy = bounds.Dy()
@@ -182,14 +187,14 @@ func (sl *spriteLevel) load() {
   pdx := int(nextPowerOf2(uint32(dx)))
   pdy := int(nextPowerOf2(uint32(dy)))
 
-  sheet := image.NewRGBA(pdx, pdy)
+  sheet := image.NewRGBA(image.Rect(0, 0, pdx, pdy))
   cx := 0
   for i := range images {
     // blit the image onto the sheet
     bounds := images[i].Bounds()
     for y := 0; y < bounds.Dy(); y++ {
       for x := 0; x < bounds.Dx(); x++ {
-        r,g,b,a := images[i].At(x,y).RGBA()
+        r, g, b, a := images[i].At(x, y).RGBA()
         base := 4*(x+cx) + sheet.Stride*y
         sheet.Pix[base] = uint8(r)
         sheet.Pix[base+1] = uint8(g)
@@ -198,14 +203,14 @@ func (sl *spriteLevel) load() {
       }
     }
     rect := spriteRect{
-      x : float32(cx) / float32(pdx),
-      y : 0,
-      x2 : float32(cx + bounds.Dx()) / float32(pdx),
-      y2 : float32(bounds.Dy()) / float32(pdy),
-      anch_x : 0.5,
-      anch_y : 0.0,
-      dx : float32(bounds.Dx()),
-      dy : float32(bounds.Dy()),
+      x:      float32(cx) / float32(pdx),
+      y:      0,
+      x2:     float32(cx+bounds.Dx()) / float32(pdx),
+      y2:     float32(bounds.Dy()) / float32(pdy),
+      anch_x: 0.5,
+      anch_y: 0.0,
+      dx:     float32(bounds.Dx()),
+      dy:     float32(bounds.Dy()),
     }
     sl.rects[sl.indexes[i].Int()] = rect
     cx += bounds.Dx()
@@ -223,18 +228,22 @@ func (sl *spriteLevel) unload() {
 // TODO: This was copied from the gui package, probably should just have some basic
 // texture loading utils that do this common stuff
 func nextPowerOf2(n uint32) uint32 {
-  if n == 0 { return 1 }
+  if n == 0 {
+    return 1
+  }
   for i := uint(0); i < 32; i++ {
     p := uint32(1) << i
-    if n <= p { return p }
+    if n <= p {
+      return p
+    }
   }
   return 0
 }
-func (s *spriteLevel) RenderToQuad(index frameIndex, x,y,z,scale float32) {
-  s.render <- renderParams{ index, x, y, z, scale }
+func (s *spriteLevel) RenderToQuad(index frameIndex, x, y, z, scale float32) {
+  s.render <- renderParams{index, x, y, z, scale}
   <-s.render
 }
-func (s *spriteLevel) renderToQuad(index frameIndex, x,y,z,scale float32) {
+func (s *spriteLevel) renderToQuad(index frameIndex, x, y, z, scale float32) {
   if s.sheet != nil {
     gl.Enable(gl.TEXTURE_2D)
     s.texture = gl.GenTexture()
@@ -249,7 +258,9 @@ func (s *spriteLevel) renderToQuad(index frameIndex, x,y,z,scale float32) {
     glu.Build2DMipmaps(gl.TEXTURE_2D, 4, pdx, pdy, gl.RGBA, s.sheet.Pix)
     s.sheet = nil
   }
-  if s.texture == 0 { return }
+  if s.texture == 0 {
+    return
+  }
   gl.Enable(gl.TEXTURE_2D)
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -257,28 +268,28 @@ func (s *spriteLevel) renderToQuad(index frameIndex, x,y,z,scale float32) {
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   rect := s.rects[index.Int()]
-  x1 := x - scale * rect.anch_x * rect.dx
-  x2 := x + scale * (1 - rect.anch_x) * rect.dx
-  y1 := y - scale * rect.anch_y * rect.dy
-  y2 := y + scale * (1 - rect.anch_y) * rect.dy
+  x1 := x - scale*rect.anch_x*rect.dx
+  x2 := x + scale*(1-rect.anch_x)*rect.dx
+  y1 := y - scale*rect.anch_y*rect.dy
+  y2 := y + scale*(1-rect.anch_y)*rect.dy
   gl.Begin(gl.QUADS)
-    gl.TexCoord2f(rect.x, rect.y2)
-    gl.Vertex3f(x1, y1, z)
-    gl.TexCoord2f(rect.x, rect.y)
-    gl.Vertex3f(x1, y2, z)
-    gl.TexCoord2f(rect.x2, rect.y)
-    gl.Vertex3f(x2, y2, z)
-    gl.TexCoord2f(rect.x2, rect.y2)
-    gl.Vertex3f(x2, y1, z)
+  gl.TexCoord2f(rect.x, rect.y2)
+  gl.Vertex3f(x1, y1, z)
+  gl.TexCoord2f(rect.x, rect.y)
+  gl.Vertex3f(x1, y2, z)
+  gl.TexCoord2f(rect.x2, rect.y)
+  gl.Vertex3f(x2, y2, z)
+  gl.TexCoord2f(rect.x2, rect.y2)
+  gl.Vertex3f(x2, y1, z)
   gl.End()
-//  gl.Disable(gl.BLEND)
-//  gl.Disable(gl.TEXTURE_2D)
+  //  gl.Disable(gl.BLEND)
+  //  gl.Disable(gl.TEXTURE_2D)
 }
 
 // Data that can be shared between two different instance of the same Sprite
 // sharedSprite is *NOT* thread-safe.
 type sharedSprite struct {
-  anim,state *Graph
+  anim, state *Graph
 
   indexes   []frameIndex
   filenames []string
@@ -321,7 +332,7 @@ type Sprite struct {
   cur_state *Node
 
   // Ms remaining on this frame
-  togo      int64
+  togo int64
 
   // If len(path) == 0 then this is the animation sequence that must be followed.  This is set
   // whenever a command is given to the sprite so that the command can be followed as quickly as
@@ -335,54 +346,24 @@ func (s *Sprite) Thumbnail() *Thumbnail {
   return s.thumb
 }
 
-func (s *Sprite) Render(x,y,z,scale float32) {
+func (s *Sprite) Render(x, y, z, scale float32) {
   f := frameIndex{
-    facing : uint8(s.anim_facing),
-    anim_id : uint16(s.cur_frame.Id),
+    facing:  uint8(s.anim_facing),
+    anim_id: uint16(s.cur_frame.Id),
   }
-  if _,ok := s.connection.rects[f.Int()]; ok {
+  if _, ok := s.connection.rects[f.Int()]; ok {
     s.connection.renderToQuad(f, x, y, z, scale)
   } else {
     s.facings[s.anim_facing].renderToQuad(f, x, y, z, scale)
   }
 }
 
-type facingVisitor struct {
-  base  string
-  count map[int]bool
-}
-func (f *facingVisitor) VisitDir(path string, _ *os.FileInfo) bool {
-  if path == f.base {
-    return true
-  }
-  _,final := filepath.Split(path)
-  num,err := strconv.Atoi(final)
-  if err != nil {
-    return false
-  }
-  if f.count == nil {
-    f.count = make(map[int]bool)
-  }
-  f.count[num] = true
-  return false
-}
-func (f *facingVisitor) VisitFile(_ string, _ *os.FileInfo) {}
-func (f *facingVisitor) Valid() bool {
-  for v := range f.count {
-    if v < 0 { return false }
-    if v >= len(f.count) { return false }
-  }
-  return true
-}
-func (f *facingVisitor) Count() int {
-  return len(f.count)
-}
-
-
 type SpriteManager struct {
   loaded_sprites map[string]*sharedSprite
 }
+
 var spriteManager *SpriteManager
+
 func init() {
   spriteManager = MakeSpriteManager()
 }
@@ -393,7 +374,7 @@ func MakeSpriteManager() *SpriteManager {
   return sm
 }
 
-func LoadSprite(path string) (*Sprite, os.Error) {
+func LoadSprite(path string) (*Sprite, error) {
   return spriteManager.LoadSprite(path)
 }
 
@@ -401,25 +382,29 @@ type Thumbnail struct {
   texture gl.Texture
   image.Rectangle
 }
+
 func (t *Thumbnail) Texture() gl.Texture {
   return t.texture
 }
 
-
 func loadThumbnail(path string) *Thumbnail {
-  in,err := os.Open(path)
-  if err != nil { return nil }
-  img,_,err := image.Decode(in)
-  if err != nil { return nil }
+  in, err := os.Open(path)
+  if err != nil {
+    return nil
+  }
+  img, _, err := image.Decode(in)
+  if err != nil {
+    return nil
+  }
 
   var thumb Thumbnail
   thumb.Rectangle = img.Bounds()
-  canvas := image.NewRGBA(img.Bounds().Dx(), img.Bounds().Dy())
+  canvas := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
   for y := 0; y < canvas.Bounds().Dy(); y++ {
     for x := 0; x < canvas.Bounds().Dx(); x++ {
-      r,g,b,a := img.At(x,y).RGBA()
+      r, g, b, a := img.At(x, y).RGBA()
       base := 4*x + canvas.Stride*y
-      canvas.Pix[base]   = uint8(r)
+      canvas.Pix[base] = uint8(r)
       canvas.Pix[base+1] = uint8(g)
       canvas.Pix[base+2] = uint8(b)
       canvas.Pix[base+3] = uint8(a)
@@ -438,43 +423,68 @@ func loadThumbnail(path string) *Thumbnail {
   return &thumb
 }
 
-func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
-  if _,ok := sm.loaded_sprites[path]; !ok {
+func (sm *SpriteManager) LoadSprite(path string) (*Sprite, error) {
+  if _, ok := sm.loaded_sprites[path]; !ok {
     ss := new(sharedSprite)
     anim_path := filepath.Join(path, "anim.xgml")
     state_path := filepath.Join(path, "state.xgml")
-    anim_graph,err := LoadGraph(anim_path)
-    if err != nil { return nil,err }
-    state_graph,err := LoadGraph(state_path)
-    if err != nil { return nil,err }
+    anim_graph, err := LoadGraph(anim_path)
+    if err != nil {
+      return nil, err
+    }
+    state_graph, err := LoadGraph(state_path)
+    if err != nil {
+      return nil, err
+    }
     ss.thumb = loadThumbnail(filepath.Join(path, "thumb.png"))
 
     ProcessAnimWithState(anim_graph, state_graph)
     image_names := make(map[string]bool)
-    for _,n := range anim_graph.nodes {
-      image_names[n.Name + ".png"] = true
+    for _, n := range anim_graph.nodes {
+      image_names[n.Name+".png"] = true
     }
 
     ss.anim = anim_graph
     ss.state = state_graph
 
-    f := facingVisitor {
-      base : path,
+    all_facings := make(map[int]bool)
+    err = filepath.Walk(path, func(cur string, info *os.FileInfo, err error) error {
+      if cur == path {
+        return nil
+      }
+      if info.IsDirectory() {
+        _, name := filepath.Split(cur)
+        num, err := strconv.Atoi(name)
+        if err == nil {
+          all_facings[num] = true
+        }
+        return filepath.SkipDir
+      }
+      return nil
+    })
+    if err != nil {
+      return nil, errors.New(fmt.Sprintf("Unable to read sprites directory: %s", err.Error()))
     }
-    filepath.Walk(path, &f, nil)
-    if !f.Valid() || f.Count() == 0 {
-      return nil, os.NewError("Sprite facing directories not set up properly")
+    valid := true
+    count := len(all_facings)
+    for i := 0; i < count; i++ {
+      if _, ok := all_facings[i]; !ok {
+        valid = false
+      }
     }
-    ss.num_facings = f.Count()
+    if !valid || count == 0 {
+      return nil, errors.New("Sprite facing directories not set up properly")
+    }
+    ss.num_facings = count
 
     for facing := 0; facing < ss.num_facings; facing++ {
-      for _,node := range anim_graph.nodes {
+      for _, node := range anim_graph.nodes {
         fi := frameIndex{
-          facing : uint8(facing),
-          anim_id : uint16(node.Id),
+          facing:  uint8(facing),
+          anim_id: uint16(node.Id),
         }
         ss.indexes = append(ss.indexes, fi)
-        full_path := filepath.Join(path, fmt.Sprintf("%d", facing), node.Name + ".png")
+        full_path := filepath.Join(path, fmt.Sprintf("%d", facing), node.Name+".png")
         ss.filenames = append(ss.filenames, full_path)
       }
     }
@@ -483,9 +493,11 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     // Right now we're just taking the frames on either end of a facing change and keeping those
     // permanently loaded.
     mids := make(map[int]bool)
-    for _,node := range anim_graph.nodes {
-      for _,edge := range node.Edges {
-        if edge.Facing == 0 { continue }
+    for _, node := range anim_graph.nodes {
+      for _, edge := range node.Edges {
+        if edge.Facing == 0 {
+          continue
+        }
         mids[edge.Source] = true
         mids[edge.Target] = true
       }
@@ -493,7 +505,7 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     var indexes []frameIndex
     var filenames []string
     for i := range ss.indexes {
-      if _,ok := mids[int(ss.indexes[i].anim_id)]; ok {
+      if _, ok := mids[int(ss.indexes[i].anim_id)]; ok {
         indexes = append(indexes, ss.indexes[i])
         filenames = append(filenames, ss.filenames[i])
       }
@@ -507,8 +519,12 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
       var indexes []frameIndex
       var filenames []string
       for j := range ss.indexes {
-        if int(ss.indexes[j].facing) != i { continue }
-        if _,ok := ss.connection.rects[ss.indexes[j].Int()]; ok { continue }
+        if int(ss.indexes[j].facing) != i {
+          continue
+        }
+        if _, ok := ss.connection.rects[ss.indexes[j].Int()]; ok {
+          continue
+        }
         indexes = append(indexes, ss.indexes[j])
         filenames = append(filenames, ss.filenames[j])
       }
@@ -516,10 +532,12 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, os.Error) {
     }
 
     ss.cmd_target = make(map[string][]int)
-    for _,node := range ss.anim.nodes {
-      for _,edge := range node.Edges {
-        if edge.State == "" { continue }
-        if _,ok := ss.cmd_target[edge.State]; !ok {
+    for _, node := range ss.anim.nodes {
+      for _, edge := range node.Edges {
+        if edge.State == "" {
+          continue
+        }
+        if _, ok := ss.cmd_target[edge.State]; !ok {
           ss.cmd_target[edge.State] = make([]int, 0, 1)
         }
         ss.cmd_target[edge.State] = append(ss.cmd_target[edge.State], edge.Target)
@@ -548,7 +566,9 @@ func (s *Sprite) CurState() string {
 
 func (s *Sprite) Command(cmd string) {
   edge := s.cur_state.FindEdge(cmd)
-  if edge == nil { return }
+  if edge == nil {
+    return
+  }
   s.cur_state = s.state.nodes[edge.Target]
   if edge.Facing != 0 {
     s.state_facing = (s.state_facing + edge.Facing + s.num_facings) % s.num_facings
@@ -585,12 +605,12 @@ func (s *Sprite) Think(dt int64) {
   // of those to get a new path
   if len(s.path) == 0 && len(s.pending_cmds) > 0 {
     cg := &commandGraph{
-      Graph : s.anim,
-      cmd : s.pending_cmds[0],
+      Graph: s.anim,
+      cmd:   s.pending_cmds[0],
     }
     for len(s.pending_cmds) > 0 {
       var t float64
-      t,s.path = algorithm.Dijkstra(cg, []int{s.cur_frame.Id}, s.cmd_target[s.pending_cmds[0]])
+      t, s.path = algorithm.Dijkstra(cg, []int{s.cur_frame.Id}, s.cmd_target[s.pending_cmds[0]])
       if t < 0 {
         // TODO: Log a warning, got a command that we can't actually handle
         s.pending_cmds = s.pending_cmds[1:]
@@ -629,14 +649,14 @@ func (s *Sprite) Think(dt int64) {
       s.togo = s.cur_frame.Time
     }
   }
-  for _,edge := range prev.Edges {
+  for _, edge := range prev.Edges {
     if edge.Source == prev.Id && edge.Target == s.cur_frame.Id {
       if edge.Facing != 0 {
         // We are currently using the connections spriteSheet, so it's ok to unload the facings
         // spriteSheet
-//        s.facings[s.anim_facing].Unload()
+        //        s.facings[s.anim_facing].Unload()
         s.anim_facing = (s.anim_facing + edge.Facing + s.num_facings) % s.num_facings
-//        s.facings[s.anim_facing].Load()
+        //        s.facings[s.anim_facing].Load()
         break
       }
     }
@@ -649,7 +669,7 @@ func (s *sharedSprite) Stats() {
     source_state := s.state.nodes[i].Name
     for j := range s.state.nodes[i].Edges {
       target_state := s.state.nodes[s.state.nodes[i].Edges[j].Target].Name
-      var source_anim,target_anim []int
+      var source_anim, target_anim []int
       for i := range s.anim.nodes {
         if s.anim.nodes[i].State == source_state {
           source_anim = append(source_anim, i)
@@ -660,8 +680,8 @@ func (s *sharedSprite) Stats() {
       }
       var time float64
       var path []int
-      for _,start := range source_anim {
-        t,p := algorithm.Dijkstra(s.anim, []int{ start }, target_anim)
+      for _, start := range source_anim {
+        t, p := algorithm.Dijkstra(s.anim, []int{start}, target_anim)
         if t > time {
           time = t
           path = p
