@@ -227,12 +227,12 @@ func cellsWithinRange(source *Entity, rnge int) []Target {
     miny = 0
   }
   maxx := x + rnge
-  if maxx >= len(source.level.grid) {
-    maxx = len(source.level.grid)
+  if maxx >= len(source.level.grid) - 1 {
+    maxx = len(source.level.grid) - 1
   }
   maxy := y + rnge
-  if maxy >= len(source.level.grid[0]) {
-    maxy = len(source.level.grid[0])
+  if maxy >= len(source.level.grid[0]) - 1 {
+    maxy = len(source.level.grid[0]) - 1
   }
 
   var ret []Target
@@ -381,12 +381,12 @@ func (g *StandardAOE) affected(source *Entity, bx, by float64) [][2]int {
     miny = 0
   }
   maxx = cx + g.Size/2
-  if maxx >= len(source.level.grid) {
-    maxx = len(source.level.grid)
+  if maxx >= len(source.level.grid) - 1{
+    maxx = len(source.level.grid) - 1
   }
   maxy = cy + g.Size/2
-  if maxy >= len(source.level.grid[0]) {
-    maxy = len(source.level.grid[0])
+  if maxy >= len(source.level.grid[0]) - 1 {
+    maxy = len(source.level.grid[0]) - 1
   }
 
   var ret [][2]int
