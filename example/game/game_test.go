@@ -7,9 +7,6 @@ import (
   "json"
   "bytes"
   "fmt"
-
-  "os"
-  "path/filepath"
 )
 
 const test_json string = `
@@ -26,28 +23,6 @@ const test_json string = `
       }
     }
   `
-
-func FooSpec(c gospec.Context) {
-  basedir := "/Users/runningwild/code/go-glop/example/data"
-  dir, err := os.Open(filepath.Join(basedir, "weapons"))
-  if err != nil {
-    panic(err.Error())
-  }
-  names, err := dir.Readdir(0)
-  if err != nil {
-    panic(err.Error())
-  }
-  for _,name := range names {
-    weapons, err := os.Open(filepath.Join(basedir, "weapons", name.Name))
-    if err != nil {
-      panic(err.Error())
-    }
-    err = game.LoadWeaponSpecs(weapons)
-    if err != nil {
-      panic(err.Error())
-    }
-  }
-}
 
 func WeaponLoadingSpec(c gospec.Context) {
   ws := []game.WeaponSpec{

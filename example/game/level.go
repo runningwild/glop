@@ -90,17 +90,17 @@ func (t *CellData) Render(x, y, z, scale float32) {
   var r, g, b, a float32
   a = 0.2
   switch t.Terrain {
-  case "grass":
-    r, g, b = 0.1, 0.9, 0.4
+  case "plains":
+    r, g, b = 0.1, 0.7, 0.4
   case "brush":
     r, g, b = 0.2, 0.6, 0.0
   case "water":
     r, g, b = 0.0, 0.0, 1.0
-  case "dirt":
+  case "swamp":
     r, g, b = 0.6, 0.5, 0.3
-  case "forest":
+  case "jungle":
     r, g, b = 0.0, 0.7, 0.0
-  case "mountain":
+  case "hills":
     r, g, b = 0.9, 0.1, 0.3
   default:
     r, g, b = 1, 0, 0
@@ -164,7 +164,7 @@ type StaticLevelData struct {
 }
 type unitGraph struct {
   *Level
-  move_cost map[string]int
+  move_cost map[Terrain]int
 }
 
 func (s *StaticLevelData) NumVertex() int {
@@ -182,24 +182,24 @@ func (l unitGraph) costToMove(src, dst int) float64 {
   x, y := l.fromVertex(src)
   x2, y2 := l.fromVertex(dst)
 
-  cost_c, ok := l.move_cost[string(l.grid[x2][y2].Terrain)]
+  cost_c, ok := l.move_cost[l.grid[x2][y2].Terrain]
   if !ok {
     return -1
   }
   if x == x2 || y == y2 {
-    return float64(cost_c)
+    return float64(cost_c + 1)
   }
 
-  cost_a, ok := l.move_cost[string(l.grid[x][y2].Terrain)]
+  cost_a, ok := l.move_cost[l.grid[x][y2].Terrain]
   if !ok {
     return -1
   }
-  cost_b, ok := l.move_cost[string(l.grid[x2][y].Terrain)]
+  cost_b, ok := l.move_cost[l.grid[x2][y].Terrain]
   if !ok {
     return -1
   }
 
-  cost_ab := float64(cost_a+cost_b) / 2
+  cost_ab := float64(cost_a+cost_b+2) / 2
   return math.Max(cost_ab, float64(cost_c))
 }
 func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
@@ -472,6 +472,7 @@ func (l *Level) PrepMove() {
     return
   }
 
+fmt.Printf("atts: %v\n", l.selected.UnitStats.Base.attributes.MoveMods)
   l.clearCache(combat_highlights)
 
   bx := int(l.selected.pos.X)
@@ -794,7 +795,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   var ldc levelDataContainer
   err = json.Unmarshal(data, &ldc)
   if err != nil {
-    fmt.Printf("err: %s\n", err.Error())
+    panic(fmt.Sprintf("Error reading %s: %s\n", mapname, err.Error()))
   }
 
   var level Level
@@ -817,7 +818,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   }
   all_units, err := LoadAllUnits(datadir)
   if err != nil {
-    return nil, err
+    panic(fmt.Sprintf("Error reading unit files: %s\n", err.Error()))
   }
   unit_map := make(map[string]*UnitType)
   for _, unit := range all_units {
@@ -845,7 +846,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   bg_path := filepath.Join(filepath.Clean(level.directory), level.bg_path)
   terrain, err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
   if err != nil {
-    return nil, err
+    fmt.Printf("Error making terrain: %s\n", err.Error())
   }
   level.Terrain = terrain
   terrain.SetEventHandler(&level)

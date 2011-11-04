@@ -1,0 +1,40 @@
+{
+  "standard" : {
+  	"LosDistance" : 15,
+  	"LosMods" : {
+  		"swamp" : 2,
+  		"jungle" : 2,
+  		"brush" : 1,
+  		"plains" : 0,
+  		"water" : 0,
+  		"hills" : 3
+  	},
+  	"MoveMods" : {
+  		"swamp" : 2,
+  		"jungle" : 1,
+  		"brush" : 1,
+  		"plains" : 0,
+  		"water" : 2,
+  		"hills" : 1
+  	},
+  	"DefenseMods" : {
+  		"jungle" : 1,
+  		"water" : 1,
+  		"swamp" : 1
+  	},
+  	"AttackMods" : {
+  		"hills" : 1
+  	}
+  },
+  "arboreal" : {
+  	"LosMods" : {
+  		"jungle" : 1
+  	},
+  	"MoveMods" : {
+  		"jungle" : 1
+  	},
+  	"AttackMods" : {
+  		"jungle" : 1
+  	}
+  }
+}

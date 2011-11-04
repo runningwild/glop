@@ -1,14 +1,14 @@
 [
   {
     "WeaponInstance" : {
-      "Base" : "Club",
-      "Name" : "Taser",
-      "Path" : "weapons/taser.png"
+      "Base" : "BasicMelee",
+      "Name" : "Tooth and Claw",
+      "Path" : "weapons/tooth_and_nail.png"
     },
     "BaseWeapon" : {
-      "StaticCost" : 15,
+      "StaticCost" : 2,
       "EntityRange" : 1,
-      "Factor" : 3
+      "Power" : 4
     }
   }
 ]

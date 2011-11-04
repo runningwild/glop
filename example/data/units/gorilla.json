@@ -1,0 +1,14 @@
+{
+  "Name" : "Gorilla",
+  "Sprite" : "purple",
+  "AP" : 4,
+  "Defense" : 3,
+  "Health" : 4,
+  "Weapons" : [
+    "Tooth and Claw"
+  ],
+  "Attribute_names" : [
+    "standard",
+    "arboreal"
+  ]
+}

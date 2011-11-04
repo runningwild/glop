@@ -275,17 +275,17 @@ func cellsWithinRange(source *Entity, rnge int) []Target {
 }
 
 func init() {
-  RegisterWeapon("Club", func() BaseWeapon { return &Club{} })
+  RegisterWeapon("BasicMelee", func() BaseWeapon { return &BasicMelee{} })
 }
 
-type Club struct {
+type BasicMelee struct {
   StaticCost
   EntityRange
-  Factor int
+  Power int
   SingleTargetMouseOver
 }
 
-func (c *Club) Damage(source *Entity, t Target) (res []Resolution) {
+func (c *BasicMelee) Damage(source *Entity, t Target) (res []Resolution) {
   res = []Resolution{Resolution{}}
   r := &res[0]
 
@@ -303,19 +303,29 @@ func (c *Club) Damage(source *Entity, t Target) (res []Resolution) {
     panic("Tried to attack a entity in a cell where there is no entity.")
   }
   r.Target = target
-
-  mod := rand.Intn(10)
-  if c.Factor*source.Base.Attack+mod > target.Base.Defense {
-    amt := c.Factor*source.Base.Attack + mod - target.Base.Defense - 2
-    if amt <= 0 {
-      r.Connect = Dodge
-      return
-    } else {
-      r.Connect = Hit
-      r.Damage = Damage{Piercing: amt}
+  mod_map := map[int]int{
+     2 : -3,
+     3 : -2,
+     4 : -1,
+     5 : -1,
+     6 :  0,
+     7 :  0,
+     8 :  0,
+     9 :  1,
+    10 :  1,
+    11 :  2,
+    12 :  3,
+  }
+  attack := c.Power + source.CurrentAttackMod() + mod_map[Dice("2d6")]
+  defense := target.CurrentDefenseMod()
+  if attack <= defense {
+    r.Connect = Miss
+  } else {
+    r.Connect = Hit
+    r.Damage = Damage{
+      Piercing : attack - defense,
     }
   }
-  r.Connect = Miss
   return
 }
 

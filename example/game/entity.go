@@ -33,7 +33,7 @@ type UnitType struct {
 
   // These attribute names are referenced against a master list of all
   // attributes and combined to determine the final attributes for this unit
-  attribute_names []string
+  Attribute_names []string
 
   attributes Attributes
 }
@@ -191,6 +191,28 @@ type Entity struct {
   visible map[int]bool
 }
 
+// Returns total current attack modifier
+func (e *Entity) CurrentAttackMod() int {
+  x := int(e.pos.X)
+  y := int(e.pos.Y)
+  terrain := e.level.grid[x][y].Terrain
+  if val,ok := e.UnitStats.Base.attributes.AttackMods[terrain]; ok {
+    return val
+  }
+  return 0
+}
+
+// Returns total current defense modifier
+func (e *Entity) CurrentDefenseMod() int {
+  x := int(e.pos.X)
+  y := int(e.pos.Y)
+  terrain := e.level.grid[x][y].Terrain
+  if val,ok := e.UnitStats.Base.attributes.DefenseMods[terrain]; ok {
+    return e.Base.Defense + val
+  }
+  return e.Base.Defense
+}
+
 func bresenham(x, y, x2, y2 int) [][2]int {
   dx := x2 - x
   if dx < 0 {
@@ -246,7 +268,7 @@ func bresenham(x, y, x2, y2 int) [][2]int {
 func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
   for _, v := range line {
     e.visible[e.level.toVertex(v[0], v[1])] = true
-    concealment, ok := e.UnitStats.Base.attributes.LosMods[string(e.level.grid[v[0]][v[1]].Terrain)]
+    concealment, ok := e.UnitStats.Base.attributes.LosMods[e.level.grid[v[0]][v[1]].Terrain]
     if concealment < 0 || !ok {
       break
     }
@@ -393,12 +415,22 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
     return nil
   })
   if err != nil {
-    return nil, err
+    panic(fmt.Sprintf("Error reading directory %s: %s\n", dir, err.Error()))
   }
+  var atts2 Attributes
+  atts2.LosDistance = 3
+  atts2.LosMods = map[Terrain]int{"#4":34, "64":1}
+  attmap := make(map[Terrain]Attributes)
+  attmap["asdf"] = atts2
+  atts2.LosDistance=4
+  attmap["qwer"] = atts2
+  d,_ := json.Marshal(attmap)
+  fmt.Printf("data\n%s\n", string(d))
+
 
   atts, err := loadAttributes(dir)
   if err != nil {
-    return nil, err
+    panic(fmt.Sprintf("Error loading attributes: %s\n", err.Error()))
   }
 
   var units []*UnitType
