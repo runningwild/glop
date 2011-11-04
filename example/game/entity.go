@@ -280,7 +280,7 @@ func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
 }
 
 func (e *Entity) figureVisibility() {
-  vision := 15
+  vision := e.UnitStats.Base.attributes.LosDistance
   ex := int(e.pos.X)
   ey := int(e.pos.Y)
 

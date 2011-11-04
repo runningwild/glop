@@ -48,8 +48,8 @@ type Attributes struct {
 func smoosh(a,b mods, f func(av,bv int) bool) {
   for key,bv := range b {
     av,ok := a[key]
-    if !ok || f(av,bv) {
-      a[key] = av
+    if !ok || f(bv,av) {
+      a[key] = bv
     }
   }
 }
