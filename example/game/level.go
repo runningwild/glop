@@ -10,7 +10,6 @@ import (
   "math"
   "github.com/arbaal/mathgl"
   "json"
-  "path"
   "path/filepath"
   "io"
   "io/ioutil"
@@ -799,15 +798,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   }
 
   var level Level
-  // level.directory should be the directory that contains the level, but the
-  // level itself, pathname, is a directory, so we have to properly strip that
-  // out.
-  base := path.Base(datapath)
-  if base == "" {
-    level.directory = datapath
-  } else {
-    level.directory = datapath[0 : len(datapath)-len(base)-1]
-  }
+  level.directory = datadir
 
   dx := len(ldc.Level.Cells)
   dy := len(ldc.Level.Cells[0])
@@ -843,7 +834,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
     }
   }
   level.bg_path = ldc.Level.Image
-  bg_path := filepath.Join(filepath.Clean(level.directory), level.bg_path)
+  bg_path := filepath.Join(filepath.Clean(level.directory), "maps", level.bg_path)
   terrain, err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
   if err != nil {
     fmt.Printf("Error making terrain: %s\n", err.Error())
@@ -852,7 +843,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   terrain.SetEventHandler(&level)
 
   level.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
-  level.editor = MakeEditor(&level.StaticLevelData, datadir, base)
+  level.editor = MakeEditor(&level.StaticLevelData, datadir, mapname)
   level.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
   level.selected_gui = MakeStatsWindow(true)

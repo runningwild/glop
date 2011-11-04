@@ -146,7 +146,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
     w.name.SetText(e.Base.Name)
     var paths, names []string
     for i := range e.Weapons {
-      paths = append(paths, filepath.Join("/Users/runningwild/code/go-glop/example/example.app/Contents/icons", e.Weapons[i].Icon()))
+      paths = append(paths, filepath.Join(e.level.directory, "icons", e.Weapons[i].Icon()))
       names = append(names, e.Weapons[i].Icon())
     }
     w.actions = gui.MakeSelectImageBox(paths, names)
@@ -417,17 +417,6 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
   if err != nil {
     panic(fmt.Sprintf("Error reading directory %s: %s\n", dir, err.Error()))
   }
-  var atts2 Attributes
-  atts2.LosDistance = 3
-  atts2.LosMods = map[Terrain]int{"#4":34, "64":1}
-  attmap := make(map[Terrain]Attributes)
-  attmap["asdf"] = atts2
-  atts2.LosDistance=4
-  attmap["qwer"] = atts2
-  d,_ := json.Marshal(attmap)
-  fmt.Printf("data\n%s\n", string(d))
-
-
   atts, err := loadAttributes(dir)
   if err != nil {
     panic(fmt.Sprintf("Error loading attributes: %s\n", err.Error()))
