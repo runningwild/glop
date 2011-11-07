@@ -302,10 +302,13 @@ type Level struct {
   // The most recently prepped valid command
   command Command
 
+  current_action Action
+
   // MOVE data
 
   // If a unit is selected this will hold the list of cells that are reachable
   // from that unit's position within its allotted AP
+
   reachable []int
 
   // ATTACK data
@@ -321,6 +324,10 @@ func (l *Level) GetHovered() *Entity {
 }
 func (l *Level) Round() {
   l.selected = nil
+  if l.current_action != nil {
+    l.current_action.Cancel()
+  }
+  l.current_action = nil
   l.clearCache(all_highlights)
   l.side = l.side%2 + 1
   if l.side == 1 {
@@ -351,25 +358,6 @@ func (l *Level) clearCache(mask Highlight) {
     }
   }
   l.cached = false
-}
-
-func (l *Level) refreshCommandHighlights() {
-  switch l.command {
-  case Move:
-    for _, v := range l.reachable {
-      x, y := l.fromVertex(v)
-      l.grid[x][y].highlight |= Reachable
-    }
-
-  case Attack:
-    for _, v := range l.in_range {
-      l.grid[v.X][v.Y].highlight |= Attackable
-    }
-
-  case NoCommand:
-  default:
-    panic(fmt.Sprintf("Unknown command: %d", l.command))
-  }
 }
 
 func (l *Level) PrepAttack() {
@@ -467,6 +455,7 @@ func (l *Level) DoAttack(target Target) {
   l.command = NoCommand
 }
 func (l *Level) PrepMove() {
+  return
   if l.selected == nil {
     return
   }
@@ -486,26 +475,6 @@ fmt.Printf("atts: %v\n", l.selected.UnitStats.Base.attributes.MoveMods)
 }
 
 func (l *Level) DoMove(click_x, click_y int) {
-  if l.selected == nil {
-    return
-  }
-
-  start := l.toVertex(int(l.selected.pos.X), int(l.selected.pos.Y))
-  end := l.toVertex(click_x, click_y)
-  graph := &unitGraph{l, l.selected.Base.attributes.MoveMods}
-  ap, path := algorithm.Dijkstra(graph, []int{start}, []int{end})
-  if len(path) == 0 || int(ap) > l.selected.AP {
-    return
-  }
-  path = path[1:]
-  l.selected.path = l.selected.path[0:0]
-  l.reachable = nil
-  for i := range path {
-    x, y := l.fromVertex(path[i])
-    l.selected.path = append(l.selected.path, [2]int{x, y})
-  }
-  l.clearCache(combat_highlights)
-  l.command = NoCommand
 }
 
 func (l *Level) figureVisible() {
@@ -552,16 +521,14 @@ func (l *Level) figureVisible() {
 }
 
 func (l *Level) Think(dt int64) {
-  l.clearCache(MouseOver | AttackMouseOver)
-  l.figureVisible()
-
-  // If the selected entity isn't moving and we don't have a command selected
-  // then set the command to Move
-  // TODO: Might be better to just leave move selected but only refresh the
-  // reachable tiles when the entity reaches it's final position.
-  if l.selected != nil && len(l.selected.path) == 0 && l.command == NoCommand {
-    l.PrepMove()
+  if l.current_action != nil {
+    if l.current_action.Maintain(dt) {
+      l.current_action = nil
+    }
   }
+
+  l.clearCache(MouseOver | AttackMouseOver | Selected)
+  l.figureVisible()
 
   // Draw all sprites
   for i := range l.Entities {
@@ -577,14 +544,12 @@ func (l *Level) Think(dt int64) {
     }
   }
 
-  l.refreshCommandHighlights()
   l.editor.Think()
 
   // Highlight selected entity
-  if l.selected != nil && len(l.selected.path) == 0 {
+  if l.selected != nil {
     cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
-    cell.highlight |= Reachable
-    //    l.Terrain.AddFlattenedDrawable(l.selected.pos.X, l.selected.pos.Y, &cell)
+    cell.highlight |= Selected
   }
 
   bx, by := l.Terrain.WindowToBoard(l.winx, l.winy)
@@ -657,24 +622,10 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
   if dist > 0.5 {
     ent = nil
   }
-
-  switch l.command {
-  case Move:
-    if ent == nil {
-      l.DoMove(int(click.X), int(click.Y))
-    } else if ent.side == l.side {
-      l.selected = ent
-      l.PrepMove()
-    }
-
-  case Attack:
-    l.DoAttack(l.mouse_over_target)
-
-  case NoCommand:
-    if ent != nil && ent.side == l.side {
-      l.selected = ent
-      l.PrepMove()
-    }
+  if l.current_action == nil {
+    l.selected = ent
+  } else {
+    l.current_action.MouseClick(float64(click.X), float64(click.Y))
   }
 }
 
@@ -781,6 +732,31 @@ func (l *Level) SaveLevel(pathname string) error {
   return err
 }
 
+func (l *Level) SelectAction(n int) {
+  if l.selected == nil { return }
+  if n < 0 {
+    if l.current_action != nil {
+      l.current_action.Cancel()
+      l.current_action = nil
+    }
+    return
+  }
+  if n >= len(l.selected.actions) { return }
+
+  // If the current action is selected then we cancel it and reselect it.
+  // This gives users a way to deselect anything they may have selected
+  // with the current action without having to go through any other buttons
+  // than the ones they were already using.
+
+  if l.current_action != nil {
+    l.current_action.Cancel()
+  }
+
+  if l.selected.actions[n].Prep() {
+    l.current_action = l.selected.actions[n]
+  }
+}
+
 func LoadLevel(datadir, mapname string) (*Level, error) {
   datapath := filepath.Join(datadir, "maps", mapname)
   datafile, err := os.Open(datapath)
@@ -869,7 +845,8 @@ func (l *Level) ToggleEditor() {
 }
 
 func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32, sprite *sprite.Sprite) *Entity {
-  ent := &Entity{
+  var ent Entity
+  ent = Entity{
     UnitStats: UnitStats{
       Base: &unit_type,
     },
@@ -881,9 +858,13 @@ func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32
       Move_speed: move_speed,
     },
   }
+  ent.actions = append(ent.actions, makeMoveAction(&ent))
   for _, name := range unit_type.Weapons {
     ent.Weapons = append(ent.Weapons, MakeWeapon(name))
   }
-  l.Entities = append(l.Entities, ent)
-  return ent
+  for _,weapon := range ent.Weapons {
+    ent.actions = append(ent.actions, makeAttackAction(&ent, weapon))
+  }
+  l.Entities = append(l.Entities, &ent)
+  return &ent
 }

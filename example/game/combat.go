@@ -66,7 +66,7 @@ type BaseWeapon interface {
 
 type Weapon interface {
   // Using the weapon is an Action, so it must satisfy the Action interface
-  Action
+  Icon() string
 
   BaseWeapon
 }

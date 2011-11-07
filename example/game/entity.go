@@ -163,12 +163,6 @@ func (w *EntityStatsWindow) Draw(region gui.Region) {
   w.table.Draw(region)
 }
 
-// An Action represents something that a unit can do on its turn, other than
-// move.  Actions are represented as icons in the EntityStatsWindow.
-type Action interface {
-  Icon() string
-}
-
 type Entity struct {
   UnitStats
   CosmeticStats
@@ -184,11 +178,10 @@ type Entity struct {
   pos      mathgl.Vec2
   prev_pos mathgl.Vec2
 
-  // If the entity is currently moving then it will follow the vertices in path
-  path [][2]int
-
   // set of vertices that this unit can see from its current location
   visible map[int]bool
+
+  actions []Action
 }
 
 // Returns total current attack modifier
@@ -328,62 +321,67 @@ func (e *Entity) OnRound() {
   e.AP = e.Base.AP
 }
 
-func (e *Entity) enterCell(x, y int) {
-  graph := unitGraph{e.level, e.Base.attributes.MoveMods}
-  src := e.level.toVertex(int(e.prev_pos.X), int(e.prev_pos.Y))
-  dst := e.level.toVertex(x, y)
-  e.AP -= int(graph.costToMove(src, dst))
-  e.prev_pos.X = float32(x)
-  e.prev_pos.Y = float32(y)
-  if e.AP < 0 {
-    // TODO: Log a warning
-    e.AP = 0
-  }
+// TODO: This is the method that should determine if something triggered as we
+// moved into a cell.  It will also need to return this information to the
+// caller, who can decide how to proceed.  There should be a very limited
+// number of triggers that can happend.
+func (e *Entity) OnEntry() {
   e.figureVisibility()
 }
 
-func (e *Entity) advance(dist float32) {
-  if len(e.path) == 0 {
+// Advances the entity up to max_dist towards position bx,by (in board
+// coordinates).
+// If an advance causes the entity to enter a new cell Advance will stop.
+// This gives things that trigger on entering a cell a chance to respond
+// before allowing the entity to contine moving.
+// Returns the distance moved, will never be more than 1.0.
+// This function may return 0 even when max_dist > 0, this indicates that
+// the sprite was not prepared and the caller should wait before trying to
+// Advance again.
+// Also returns a bool indicating whether or not the target cell has been
+// reached.
+func (e *Entity) Advance(bx,by int, max_dist float32) (float32, bool) {
+  if max_dist < 0 {
+    panic("Tried to advance negative distance")
+  }
+
+  if max_dist == 0 {
     if e.s.CurState() != "ready" {
       e.s.Command("stop")
     }
-    return
+    return 0, false
   }
+
   if e.s.CurState() != "walk" {
     e.s.Command("move")
   }
-  fmt.Printf("")
+
+  // Wait until the sprite is actually walking to move it, otherwise it looks
+  // like it's sliding
   if e.s.CurAnim() != "walk" {
-    return
+    return 0, false
   }
-  if dist <= 0 {
-    return
-  }
+
   var b, t mathgl.Vec2
   b = e.pos
-  t = mathgl.Vec2{float32(e.path[0][0]), float32(e.path[0][1])}
+  t = mathgl.Vec2{float32(bx), float32(by)}
   t.Subtract(&b)
-  moved := t.Length()
-  if moved <= 1e-5 {
-    e.enterCell(e.path[0][0], e.path[0][1])
-    e.path = e.path[1:]
-    e.advance(dist - moved)
-    return
+  dist := t.Length()
+
+  // If we can reach the target cell then we can just set our coordinates and
+  // return, the caller can decide whether or not to continue.
+  if dist <= max_dist {
+    e.pos.X = float32(bx)
+    e.pos.Y = float32(by)
+    return dist, true
   }
-  final_dist := dist
-  if final_dist > moved {
-    final_dist = moved
-  }
+
   t.Normalize()
-  t.Scale(final_dist)
+  t.Scale(max_dist)
   b.Add(&t)
   e.pos.Assign(&b)
-
-  if moved > dist {
-    e.turnToFace(mathgl.Vec2{float32(e.path[0][0]), float32(e.path[0][1])})
-  }
-
-  e.advance(dist - final_dist)
+  e.turnToFace(mathgl.Vec2{float32(bx), float32(by)})
+  return max_dist, false
 }
 
 func (e *Entity) turnToFace(target mathgl.Vec2) {
@@ -402,7 +400,6 @@ func (e *Entity) turnToFace(target mathgl.Vec2) {
 
 func (e *Entity) Think(dt int64) {
   e.s.Think(dt)
-  e.advance(e.Move_speed * float32(dt))
 }
 
 func LoadAllUnits(dir string) ([]*UnitType, error) {

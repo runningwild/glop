@@ -136,6 +136,28 @@ func actualMain() {
     }
 
     if ui.FocusWidget() == nil {
+      cmd_keys := []gin.Key{
+        gin.In().GetKey('`'),
+        gin.In().GetKey('1'),
+        gin.In().GetKey('2'),
+        gin.In().GetKey('3'),
+        gin.In().GetKey('4'),
+        gin.In().GetKey('5'),
+        gin.In().GetKey('6'),
+        gin.In().GetKey('7'),
+        gin.In().GetKey('8'),
+        gin.In().GetKey('9'),
+        gin.In().GetKey('0'),
+      }
+      for i := range cmd_keys {
+        if cmd_keys[i].FramePressCount() > 0 {
+          level.SelectAction(i)
+        }
+      }
+      if gin.In().GetKey(gin.Escape).FramePressCount() > 0 {
+        level.SelectAction(-1)
+      }
+
       kw := gin.In().GetKey('w')
       ka := gin.In().GetKey('a')
       ks := gin.In().GetKey('s')
