@@ -117,6 +117,7 @@ void Init() {
   event_buffer_2.length = 0;
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];
   pthread_mutex_init(&event_group_mutex, NULL);
+  [glop_app finishLaunching];
 }
 
 
@@ -341,7 +342,6 @@ void Quit() {
 void Think() {
   // TODO: This is retarded, but it does seem to get all of the evnts out of the queue
   // rather than only most of them
-  [glop_app finishLaunching];
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
   [glop_app postEvent:terminator atStart:FALSE];
