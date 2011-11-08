@@ -151,7 +151,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
     }
     w.actions = gui.MakeSelectImageBox(paths, names)
     w.table.AddChild(w.actions)
-    w.actions.SetSelectedIndex(0)
+    w.actions.SetSelectedIndex(-1)
     w.update()
   }
 }

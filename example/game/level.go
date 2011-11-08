@@ -301,7 +301,12 @@ type Level struct {
   // The most recently prepped valid command
   command Command
 
+  // Indicates if an action is currently happening such that a new one cannot
+  // start yet
+  mid_action bool
+
   current_action Action
+
 
   // MOVE data
 
@@ -322,6 +327,9 @@ func (l *Level) GetHovered() *Entity {
   return l.hovered
 }
 func (l *Level) Round() {
+  // Can't start the next round until the current action completes
+  if l.mid_action { return }
+
   l.selected = nil
   if l.current_action != nil {
     l.current_action.Cancel()
@@ -523,8 +531,26 @@ func (l *Level) figureVisible() {
 
 func (l *Level) Think(dt int64) {
   if l.current_action != nil {
-    if l.current_action.Maintain(dt) {
+    if l.mid_action && l.current_action.Maintain(dt) {
       l.current_action = nil
+      l.mid_action = false
+    }
+  }
+
+  if l.selected != nil {
+    // If we are committed to an action let's make sure that the UI doesn't
+    // let us choose other actions until it's done.
+    if l.mid_action {
+      for i := range l.selected.actions {
+        if l.selected.actions[i] == l.current_action {
+          l.selected_gui.actions.SetSelectedIndex(i - 1)
+        }
+      }
+    } else {
+      index := l.selected_gui.actions.GetSelectedIndex()
+      if index >= 0 && l.current_action != l.selected.actions[index + 1] {
+        l.SelectAction(index + 1)
+      }
     }
   }
 
@@ -628,7 +654,9 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
       l.selected = ent
     }
   } else {
-    l.current_action.MouseClick(float64(click.X), float64(click.Y))
+    if l.current_action.MouseClick(float64(click.X), float64(click.Y)) {
+      l.mid_action = true
+    }
   }
 }
 
@@ -737,10 +765,12 @@ func (l *Level) SaveLevel(pathname string) error {
 
 func (l *Level) SelectAction(n int) {
   if l.selected == nil { return }
+  if l.mid_action { return }
   if n < 0 {
     if l.current_action != nil {
       l.current_action.Cancel()
       l.current_action = nil
+      l.selected_gui.actions.SetSelectedIndex(-1)
     }
     return
   }
@@ -753,10 +783,12 @@ func (l *Level) SelectAction(n int) {
 
   if l.current_action != nil {
     l.current_action.Cancel()
+    l.selected_gui.actions.SetSelectedIndex(-1)
   }
 
   if l.selected.actions[n].Prep() {
     l.current_action = l.selected.actions[n]
+    l.selected_gui.actions.SetSelectedIndex(n-1)
   }
 }
 
