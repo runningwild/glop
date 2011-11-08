@@ -45,9 +45,15 @@ type Target struct {
   X, Y int
 }
 
+type AttackActionMaker func(*Entity,Weapon) Action
+
 type BaseWeapon interface {
   // Cost in AP that the source Entity must spent to use this weapon.
   Cost(source *Entity) int
+
+  // Returns a maker for the appropriate action for this Weapon, such as
+  // makeBasicAttackAction.
+  ActionMaker() AttackActionMaker
 
   // Returns a list of all valid targets.
   ValidTargets(source *Entity) []Target
@@ -68,6 +74,9 @@ type Weapon interface {
   // Using the weapon is an Action, so it must satisfy the Action interface
   Icon() string
 
+  // Returns an Action object that can be used in the Action system
+  GetAction(source *Entity) Action
+
   BaseWeapon
 }
 
@@ -84,6 +93,10 @@ func (wi WeaponInstance) Icon() string {
 type WeaponSpec struct {
   WeaponInstance
   BaseWeapon
+}
+
+func (wi WeaponSpec) GetAction(source *Entity) Action {
+  return wi.ActionMaker()(source, wi)
 }
 
 // TODO: IT would be nice to change to using the reflect system, if possible, instead of
@@ -285,6 +298,10 @@ type BasicMelee struct {
   SingleTargetMouseOver
 }
 
+func (c *BasicMelee) ActionMaker() AttackActionMaker {
+  return makeBasicAttackAction
+}
+
 func (c *BasicMelee) Damage(source *Entity, t Target) (res []Resolution) {
   res = []Resolution{Resolution{}}
   r := &res[0]
@@ -340,6 +357,10 @@ type Gun struct {
   SingleTargetMouseOver
 }
 
+func (g *Gun) ActionMaker() AttackActionMaker {
+  return makeBasicAttackAction
+}
+
 func (g *Gun) Damage(source *Entity, t Target) (res []Resolution) {
   // TODO: Extracting the target entity from a Target object should be
   // automatic
@@ -377,6 +398,8 @@ func (g *Gun) Damage(source *Entity, t Target) (res []Resolution) {
   r.Damage = Damage{Piercing: g.Power}
   return
 }
+
+/*
 
 func init() {
   RegisterWeapon("StandardAOE", func() BaseWeapon { return &StandardAOE{} })
@@ -466,3 +489,4 @@ func (g *StandardAOE) Damage(source *Entity, target Target) (res []Resolution) {
   }
   return
 }
+*/

@@ -4,7 +4,6 @@ import (
   "errors"
   "glop/gin"
   "glop/gui"
-  "glop/util/algorithm"
   "glop/sprite"
   "gl"
   "math"
@@ -360,6 +359,7 @@ func (l *Level) clearCache(mask Highlight) {
   l.cached = false
 }
 
+/*
 func (l *Level) PrepAttack() {
   if l.selected == nil {
     return
@@ -476,6 +476,7 @@ fmt.Printf("atts: %v\n", l.selected.UnitStats.Base.attributes.MoveMods)
 
 func (l *Level) DoMove(click_x, click_y int) {
 }
+*/
 
 func (l *Level) figureVisible() {
   if !l.editor_gui.Collapsed {
@@ -623,7 +624,9 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
     ent = nil
   }
   if l.current_action == nil {
-    l.selected = ent
+    if ent != nil && ent.side == l.side {
+      l.selected = ent
+    }
   } else {
     l.current_action.MouseClick(float64(click.X), float64(click.Y))
   }
@@ -863,7 +866,7 @@ func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32
     ent.Weapons = append(ent.Weapons, MakeWeapon(name))
   }
   for _,weapon := range ent.Weapons {
-    ent.actions = append(ent.actions, makeAttackAction(&ent, weapon))
+    ent.actions = append(ent.actions, weapon.GetAction(&ent))
   }
   l.Entities = append(l.Entities, &ent)
   return &ent

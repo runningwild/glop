@@ -167,12 +167,6 @@ func actualMain() {
       dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
       level.Terrain.Move(dx, dy)
       zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
-      if gin.In().GetKey('m').FramePressCount() > 0 {
-        level.PrepMove()
-      }
-      if gin.In().GetKey('k').FramePressCount() > 0 {
-        level.PrepAttack()
-      }
       if gin.In().GetKey('o').FramePressCount() > 0 {
         level.Round()
       }
