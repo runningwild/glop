@@ -27,14 +27,19 @@
   	}
   },
   "arboreal" : {
-  	"LosMods" : {
-  		"jungle" : 1
-  	},
-  	"MoveMods" : {
-  		"jungle" : 1
-  	},
-  	"AttackMods" : {
-  		"jungle" : 1
-  	}
+    "LosMods" : {
+      "jungle" : 1
+    },
+    "MoveMods" : {
+      "jungle" : 1
+    },
+    "AttackMods" : {
+      "jungle" : 1
+    }
+  },
+  "fleet" : {
+    "AttackMods" : {
+      "plains" : 1
+    }
   }
 }

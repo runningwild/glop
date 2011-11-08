@@ -1,0 +1,14 @@
+{
+  "Name" : "Cheetah",
+  "Sprite" : "green",
+  "AP" : 6,
+  "Defense" : 2,
+  "Health" : 3,
+  "Weapons" : [
+    "Cheetah Bite"
+  ],
+  "Attribute_names" : [
+    "standard",
+    "fleet"
+  ]
+}

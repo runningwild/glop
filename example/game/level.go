@@ -532,6 +532,7 @@ func (l *Level) figureVisible() {
 func (l *Level) Think(dt int64) {
   if l.current_action != nil {
     if l.mid_action && l.current_action.Maintain(dt) {
+      l.selected_gui.actions.SetSelectedIndex(-1)
       l.current_action = nil
       l.mid_action = false
     }

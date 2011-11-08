@@ -9,6 +9,7 @@ import (
   "fmt"
   "io"
   "io/ioutil"
+  "glop/util/algorithm"
 )
 
 type Damage struct {
@@ -398,6 +399,87 @@ func (g *Gun) Damage(source *Entity, t Target) (res []Resolution) {
   r.Damage = Damage{Piercing: g.Power}
   return
 }
+
+func init() {
+  RegisterWeapon("Charge", func() BaseWeapon { return &Charge{} })
+}
+
+type ChargeRange struct {
+  Min,Max int
+}
+
+func (c ChargeRange) ValidTargets(source *Entity) []Target {
+  var valid []Target
+  graph := &unitGraph{ source.level, source.Base.attributes.MoveMods }
+  src := source.level.toVertex(int(source.pos.X), int(source.pos.Y))
+  for _,ent := range source.level.Entities {
+    if ent.side == source.side { continue }
+    dst := source.level.toVertex(int(ent.pos.X), int(ent.pos.Y))
+    dist,_ := algorithm.Dijkstra(graph, []int{ src }, []int{ dst })
+    final_terrain := source.level.grid[int(ent.pos.X)][int(ent.pos.Y)].Terrain
+    dist -= float64(source.Base.attributes.MoveMods[final_terrain])
+    if int(dist) > source.AP { continue }
+    t := Target{ Type : EntityTarget, X : int(ent.pos.X), Y : int(ent.pos.Y) }
+    valid = append(valid, t)
+  }
+  return valid
+}
+
+type Charge struct {
+  StaticCost
+  ChargeRange
+  Power int
+  SingleTargetMouseOver
+}
+
+func (c *Charge) ActionMaker() AttackActionMaker {
+  return makeChargeAttackAction
+}
+
+func (c *Charge) Damage(source *Entity, t Target) (res []Resolution) {
+  res = []Resolution{Resolution{}}
+  r := &res[0]
+
+  var target *Entity
+  for _, ent := range source.level.Entities {
+    if int(ent.pos.X) != t.X {
+      continue
+    }
+    if int(ent.pos.Y) != t.Y {
+      continue
+    }
+    target = ent
+  }
+  if target == nil {
+    panic("Tried to attack a entity in a cell where there is no entity.")
+  }
+  r.Target = target
+  mod_map := map[int]int{
+     2 : -3,
+     3 : -2,
+     4 : -1,
+     5 : -1,
+     6 :  0,
+     7 :  0,
+     8 :  0,
+     9 :  1,
+    10 :  1,
+    11 :  2,
+    12 :  3,
+  }
+  attack := c.Power + source.CurrentAttackMod() + mod_map[Dice("2d6")]
+  defense := target.CurrentDefenseMod()
+  if attack <= defense {
+    r.Connect = Miss
+  } else {
+    r.Connect = Hit
+    r.Damage = Damage{
+      Piercing : attack - defense,
+    }
+  }
+  return
+}
+
 
 /*
 

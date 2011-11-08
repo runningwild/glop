@@ -1,0 +1,14 @@
+{
+  "Name" : "Lion",
+  "Sprite" : "yellow",
+  "AP" : 5,
+  "Defense" : 3,
+  "Health" : 5,
+  "Weapons" : [
+    "Pounce",
+    "Bite"
+  ],
+  "Attribute_names" : [
+    "standard"
+  ]
+}

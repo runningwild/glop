@@ -26,12 +26,47 @@
   {
     "WeaponInstance" : {
       "Base" : "BasicMelee",
+      "Name" : "Bite",
+      "Path" : "weapons/bite.png"
+    },
+    "BaseWeapon" : {
+      "StaticCost" : 2,
+      "EntityRange" : 1,
+      "Power" : 4
+    }
+  },
+  {
+    "WeaponInstance" : {
+      "Base" : "BasicMelee",
+      "Name" : "Cheetah Bite",
+      "Path" : "weapons/bite.png"
+    },
+    "BaseWeapon" : {
+      "StaticCost" : 2,
+      "EntityRange" : 1,
+      "Power" : 3
+    }
+  },
+  {
+    "WeaponInstance" : {
+      "Base" : "BasicMelee",
       "Name" : "Thrown Spear",
       "Path" : "weapons/thrown_spear.png"
     },
     "BaseWeapon" : {
       "StaticCost" : 3,
       "EntityRange" : 3,
+      "Power" : 3
+    }
+  },
+  {
+    "WeaponInstance" : {
+      "Base" : "Charge",
+      "Name" : "Pounce",
+      "Path" : "weapons/pounce.png"
+    },
+    "BaseWeapon" : {
+      "StaticCost" : 3,
       "Power" : 3
     }
   }
