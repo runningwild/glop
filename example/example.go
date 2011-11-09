@@ -45,11 +45,16 @@ func LoadUnit(path string) (*game.UnitType, error) {
 func init() {
   sys = system.Make(gos.GetSystemInterface())
   quit = make(chan bool)
-  go actualMain()
 }
 
 func actualMain() {
+  sys.Startup()
   runtime.LockOSThread()
+  for !sys.Think() {
+    runtime.UnlockOSThread()
+    time.Sleep(1)
+    runtime.LockOSThread()
+  }
   defer func() {
     quit <- true
   }()
@@ -62,7 +67,6 @@ func actualMain() {
     }
   }
   flag.Parse()
-  sys.Startup()
 
   basedir := filepath.Join(os.Args[0], "..", "..")
 
@@ -231,5 +235,6 @@ func actualMain() {
 }
 
 func main() {
+  go actualMain()
   <-quit
 }

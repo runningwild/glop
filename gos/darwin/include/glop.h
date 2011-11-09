@@ -102,7 +102,7 @@ void GetInputEvents(void**, int*, long long*);
 
 void Run();
 void SwapBuffers(void*);
-void Think();
+int Think();
 void Quit();
 
 void GetMousePos(int*, int*);

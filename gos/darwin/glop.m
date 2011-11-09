@@ -11,10 +11,13 @@
 
 @interface GlopApplication : NSApplication {
   int should_stop;
+  int on_correct_thread;
 }
+- (int)onCorrectThread;
 - (void)sendEvent:(NSEvent*)event;
 - (void)stop:(id)id;
 - (void)run;
+- (void)clear;
 @end
 
 struct inputState {
@@ -98,6 +101,7 @@ void GetEvents(KeyEvent** events, int* length, long long* horizon) {
 
 void Init() {
   glop_app = [GlopApplication sharedApplication];
+  [(GlopApplication*)glop_app clear];
   pool = [[NSAutoreleasePool alloc] init];
 
   terminator = [NSEvent
@@ -185,6 +189,11 @@ int* getInputStateVal(int flag) {
 }
 
 @implementation GlopApplication
+- (void)clear {
+  should_stop = 0;
+  on_correct_thread = 0;
+}
+
 - (void)sendEvent:(NSEvent*)event {
 /*
    NSLeftMouseDown      = 1,
@@ -313,13 +322,17 @@ int* getInputStateVal(int flag) {
   should_stop = 1;
 }
 
+- (int)onCorrectThread {
+  return on_correct_thread;
+}
+
 - (void)run {
 //  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
   do {
 //    [pool release];
 //    pool = [[NSAutoreleasePool alloc] init];
-
+printf("run1\n");
     NSEvent *event =
       [self
         nextEventMatchingMask:NSAnyEventMask
@@ -327,8 +340,16 @@ int* getInputStateVal(int flag) {
         inMode:NSDefaultRunLoopMode
         dequeue:YES];
 
+    on_correct_thread = ([event type] != 0);
+    if (!on_correct_thread) {
+      return;
+    }
+    printf("%d\n", [event type]);
+printf("run2\n");
     [self sendEvent:event];
+printf("run3\n");
     [self updateWindows];
+printf("run4\n");
   } while (!should_stop);
   should_stop = 0;
 //  [pool release];
@@ -339,14 +360,27 @@ void Quit() {
   [glop_app postEvent:terminator atStart:FALSE];
 }
 
-void Think() {
+int Think() {
   // TODO: This is retarded, but it does seem to get all of the evnts out of the queue
   // rather than only most of them
+  printf("A\n");
   [glop_app postEvent:terminator atStart:FALSE];
+  printf("B\n");
   [glop_app run];
+  if (![(GlopApplication*)glop_app onCorrectThread]) {
+    return 0;
+  }
+  printf("C\n");
   [glop_app postEvent:terminator atStart:FALSE];
+  printf("D\n");
   [glop_app run];
+  if (![(GlopApplication*)glop_app onCorrectThread]) {
+    return 0;
+  }
+  printf("E\n");
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];
+  printf("F\n");
+  return 1;
 }
 
 void GetInputEvents(void** _key_events, int* length, long long* horizon) {

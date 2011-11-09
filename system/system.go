@@ -9,7 +9,7 @@ type System interface {
   Startup()
 
   // Call System.Think() every frame
-  Think()
+  Think() bool
 
   CreateWindow(x, y, width, height int)
   // TODO: implement this:
@@ -40,7 +40,7 @@ type Os interface {
   Startup()
 
   // Think() is called on a regular basis and always from main thread.
-  Think()
+  Think() bool
 
   // Create a window with the appropriate dimensions and bind an OpenGl contxt to it.
   // Currently glop only supports a single window, but this function could be called
@@ -88,13 +88,16 @@ func (sys *sysObj) Startup() {
   sys.os.Startup()
   _, sys.start_ms = sys.os.GetInputEvents()
 }
-func (sys *sysObj) Think() {
-  sys.os.Think()
+func (sys *sysObj) Think() bool {
+  if !sys.os.Think() {
+    return false
+  }
   events, horizon := sys.os.GetInputEvents()
   for i := range events {
     events[i].Timestamp -= sys.start_ms
   }
   sys.events = gin.In().Think(horizon-sys.start_ms, false, events)
+  return true
 }
 func (sys *sysObj) CreateWindow(x, y, width, height int) {
   sys.os.CreateWindow(x, y, width, height)
