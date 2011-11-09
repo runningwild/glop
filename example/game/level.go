@@ -264,6 +264,32 @@ const (
   Attack
 )
 
+type BoardPos struct {
+  mathgl.Vec2
+  level *Level
+}
+
+func (l *Level) MakeBoardPos(x,y int) BoardPos {
+  return BoardPos{mathgl.Vec2{ float32(x), float32(y)}, l}
+}
+
+func (l *Level) MakeBoardPosFromVertex(v int) BoardPos {
+  x,y := l.fromVertex(v)
+  return l.MakeBoardPos(x, y)
+}
+
+func (bp *BoardPos) Xi() int {
+  return int(bp.X)
+}
+
+func (bp *BoardPos) Yi() int {
+  return int(bp.Y)
+}
+
+func (bp *BoardPos) Vertex() int {
+  return bp.Xi() + bp.Yi()*len(bp.level.grid)
+}
+
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
@@ -320,6 +346,9 @@ type Level struct {
   mouse_over_target Target
 }
 
+func (l *Level) GetCellAtPos(bp BoardPos) *CellData {
+  return &l.grid[bp.Xi()][bp.Yi()]
+}
 func (l *Level) GetSelected() *Entity {
   return l.selected
 }
@@ -886,7 +915,7 @@ func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32
     UnitStats: UnitStats{
       Base: &unit_type,
     },
-    pos:   mathgl.Vec2{float32(x), float32(y)},
+    pos:   l.MakeBoardPos(x, y),
     side:  side,
     s:     sprite,
     level: l,

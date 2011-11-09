@@ -1,9 +1,5 @@
 package game
 
-import (
-  "github.com/arbaal/mathgl"
-)
-
 type ActionBasicAttack struct {
   basicIcon
   ent     *Entity
@@ -58,7 +54,7 @@ func (a *ActionBasicAttack) Maintain(dt int64) bool {
 
   ress := a.weapon.Damage(a.ent, *a.mark)
 
-  a.ent.turnToFace(mathgl.Vec2{float32(a.mark.X), float32(a.mark.Y)})
+  a.ent.turnToFace(a.ent.level.MakeBoardPos(a.mark.X, a.mark.Y))
 
   dist := maxNormi(a.mark.X, a.mark.Y, int(a.ent.pos.X), int(a.ent.pos.Y))
 

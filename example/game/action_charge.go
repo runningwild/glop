@@ -1,7 +1,6 @@
 package game
 
 import (
-  "github.com/arbaal/mathgl"
   "glop/util/algorithm"
 )
 
@@ -106,10 +105,10 @@ func (a *ActionChargeAttack) payForMove() bool {
 }
 
 func (a *ActionChargeAttack) doMove(dt int64) bool {
-  x,y := a.ent.level.fromVertex(a.mark.path[0])
+  pos := a.ent.level.MakeBoardPosFromVertex(a.mark.path[0])
   tomove := a.ent.Move_speed * float32(dt)
   for tomove > 0 {
-    moved,reached := a.ent.Advance(x, y, tomove)
+    moved,reached := a.ent.Advance(pos, tomove)
     if moved == 0 && !reached { return false }
     tomove -= moved
 
@@ -125,10 +124,10 @@ func (a *ActionChargeAttack) doMove(dt int64) bool {
       // is complete - so we return true
       if len(a.mark.path) == 0 || !a.payForMove() {
         a.Cancel()
-        a.ent.Advance(0, 0, 0)
+        a.ent.Advance(BoardPos{}, 0)
         return true
       }
-      x,y = a.ent.level.fromVertex(a.mark.path[len(a.mark.path) - 1])
+      pos = a.ent.level.MakeBoardPosFromVertex(a.mark.path[len(a.mark.path) - 1])
     }
   }
   return false
@@ -142,7 +141,7 @@ func (a *ActionChargeAttack) doAttack() bool {
   }
   ress := a.weapon.Damage(a.ent, target)
 
-  a.ent.turnToFace(mathgl.Vec2{float32(a.mark.ent.pos.X), float32(a.mark.ent.pos.Y)})
+  a.ent.turnToFace(a.mark.ent.pos)
 
   dist := maxNormi(target.X, target.Y, int(a.ent.pos.X), int(a.ent.pos.Y))
 

@@ -97,18 +97,18 @@ func (a *ActionMove) payForMove() bool {
 
 func (a *ActionMove) Maintain(dt int64) bool {
   if len(a.path) == 0 { return false }
-  x,y := a.ent.level.fromVertex(a.path[0])
+  pos := a.ent.level.MakeBoardPosFromVertex(a.path[0])
   tomove := a.ent.Move_speed * float32(dt)
   for tomove > 0 {
-    moved,reached := a.ent.Advance(x, y, tomove)
+    moved,reached := a.ent.Advance(pos, tomove)
     if moved == 0 && !reached { return false }
     tomove -= moved
 
     // Check to see if the entity has made it to a new cell
     if reached {
       a.ent.OnEntry()
-      px,py := a.ent.level.fromVertex(a.path[0])
-      a.ent.level.grid[px][py].highlight &= ^Reachable
+      dst := a.ent.level.MakeBoardPosFromVertex(a.path[0])
+      a.ent.level.GetCellAtPos(dst).highlight &= ^Reachable
       a.path = a.path[1:]
 
       // If we have reached our destination *OR* if something has happened and
@@ -116,10 +116,10 @@ func (a *ActionMove) Maintain(dt int64) bool {
       // is complete - so we return true
       if len(a.path) == 0 || !a.payForMove() {
         a.Cancel()
-        a.ent.Advance(0, 0, 0)
+        a.ent.Advance(BoardPos{}, 0)
         return true
       }
-      x,y = a.ent.level.fromVertex(a.path[len(a.path) - 1])
+      pos = a.ent.level.MakeBoardPosFromVertex(a.path[len(a.path) - 1])
     }
   }
   return false

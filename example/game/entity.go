@@ -5,7 +5,6 @@ import (
   "fmt"
   "glop/gui"
   "glop/sprite"
-  "github.com/arbaal/mathgl"
   "json"
   "io/ioutil"
   "os"
@@ -175,8 +174,7 @@ type Entity struct {
   level *Level
 
   // Board coordinates of this entity's current position
-  pos      mathgl.Vec2
-  prev_pos mathgl.Vec2
+  pos BoardPos
 
   // set of vertices that this unit can see from its current location
   visible map[int]bool
@@ -314,7 +312,6 @@ func (e *Entity) Coords() (x, y int) {
 func (e *Entity) OnSetup() {
   e.Health = e.Base.Health
   e.AP = e.Base.AP
-  e.prev_pos.Assign(&e.pos)
   e.figureVisibility()
 }
 func (e *Entity) OnRound() {
@@ -340,7 +337,7 @@ func (e *Entity) OnEntry() {
 // Advance again.
 // Also returns a bool indicating whether or not the target cell has been
 // reached.
-func (e *Entity) Advance(bx,by int, max_dist float32) (float32, bool) {
+func (e *Entity) Advance(bp BoardPos, max_dist float32) (float32, bool) {
   if max_dist < 0 {
     panic("Tried to advance negative distance")
   }
@@ -362,31 +359,29 @@ func (e *Entity) Advance(bx,by int, max_dist float32) (float32, bool) {
     return 0, false
   }
 
-  var b, t mathgl.Vec2
-  b = e.pos
-  t = mathgl.Vec2{float32(bx), float32(by)}
-  t.Subtract(&b)
-  dist := t.Length()
+  src := e.pos
+  dst := bp
+  dst.Subtract(&src.Vec2)
+  dist := dst.Length()
 
   // If we can reach the target cell then we can just set our coordinates and
   // return, the caller can decide whether or not to continue.
   if dist <= max_dist {
-    e.pos.X = float32(bx)
-    e.pos.Y = float32(by)
+    e.pos.Assign(&bp.Vec2)
     return dist, true
   }
 
-  t.Normalize()
-  t.Scale(max_dist)
-  b.Add(&t)
-  e.pos.Assign(&b)
-  e.turnToFace(mathgl.Vec2{float32(bx), float32(by)})
+  dst.Normalize()
+  dst.Scale(max_dist)
+  src.Add(&dst.Vec2)
+  e.pos.Assign(&src.Vec2)
+  e.turnToFace(bp)
   return max_dist, false
 }
 
-func (e *Entity) turnToFace(target mathgl.Vec2) {
-  target.Subtract(&e.pos)
-  facing := math.Atan2(float64(target.Y), float64(target.X)) / (2 * math.Pi) * 360.0
+func (e *Entity) turnToFace(dst BoardPos) {
+  dst.Subtract(&e.pos.Vec2)
+  facing := math.Atan2(float64(dst.Y), float64(dst.X)) / (2 * math.Pi) * 360.0
   var face int
   if facing >= 22.5 || facing < -157.5 {
     face = 0
