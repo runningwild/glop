@@ -30,19 +30,20 @@ type UnitPlacement struct {
 }
 
 type staticCellData struct {
-  Terrain Terrain
-  Unit    UnitPlacement
 }
 type cachedCellData struct {
-  highlight Highlight
-}
-
-type CellData struct {
-  staticCellData
-  cachedCellData
 }
 
 type Highlight uint32
+
+type CellData struct {
+  // Permanent data
+  Terrain Terrain
+  Unit    UnitPlacement
+
+  // Transient data
+  highlight Highlight
+}
 
 const (
   None Highlight = 1 << iota
@@ -77,7 +78,7 @@ const visibility_highlights = FogOfWar | NoLOS
 const all_highlights = MaxHighlights - 1
 
 func (t *CellData) Clear(mask Highlight) {
-  t.cachedCellData.highlight &= ^mask
+  t.highlight &= ^mask
 }
 
 func (t *CellData) Render(x, y, z, scale float32) {
@@ -160,11 +161,6 @@ type StaticLevelData struct {
   bg_path string
   grid    [][]CellData
 }
-type unitGraph struct {
-  *Level
-  move_cost map[Terrain]int
-}
-
 func (s *StaticLevelData) NumVertex() int {
   return len(s.grid) * len(s.grid[0])
 }
@@ -175,6 +171,10 @@ func (s *StaticLevelData) toVertex(x, y int) int {
   return x + y*len(s.grid)
 }
 
+type unitGraph struct {
+  *Level
+  move_cost map[Terrain]int
+}
 // Assumes that src and dst are adjacent
 func (l unitGraph) costToMove(src, dst int) float64 {
   x, y := l.fromVertex(src)

@@ -155,12 +155,12 @@ func (e *Editor) GetGui() gui.Widget {
 func (e *Editor) Think() {
   for cell, _ := range e.selected {
     if e.terrain_type.GetSelectedIndex() != -1 {
-      cell.staticCellData.Terrain = Terrain(e.terrain_type.GetSelectedOption().(string))
+      cell.Terrain = Terrain(e.terrain_type.GetSelectedOption().(string))
     }
     if e.starting_unit.GetSelectedIndex() != -1 {
-      cell.staticCellData.Unit.Name = e.starting_unit.GetSelectedOption().(string)
+      cell.Unit.Name = e.starting_unit.GetSelectedOption().(string)
     }
-    cell.staticCellData.Unit.Side = e.starting_side.GetSelectedIndex()
+    cell.Unit.Side = e.starting_side.GetSelectedIndex()
   }
   for i := range e.level.grid {
     for j := range e.level.grid[i] {
