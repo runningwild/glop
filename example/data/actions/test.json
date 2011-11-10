@@ -1,0 +1,75 @@
+[
+{
+  "Type"       : "move",
+  "Icon_path"  : "feet.png",
+  "Name"       : "move",
+  "Int_params" : {
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Tooth and Claw",
+  "Icon_path" : "weapons/tooth_and_nail.png",
+  "Int_params" : {
+    "Power" : 4,
+    "Cost" : 2,
+    "Range" : 1,
+    "Melee" : 1
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Spear",
+  "Icon_path" : "weapons/spear.png",
+  "Int_params" : {
+    "Power" : 4,
+    "Cost" : 3,
+    "Range" : 1,
+    "Melee" : 1
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Bite",
+  "Icon_path" : "weapons/bite.png",
+  "Int_params" : {
+    "Power" : 4,
+    "Cost" : 2,
+    "Range" : 1,
+    "Melee" : 1
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Cheetah Bite",
+  "Icon_path" : "weapons/bite.png",
+  "Int_params" : {
+    "Power" : 3,
+    "Cost" : 2,
+    "Range" : 1,
+    "Melee" : 1
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Thrown Spear",
+  "Icon_path" : "weapons/thrown_spear.png",
+  "Int_params" : {
+    "Power" : 3,
+    "Cost" : 3,
+    "Range" : 3,
+    "Melee" : 0
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Pounce",
+  "Icon_path" : "weapons/bite.png",
+  "Int_params" : {
+    "Power" : 3,
+    "Cost" : 2,
+    "Range" : 1,
+    "Melee" : 1
+  }
+}
+]

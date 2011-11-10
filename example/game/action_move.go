@@ -2,24 +2,23 @@ package game
 
 import "glop/util/algorithm"
 
+func init() {
+  registerActionType("move", &ActionMove{})
+}
 type ActionMove struct {
   basicIcon
-  ent       *Entity
+  Ent       *Entity
 
   reachable []int
   path      []int
 }
 
-func makeMoveAction(ent *Entity) Action {
-  return &ActionMove{ ent : ent }
-}
-
 func (a *ActionMove) Prep() bool {
-  level := a.ent.level
-  bx := int(a.ent.pos.X)
-  by := int(a.ent.pos.Y)
-  graph := &unitGraph{level, a.ent.Base.attributes.MoveMods}
-  reachable := algorithm.ReachableWithinLimit(graph, []int{level.toVertex(bx, by)}, float64(a.ent.AP))
+  level := a.Ent.level
+  bx := int(a.Ent.pos.X)
+  by := int(a.Ent.pos.Y)
+  graph := &unitGraph{level, a.Ent.Base.attributes.MoveMods}
+  reachable := algorithm.ReachableWithinLimit(graph, []int{level.toVertex(bx, by)}, float64(a.Ent.AP))
 
   if len(reachable) == 0 {
     return false
@@ -40,7 +39,7 @@ func (a *ActionMove) Prep() bool {
 func (a *ActionMove) Cancel() {
   a.reachable = nil
   a.path = nil
-  a.ent.level.clearCache(Reachable)
+  a.Ent.level.clearCache(Reachable)
 }
 
 func (a *ActionMove) MouseOver(bx,by float64) {
@@ -49,7 +48,7 @@ func (a *ActionMove) MouseOver(bx,by float64) {
 }
 
 func (a *ActionMove) MouseClick(bx,by float64) bool {
-  level := a.ent.level
+  level := a.Ent.level
   dst := level.toVertex(int(bx), int(by))
   found := false
   for _,v := range a.reachable {
@@ -60,10 +59,10 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
   }
   if !found { return false }
 
-  src := level.toVertex(int(a.ent.pos.X), int(a.ent.pos.Y))
-  graph := &unitGraph{level, a.ent.Base.attributes.MoveMods}
+  src := level.toVertex(int(a.Ent.pos.X), int(a.Ent.pos.Y))
+  graph := &unitGraph{level, a.Ent.Base.attributes.MoveMods}
   ap, path := algorithm.Dijkstra(graph, []int{src}, []int{dst})
-  if len(path) <= 1 || int(ap) > a.ent.AP {
+  if len(path) <= 1 || int(ap) > a.Ent.AP {
     return false
   }
   a.path = path[1:]
@@ -81,34 +80,34 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
   return true
 }
 
-// Subtracts the AP cost of moving into the next cell from the entity's 
-// available AP.  Returns false if the entity didn't have enough AP.
+// Subtracts the AP cost of moving into the next cell from the Entity's 
+// available AP.  Returns false if the Entity didn't have enough AP.
 func (a *ActionMove) payForMove() bool {
-  level := a.ent.level
-  graph := unitGraph{level, a.ent.Base.attributes.MoveMods}
-  src := level.toVertex(int(a.ent.pos.X), int(a.ent.pos.Y))
+  level := a.Ent.level
+  graph := unitGraph{level, a.Ent.Base.attributes.MoveMods}
+  src := level.toVertex(int(a.Ent.pos.X), int(a.Ent.pos.Y))
   cost := int(graph.costToMove(src, a.path[0]))
-  if cost > a.ent.AP {
+  if cost > a.Ent.AP {
     return false
   }
-  a.ent.AP -= cost
+  a.Ent.AP -= cost
   return true
 }
 
 func (a *ActionMove) Maintain(dt int64) bool {
   if len(a.path) == 0 { return false }
-  pos := a.ent.level.MakeBoardPosFromVertex(a.path[0])
-  tomove := a.ent.Move_speed * float32(dt)
+  pos := a.Ent.level.MakeBoardPosFromVertex(a.path[0])
+  tomove := a.Ent.Move_speed * float32(dt)
   for tomove > 0 {
-    moved,reached := a.ent.Advance(pos, tomove)
+    moved,reached := a.Ent.Advance(pos, tomove)
     if moved == 0 && !reached { return false }
     tomove -= moved
 
-    // Check to see if the entity has made it to a new cell
+    // Check to see if the Entity has made it to a new cell
     if reached {
-      a.ent.OnEntry()
-      dst := a.ent.level.MakeBoardPosFromVertex(a.path[0])
-      a.ent.level.GetCellAtPos(dst).highlight &= ^Reachable
+      a.Ent.OnEntry()
+      dst := a.Ent.level.MakeBoardPosFromVertex(a.path[0])
+      a.Ent.level.GetCellAtPos(dst).highlight &= ^Reachable
       a.path = a.path[1:]
 
       // If we have reached our destination *OR* if something has happened and
@@ -116,10 +115,10 @@ func (a *ActionMove) Maintain(dt int64) bool {
       // is complete - so we return true
       if len(a.path) == 0 || !a.payForMove() {
         a.Cancel()
-        a.ent.Advance(BoardPos{}, 0)
+        a.Ent.Advance(BoardPos{}, 0)
         return true
       }
-      pos = a.ent.level.MakeBoardPosFromVertex(a.path[len(a.path) - 1])
+      pos = a.Ent.level.MakeBoardPosFromVertex(a.path[len(a.path) - 1])
     }
   }
   return false

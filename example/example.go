@@ -52,7 +52,7 @@ func actualMain() {
   runtime.LockOSThread()
   for !sys.Think() {
     runtime.UnlockOSThread()
-    time.Sleep(1)
+    runtime.Gosched()
     runtime.LockOSThread()
   }
   defer func() {
@@ -71,25 +71,6 @@ func actualMain() {
   basedir := filepath.Join(os.Args[0], "..", "..")
 
   // TODO: Loading weapon specs should be done automatically - it just needs the datadir
-  // Load weapon files
-  dir, err := os.Open(filepath.Join(basedir, "weapons"))
-  if err != nil {
-    panic(err.Error())
-  }
-  names, err := dir.Readdir(0)
-  if err != nil {
-    panic(err.Error())
-  }
-  for _,name := range names {
-    weapons, err := os.Open(filepath.Join(basedir, "weapons", name.Name))
-    if err != nil {
-      panic(err.Error())
-    }
-    err = game.LoadWeaponSpecs(weapons)
-    if err != nil {
-      panic(err.Error())
-    }
-  }
 
   gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
 
@@ -102,6 +83,9 @@ func actualMain() {
   ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
   //  table := gui.MakeVerticalTable()
   //  ui.AddChild(table)
+
+  actions_dir := filepath.Join(basedir, "actions")
+  game.RegisterAllSpecsInDir(actions_dir)
 
   level, err := game.LoadLevel(basedir, "bosworth.json")
   if err != nil {

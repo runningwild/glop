@@ -1,5 +1,5 @@
 package game
-
+/*
 import (
   "glop/util/algorithm"
 )
@@ -12,7 +12,6 @@ const(
 )
 
 type ActionChargeAttack struct {
-  basicIcon
   ent     *Entity
   mark    chargeTarget
   mode    chargeMode
@@ -22,7 +21,6 @@ type ActionChargeAttack struct {
 
 func makeChargeAttackAction(ent *Entity, weapon Weapon) Action {
   action := ActionChargeAttack{ ent : ent, weapon : weapon }
-  action.path = weapon.Icon()
   return &action
 }
 
@@ -184,3 +182,4 @@ func (a *ActionChargeAttack) Maintain(dt int64) bool {
   }
   panic("this should be unreachable")
 }
+*/

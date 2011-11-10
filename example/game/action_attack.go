@@ -1,33 +1,43 @@
 package game
 
+func init() {
+  registerActionType("basic attack", &ActionBasicAttack{})
+}
 type ActionBasicAttack struct {
   basicIcon
-  ent     *Entity
-  weapon  Weapon
-  targets []Target
-  mark    *Target
-}
+  Ent     *Entity
+  Power   int
+  Cost    int
+  Range   int
+  Melee   int
 
-func makeBasicAttackAction(ent *Entity, weapon Weapon) Action {
-  action := ActionBasicAttack{ ent : ent, weapon : weapon }
-  action.path = weapon.Icon()
-  return &action
+  targets []*Entity
+  mark    *Entity
 }
 
 func (a *ActionBasicAttack) Prep() bool {
-  if a.ent.AP < a.weapon.Cost(a.ent) {
+  if a.Ent.AP < a.Cost {
     return false
   }
-  a.targets = a.weapon.ValidTargets(a.ent)
+
+  a.targets = nil
+  for _,ent := range a.Ent.level.Entities {
+    dist := maxNormi(a.Ent.pos.Xi(), a.Ent.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
+    if _,ok := a.Ent.visible[ent.pos.Vertex()]; !ok { continue }
+    if dist > a.Range { continue }
+    a.targets = append(a.targets, ent)
+  }
+
   for _,target := range a.targets {
-    a.ent.level.grid[target.X][target.Y].highlight |= Attackable
+    a.Ent.level.GetCellAtPos(target.pos).highlight |= Attackable
   }
   return true
 }
 
 func (a *ActionBasicAttack) Cancel() {
   a.mark = nil
-  a.ent.level.clearCache(Attackable)
+  a.targets = nil
+  a.Ent.level.clearCache(Attackable)
 }
 
 func (a *ActionBasicAttack) MouseOver(bx,by float64) {
@@ -35,8 +45,8 @@ func (a *ActionBasicAttack) MouseOver(bx,by float64) {
 
 func (a *ActionBasicAttack) MouseClick(bx,by float64) bool {
   for i := range a.targets {
-    if int(bx) == a.targets[i].X && int(by) == a.targets[i].Y {
-      a.mark = &a.targets[i]
+    if int(bx) == a.targets[i].pos.Xi() && int(by) == a.targets[i].pos.Yi() {
+      a.mark = a.targets[i]
       return true
     }
   }
@@ -45,40 +55,49 @@ func (a *ActionBasicAttack) MouseClick(bx,by float64) bool {
 
 func (a *ActionBasicAttack) Maintain(dt int64) bool {
   if a.mark == nil { return false }
-  cost := a.weapon.Cost(a.ent)
-  if a.ent.AP < cost {
+  if a.Ent.AP < a.Cost {
     a.Cancel()
     return true
   }
-  a.ent.AP -= cost
+  a.Ent.AP -= a.Cost
 
-  ress := a.weapon.Damage(a.ent, *a.mark)
-
-  a.ent.turnToFace(a.ent.level.MakeBoardPos(a.mark.X, a.mark.Y))
-
-  dist := maxNormi(a.mark.X, a.mark.Y, int(a.ent.pos.X), int(a.ent.pos.Y))
-
-  // TODO: Melee/ranged should be determined by the weapon, not by the distance
-  if dist >= 2 {
-    a.ent.s.Command("ranged")
+  if a.Melee != 0 {
+    a.Ent.s.Command("ranged")
   } else {
-    a.ent.s.Command("melee")
+    a.Ent.s.Command("melee")
   }
 
-  for _, res := range ress {
-    res.Target.s.Command("defend")
+  mod_map := map[int]int{
+     2 : -3,
+     3 : -2,
+     4 : -1,
+     5 : -1,
+     6 :  0,
+     7 :  0,
+     8 :  0,
+     9 :  1,
+    10 :  1,
+    11 :  2,
+    12 :  3,
+  }
+  attack := a.Power + a.Ent.CurrentAttackMod() + mod_map[Dice("2d6")]
+  defense := a.mark.CurrentDefenseMod()
 
-    if res.Connect == Hit {
-      res.Target.Health -= res.Damage.Piercing
-      if res.Target.Health <= 0 {
-        res.Target.s.Command("killed")
-      } else {
-        res.Target.s.Command("damaged")
-      }
+
+  a.mark.s.Command("defend")
+  if attack <= defense {
+    a.mark.s.Command("undamaged")
+  } else {
+    a.mark.Health -= attack - defense
+    if a.mark.Health <= 0 {
+      a.mark.s.Command("killed")
     } else {
-      res.Target.s.Command("undamaged")
+      a.mark.s.Command("damaged")
     }
   }
+
+  a.Ent.turnToFace(a.mark.pos)
+
   a.Cancel()
   return true
 }

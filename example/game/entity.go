@@ -42,7 +42,6 @@ type UnitStats struct {
   Base    *UnitType
   Health  int
   AP      int
-  Weapons []Weapon
 }
 
 type CosmeticStats struct {
@@ -144,9 +143,9 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
     w.image.SetImageByTexture(thumb.Texture(), thumb.Dx(), thumb.Dy())
     w.name.SetText(e.Base.Name)
     var paths, names []string
-    for i := range e.Weapons {
-      paths = append(paths, filepath.Join(e.level.directory, "icons", e.Weapons[i].Icon()))
-      names = append(names, e.Weapons[i].Icon())
+    for i := 1; i < len(e.actions); i++ {
+      paths = append(paths, filepath.Join(e.level.directory, "icons", e.actions[i].IconPath()))
+      names = append(names, e.actions[i].IconPath())
     }
     w.actions = gui.MakeSelectImageBox(paths, names)
     w.table.AddChild(w.actions)

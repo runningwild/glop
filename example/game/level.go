@@ -343,7 +343,6 @@ type Level struct {
 
   // ATTACK data
   in_range          []Target
-  mouse_over_target Target
 }
 
 func (l *Level) GetCellAtPos(bp BoardPos) *CellData {
@@ -614,7 +613,7 @@ func (l *Level) Think(dt int64) {
   if l.selected != nil && l.command == Attack {
     index := l.selected_gui.actions.GetSelectedIndex()
     if index != -1 {
-      l.mouse_over_target = l.selected.Weapons[index].MouseOver(l.selected, float64(bx), float64(by))
+      l.selected.actions[index].MouseOver(float64(bx), float64(by))
     }
   } else {
     // Highlight the square under the cursor
@@ -923,12 +922,9 @@ func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32
       Move_speed: move_speed,
     },
   }
-  ent.actions = append(ent.actions, makeMoveAction(&ent))
+  ent.actions = append(ent.actions, MakeAction("move", &ent))
   for _, name := range unit_type.Weapons {
-    ent.Weapons = append(ent.Weapons, MakeWeapon(name))
-  }
-  for _,weapon := range ent.Weapons {
-    ent.actions = append(ent.actions, weapon.GetAction(&ent))
+    ent.actions = append(ent.actions, MakeAction(name, &ent))
   }
   l.Entities = append(l.Entities, &ent)
   return &ent
