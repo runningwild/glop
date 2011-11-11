@@ -290,6 +290,12 @@ func (bp *BoardPos) Vertex() int {
   return bp.Xi() + bp.Yi()*len(bp.level.grid)
 }
 
+func (bp *BoardPos) AreEqual(t *BoardPos) bool {
+  if bp.Xi() != t.Xi() { return false }
+  if bp.Yi() != t.Yi() { return false }
+  return true
+}
+
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
@@ -345,6 +351,10 @@ type Level struct {
   in_range          []Target
 }
 
+func (l *Level) GetCellAtVertex(v int) *CellData {
+  x,y := l.fromVertex(v)
+  return &l.grid[x][y]
+}
 func (l *Level) GetCellAtPos(bp BoardPos) *CellData {
   return &l.grid[bp.Xi()][bp.Yi()]
 }

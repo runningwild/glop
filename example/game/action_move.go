@@ -9,8 +9,8 @@ type ActionMove struct {
   basicIcon
   Ent       *Entity
 
-  reachable []int
-  path      []int
+  reachable []BoardPos
+  path      []BoardPos
 }
 
 func (a *ActionMove) Prep() bool {
@@ -24,13 +24,16 @@ func (a *ActionMove) Prep() bool {
     return false
   }
 
-  a.reachable = reachable
+  vertex_to_boardpos := func(v interface{}) interface{} {
+    return level.MakeBoardPosFromVertex(v.(int))
+  }
+
+  a.reachable = algorithm.Map(reachable, []BoardPos{}, vertex_to_boardpos).([]BoardPos)
 
   // Since this is a valid action we can go ahead and highlight all of the
   // tiles that the unit can move to
   for _,v := range a.reachable {
-    x,y := level.fromVertex(v)
-    level.grid[x][y].highlight |= Reachable
+    level.GetCellAtPos(v).highlight |= Reachable
   }
 
   return true
@@ -49,78 +52,44 @@ func (a *ActionMove) MouseOver(bx,by float64) {
 
 func (a *ActionMove) MouseClick(bx,by float64) bool {
   level := a.Ent.level
-  dst := level.toVertex(int(bx), int(by))
+  dst := level.MakeBoardPos(int(bx), int(by))
   found := false
   for _,v := range a.reachable {
-    if dst == v {
+    if dst.AreEqual(&v) {
       found = true
       break
     }
   }
   if !found { return false }
 
-  src := level.toVertex(int(a.Ent.pos.X), int(a.Ent.pos.Y))
   graph := &unitGraph{level, a.Ent.Base.attributes.MoveMods}
-  ap, path := algorithm.Dijkstra(graph, []int{src}, []int{dst})
+  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex()}, []int{dst.Vertex()})
   if len(path) <= 1 || int(ap) > a.Ent.AP {
     return false
   }
-  a.path = path[1:]
+
+  vertex_to_boardpos := func(v interface{}) interface{} {
+    return level.MakeBoardPosFromVertex(v.(int))
+  }
+
+  a.path = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
   a.reachable = nil
 
   level.clearCache(Reachable)
   for _,v := range a.path {
-    x,y := level.fromVertex(v)
-    level.grid[x][y].highlight |= Reachable
+    level.GetCellAtPos(v).highlight |= Reachable
   }
-  if !a.payForMove() {
+  if !payForMove(a.Ent, a.path[0]) {
     a.path = nil
     return false
   }
   return true
 }
 
-// Subtracts the AP cost of moving into the next cell from the Entity's 
-// available AP.  Returns false if the Entity didn't have enough AP.
-func (a *ActionMove) payForMove() bool {
-  level := a.Ent.level
-  graph := unitGraph{level, a.Ent.Base.attributes.MoveMods}
-  src := level.toVertex(int(a.Ent.pos.X), int(a.Ent.pos.Y))
-  cost := int(graph.costToMove(src, a.path[0]))
-  if cost > a.Ent.AP {
-    return false
-  }
-  a.Ent.AP -= cost
-  return true
-}
-
 func (a *ActionMove) Maintain(dt int64) bool {
-  if len(a.path) == 0 { return false }
-  pos := a.Ent.level.MakeBoardPosFromVertex(a.path[0])
-  tomove := a.Ent.Move_speed * float32(dt)
-  for tomove > 0 {
-    moved,reached := a.Ent.Advance(pos, tomove)
-    if moved == 0 && !reached { return false }
-    tomove -= moved
-
-    // Check to see if the Entity has made it to a new cell
-    if reached {
-      a.Ent.OnEntry()
-      dst := a.Ent.level.MakeBoardPosFromVertex(a.path[0])
-      a.Ent.level.GetCellAtPos(dst).highlight &= ^Reachable
-      a.path = a.path[1:]
-
-      // If we have reached our destination *OR* if something has happened and
-      // we no longer have the AP required to continue moving then this action
-      // is complete - so we return true
-      if len(a.path) == 0 || !a.payForMove() {
-        a.Cancel()
-        a.Ent.Advance(BoardPos{}, 0)
-        return true
-      }
-      pos = a.Ent.level.MakeBoardPosFromVertex(a.path[len(a.path) - 1])
-    }
+  if AdvanceEntity(a.Ent, &a.path, dt) {
+    a.Cancel()
+    return true
   }
   return false
 }
-
