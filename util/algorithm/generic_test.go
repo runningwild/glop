@@ -4,9 +4,10 @@ import (
   . "gospec"
   "gospec"
   "glop/util/algorithm"
+  "fmt"
 )
 
-func GenericSpec(c gospec.Context) {
+func ChooserSpec(c gospec.Context) {
   c.Specify("Choose on []int", func() {
     a := []int{0,1,2,3,4,5,6,7,8,9}
     var b []int
@@ -34,5 +35,20 @@ func GenericSpec(c gospec.Context) {
 
     b = algorithm.Choose(a, func(v interface{}) bool { return v.(string) < "foo" }).([]string)
     c.Expect(b, ContainsInOrder, []string{"bar", "ding"})
+  })
+}
+
+func MapperSpec(c gospec.Context) {
+  c.Specify("Map from []int to []float64", func() {
+    a := []int{0,1,2,3,4}
+    var b []float64
+    b = algorithm.Map(a, []float64{}, func(v interface{}) interface{} { return float64(v.(int)) }).([]float64)
+    c.Expect(b, ContainsInOrder, []float64{0,1,2,3,4})
+  })
+  c.Specify("Map from []int to []string", func() {
+    a := []int{0,1,2,3,4}
+    var b []string
+    b = algorithm.Map(a, []string{}, func(v interface{}) interface{} { return fmt.Sprintf("%d", v) }).([]string)
+    c.Expect(b, ContainsInOrder, []string{"0", "1", "2", "3", "4"})
   })
 }
