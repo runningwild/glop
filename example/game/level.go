@@ -346,9 +346,6 @@ type Level struct {
   // from that unit's position within its allotted AP
 
   reachable []int
-
-  // ATTACK data
-  in_range          []Target
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -404,125 +401,6 @@ func (l *Level) clearCache(mask Highlight) {
   }
   l.cached = false
 }
-
-/*
-func (l *Level) PrepAttack() {
-  if l.selected == nil {
-    return
-  }
-  item := l.selected_gui.actions.GetSelectedIndex()
-  if item < 0 {
-    item = 0
-    l.selected_gui.actions.SetSelectedIndex(item)
-  }
-  weapon := l.selected.Weapons[item]
-  if weapon.Cost(l.selected) > l.selected.AP {
-    return
-  }
-
-  l.in_range = weapon.ValidTargets(l.selected)
-
-  if len(l.in_range) == 0 {
-    return
-  }
-
-  l.command = Attack
-  l.clearCache(combat_highlights)
-}
-func (l *Level) DoAttack(target Target) {
-  if l.selected == nil {
-    return
-  }
-
-  // First check range, if the target is out of range then just return and
-  // stay in attack mode
-  item := l.selected_gui.actions.GetSelectedIndex()
-  if item < 0 {
-    item = 0
-    l.selected_gui.actions.SetSelectedIndex(item)
-  }
-  weapon := l.selected.Weapons[item]
-  valid_targets := weapon.ValidTargets(l.selected)
-  valid := false
-  for _, valid_target := range valid_targets {
-    if valid_target.Type&target.Type == 0 {
-      continue
-    }
-    if valid_target.X != int(target.X) {
-      continue
-    }
-    if valid_target.Y != int(target.Y) {
-      continue
-    }
-    valid = true
-  }
-  if !valid {
-    return
-  }
-
-  cost := weapon.Cost(l.selected)
-  if cost > l.selected.AP {
-    return
-  }
-  l.selected.AP -= cost
-
-  ress := weapon.Damage(l.selected, target)
-
-  // Resolve the actual attack here
-  l.selected.turnToFace(mathgl.Vec2{float32(target.X), float32(target.Y)})
-
-  x2 := int(l.selected.pos.X)
-  y2 := int(l.selected.pos.Y)
-  dist := maxNormi(target.X, target.Y, x2, y2)
-
-  // TODO: Melee/ranged should be determined by the weapon, not by the distance
-  if dist >= 2 {
-    l.selected.s.Command("ranged")
-  } else {
-    l.selected.s.Command("melee")
-  }
-
-  for _, res := range ress {
-    res.Target.s.Command("defend")
-
-    if res.Connect == Hit {
-      res.Target.Health -= res.Damage.Piercing
-      if res.Target.Health <= 0 {
-        res.Target.s.Command("killed")
-      } else {
-        res.Target.s.Command("damaged")
-      }
-    } else {
-      res.Target.s.Command("undamaged")
-    }
-  }
-
-  l.clearCache(combat_highlights)
-  l.command = NoCommand
-}
-func (l *Level) PrepMove() {
-  return
-  if l.selected == nil {
-    return
-  }
-
-fmt.Printf("atts: %v\n", l.selected.UnitStats.Base.attributes.MoveMods)
-  l.clearCache(combat_highlights)
-
-  bx := int(l.selected.pos.X)
-  by := int(l.selected.pos.Y)
-  graph := &unitGraph{l, l.selected.Base.attributes.MoveMods}
-  l.reachable = algorithm.ReachableWithinLimit(graph, []int{l.toVertex(bx, by)}, float64(l.selected.AP))
-
-  if len(l.reachable) == 0 {
-    return
-  }
-  l.command = Move
-}
-
-func (l *Level) DoMove(click_x, click_y int) {
-}
-*/
 
 func (l *Level) figureVisible() {
   if !l.editor_gui.Collapsed {
@@ -620,12 +498,10 @@ func (l *Level) Think(dt int64) {
 
   bx, by := l.Terrain.WindowToBoard(l.winx, l.winy)
   // mouseovers
-  if l.selected != nil && l.command == Attack {
-    index := l.selected_gui.actions.GetSelectedIndex()
-    if index != -1 {
-      l.selected.actions[index].MouseOver(float64(bx), float64(by))
-    }
-  } else {
+  if l.current_action != nil {
+    l.current_action.MouseOver(float64(bx), float64(by))
+  }
+  if l.selected == nil {
     // Highlight the square under the cursor
     mx := int(bx)
     my := int(by)

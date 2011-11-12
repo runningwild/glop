@@ -62,14 +62,11 @@
   }
 },
 {
-  "Type" : "basic attack",
+  "Type" : "charge attack",
   "Name" : "Pounce",
   "Icon_path" : "weapons/bite.png",
   "Int_params" : {
-    "Power" : 3,
-    "Cost" : 2,
-    "Range" : 1,
-    "Melee" : 1
+    "Power" : 3
   }
 }
 ]
