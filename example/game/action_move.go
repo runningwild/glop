@@ -52,7 +52,7 @@ func (a *ActionMove) MouseOver(bx,by float64) {
 
 func (a *ActionMove) MouseClick(bx,by float64) bool {
   level := a.Ent.level
-  dst := level.MakeBoardPos(int(bx), int(by))
+  dst := MakeBoardPos(int(bx), int(by))
   found := false
   for _,v := range a.reachable {
     if dst.AreEqual(&v) {
@@ -63,7 +63,7 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
   if !found { return false }
 
   graph := &unitGraph{level, a.Ent.Base.attributes.MoveMods}
-  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex()}, []int{dst.Vertex()})
+  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, []int{dst.Vertex(a.Ent.level)})
   if len(path) <= 1 || int(ap) > a.Ent.AP {
     return false
   }

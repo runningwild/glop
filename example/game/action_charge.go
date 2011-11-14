@@ -38,10 +38,10 @@ func (a *ActionCharge) Prep() bool {
         dsts = append(dsts, ent.level.toVertex(x, y))
       }
     }
-    ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex()}, dsts)
+    ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, dsts)
     if int(ap) > a.Ent.AP { continue }
     a.valid_marks = append(a.valid_marks, ent.pos)
-    a.pos_to_path[ent.pos.Vertex()] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
+    a.pos_to_path[ent.pos.Vertex(a.Ent.level)] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
   }
   if len(a.valid_marks) == 0 {
     return false
@@ -76,7 +76,7 @@ func (a *ActionCharge) MouseClick(bx,by float64) bool {
   a.path = path
 
   var mark *Entity
-  mark_cell := a.Ent.level.MakeBoardPos(int(bx), int(by))
+  mark_cell := MakeBoardPos(int(bx), int(by))
   for _,mark = range a.Ent.level.Entities {
     if mark.pos.AreEqual(&mark_cell) {
       a.mark = mark

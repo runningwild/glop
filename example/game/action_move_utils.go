@@ -5,7 +5,7 @@ package game
 func payForMove(ent *Entity, dst BoardPos) bool {
   level := ent.level
   graph := unitGraph{level, ent.Base.attributes.MoveMods}
-  cost := int(graph.costToMove(ent.pos.Vertex(), dst.Vertex()))
+  cost := int(graph.costToMove(ent.pos.Vertex(ent.level), dst.Vertex(ent.level)))
   if cost > ent.AP {
     return false
   }
@@ -40,3 +40,18 @@ func AdvanceEntity(ent *Entity, path *[]BoardPos, dt int64) bool {
   }
   return false
 }
+
+// Returns all Entitys that are not on the same side as the src Entity, are
+// within rng of the src Entity, and are visible to the src Entity.
+func getEntsWithinRange(src *Entity, rng int, level *Level) []*Entity {
+  var targets []*Entity
+  for _,ent := range level.Entities {
+    if ent.side == src.side { continue }
+    dist := maxNormi(src.pos.Xi(), src.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
+    if _,ok := src.visible[ent.pos.Vertex(ent.level)]; !ok { continue }
+    if dist > rng { continue }
+    targets = append(targets, ent)
+  }
+  return targets
+}
+

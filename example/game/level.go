@@ -266,16 +266,15 @@ const (
 
 type BoardPos struct {
   mathgl.Vec2
-  level *Level
 }
 
-func (l *Level) MakeBoardPos(x,y int) BoardPos {
-  return BoardPos{mathgl.Vec2{ float32(x), float32(y)}, l}
+func MakeBoardPos(x,y int) BoardPos {
+  return BoardPos{mathgl.Vec2{ float32(x), float32(y)} }
 }
 
 func (l *Level) MakeBoardPosFromVertex(v int) BoardPos {
   x,y := l.fromVertex(v)
-  return l.MakeBoardPos(x, y)
+  return MakeBoardPos(x, y)
 }
 
 func (bp *BoardPos) Xi() int {
@@ -286,14 +285,19 @@ func (bp *BoardPos) Yi() int {
   return int(bp.Y)
 }
 
-func (bp *BoardPos) Vertex() int {
-  return bp.Xi() + bp.Yi()*len(bp.level.grid)
+func (bp *BoardPos) Vertex(level *Level) int {
+  return bp.Xi() + bp.Yi()*len(level.grid)
 }
 
 func (bp *BoardPos) AreEqual(t *BoardPos) bool {
   if bp.Xi() != t.Xi() { return false }
   if bp.Yi() != t.Yi() { return false }
   return true
+}
+
+// Returns the maxnorm distance between two points
+func (bp *BoardPos) Dist(t *BoardPos) int {
+  return maxNormi(bp.Xi(), bp.Yi(), t.Xi(), t.Yi())
 }
 
 // Contains everything for the playing of the game
@@ -800,7 +804,7 @@ func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32
     UnitStats: UnitStats{
       Base: &unit_type,
     },
-    pos:   l.MakeBoardPos(x, y),
+    pos:   MakeBoardPos(x, y),
     side:  side,
     s:     sprite,
     level: l,

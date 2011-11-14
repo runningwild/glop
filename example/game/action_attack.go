@@ -20,13 +20,9 @@ func (a *ActionBasicAttack) Prep() bool {
     return false
   }
 
-  a.targets = nil
-  for _,ent := range a.Ent.level.Entities {
-    if ent.side == a.Ent.side { continue }
-    dist := maxNormi(a.Ent.pos.Xi(), a.Ent.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
-    if _,ok := a.Ent.visible[ent.pos.Vertex()]; !ok { continue }
-    if dist > a.Range { continue }
-    a.targets = append(a.targets, ent)
+  a.targets = getEntsWithinRange(a.Ent, a.Range, a.Ent.level)
+  if len(a.targets) == 0 {
+    return false
   }
 
   for _,target := range a.targets {
