@@ -29,11 +29,6 @@ type UnitPlacement struct {
   Name string
 }
 
-type staticCellData struct {
-}
-type cachedCellData struct {
-}
-
 type Highlight uint32
 
 type CellData struct {
@@ -43,6 +38,7 @@ type CellData struct {
 
   // Transient data
   highlight Highlight
+  ent       *Entity
 }
 
 const (
@@ -256,14 +252,6 @@ func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
   return adj, weight
 }
 
-type Command int
-
-const (
-  NoCommand Command = iota
-  Move
-  Attack
-)
-
 type BoardPos struct {
   mathgl.Vec2
 }
@@ -277,26 +265,38 @@ func (l *Level) MakeBoardPosFromVertex(v int) BoardPos {
   return MakeBoardPos(x, y)
 }
 
-func (bp *BoardPos) Xi() int {
+func (bp BoardPos) Xi() int {
   return int(bp.X)
 }
 
-func (bp *BoardPos) Yi() int {
+func (bp BoardPos) Yi() int {
   return int(bp.Y)
 }
 
-func (bp *BoardPos) Vertex(level *Level) int {
+func (bp BoardPos) Sub(t BoardPos) BoardPos {
+  return MakeBoardPos(bp.Xi() - t.Xi(), bp.Yi() - t.Yi())
+}
+
+func (bp BoardPos) Add(t BoardPos) BoardPos {
+  return MakeBoardPos(bp.Xi() + t.Xi(), bp.Yi() + t.Yi())
+}
+
+func (bp BoardPos) Scale(scale int) BoardPos {
+  return MakeBoardPos(bp.Xi() * scale, bp.Yi() * scale)
+}
+
+func (bp BoardPos) Vertex(level *Level) int {
   return bp.Xi() + bp.Yi()*len(level.grid)
 }
 
-func (bp *BoardPos) AreEqual(t *BoardPos) bool {
+func (bp BoardPos) IntEquals(t BoardPos) bool {
   if bp.Xi() != t.Xi() { return false }
   if bp.Yi() != t.Yi() { return false }
   return true
 }
 
 // Returns the maxnorm distance between two points
-func (bp *BoardPos) Dist(t *BoardPos) int {
+func (bp BoardPos) Dist(t BoardPos) int {
   return maxNormi(bp.Xi(), bp.Yi(), t.Xi(), t.Yi())
 }
 
@@ -311,9 +311,6 @@ type Level struct {
   // whose turn it is, side 1 goes first, then 2, then back to 1...
   side     int
   side_gui *gui.TextLine
-
-  // unset when the cache is cleared, lets Think() know it has to refil the cache
-  cached bool
 
   // The single gui element containing all other elements related to the
   // game
@@ -334,22 +331,11 @@ type Level struct {
   // window coords of the mouse
   winx, winy int
 
-  // The most recently prepped valid command
-  command Command
-
   // Indicates if an action is currently happening such that a new one cannot
   // start yet
   mid_action bool
 
   current_action Action
-
-
-  // MOVE data
-
-  // If a unit is selected this will hold the list of cells that are reachable
-  // from that unit's position within its allotted AP
-
-  reachable []int
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -403,7 +389,6 @@ func (l *Level) clearCache(mask Highlight) {
       l.grid[i][j].Clear(mask)
     }
   }
-  l.cached = false
 }
 
 func (l *Level) figureVisible() {
@@ -515,14 +500,22 @@ func (l *Level) Think(dt int64) {
     }
   }
 
-  l.cached = true
-
-  // Draw tiles
   for i := range l.grid {
     for j := range l.grid[i] {
+      // Draw tiles
       l.Terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
+
+      // Erase entities in the grid so that we can replace them with their current
+      // positions, since they may have changed
+      l.grid[i][j].ent = nil
     }
   }
+
+  // Update entity positions
+  for _,ent := range l.Entities {
+    l.GetCellAtPos(ent.pos).ent = ent
+  }
+
 }
 
 // Some gui elements are dependent on entities we have selected, etc...
@@ -817,5 +810,6 @@ func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32
     ent.actions = append(ent.actions, MakeAction(name, &ent))
   }
   l.Entities = append(l.Entities, &ent)
+  l.grid[x][y].ent = &ent
   return &ent
 }

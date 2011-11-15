@@ -78,7 +78,7 @@ func (a *ActionCharge) MouseClick(bx,by float64) bool {
   var mark *Entity
   mark_cell := MakeBoardPos(int(bx), int(by))
   for _,mark = range a.Ent.level.Entities {
-    if mark.pos.AreEqual(&mark_cell) {
+    if mark.pos.IntEquals(mark_cell) {
       a.mark = mark
       return true
     }

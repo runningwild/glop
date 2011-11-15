@@ -59,27 +59,13 @@ func (a *ActionBasicAttack) Maintain(dt int64) bool {
   a.Ent.AP -= a.Cost
 
   if a.Melee != 0 {
-    a.Ent.s.Command("ranged")
-  } else {
     a.Ent.s.Command("melee")
+  } else {
+    a.Ent.s.Command("ranged")
   }
 
-  mod_map := map[int]int{
-     2 : -3,
-     3 : -2,
-     4 : -1,
-     5 : -1,
-     6 :  0,
-     7 :  0,
-     8 :  0,
-     9 :  1,
-    10 :  1,
-    11 :  2,
-    12 :  3,
-  }
-  attack := a.Power + a.Ent.CurrentAttackMod() + mod_map[Dice("2d6")]
+  attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3)
   defense := a.mark.CurrentDefenseMod()
-
 
   a.mark.s.Command("defend")
   if attack <= defense {

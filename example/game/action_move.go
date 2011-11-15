@@ -55,7 +55,7 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
   dst := MakeBoardPos(int(bx), int(by))
   found := false
   for _,v := range a.reachable {
-    if dst.AreEqual(&v) {
+    if dst.IntEquals(v) {
       found = true
       break
     }

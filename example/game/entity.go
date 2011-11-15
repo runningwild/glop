@@ -255,6 +255,9 @@ func bresenham(x, y, x2, y2 int) [][2]int {
   return ret
 }
 
+// TODO: Might be able to see to the other side of the map because we're just
+// converting the points to vertices and not actually checking that they lie
+// within the bounds of the map.
 func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
   for _, v := range line {
     e.visible[e.level.toVertex(v[0], v[1])] = true
@@ -371,8 +374,8 @@ func (e *Entity) Advance(bp BoardPos, max_dist float32) (float32, bool) {
   }
 
   dst.Normalize()
-  dst.Scale(max_dist)
-  src.Add(&dst.Vec2)
+  dst.Vec2.Scale(max_dist)
+  src.Vec2.Add(&dst.Vec2)
   e.pos.Assign(&src.Vec2)
   e.turnToFace(bp)
   return max_dist, false
