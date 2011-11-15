@@ -307,6 +307,14 @@ func (bp BoardPos) Dist(t BoardPos) int {
   return maxNormi(bp.Xi(), bp.Yi(), t.Xi(), t.Yi())
 }
 
+func (bp BoardPos) Valid(level *Level) bool {
+  if bp.Xi() < 0 { return false }
+  if bp.Yi() < 0 { return false }
+  if bp.Xi() >= len(level.grid) { return false }
+  if bp.Yi() >= len(level.grid[0]) { return false }
+  return true
+}
+
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
@@ -573,7 +581,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
       l.selected = ent
     }
   } else {
-    if l.current_action.MouseClick(float64(click.X), float64(click.Y)) {
+    if !l.mid_action && l.current_action.MouseClick(float64(click.X), float64(click.Y)) {
       l.mid_action = true
     }
   }

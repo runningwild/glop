@@ -45,16 +45,7 @@ func (a *ActionMultiStrike) MouseOver(bx,by float64) {
 }
 
 func (a *ActionMultiStrike) MouseClick(bx,by float64) bool {
-  bp := MakeBoardPos(int(bx), int(by))
-  t := a.Ent.level.GetCellAtPos(bp).ent
-  if t == nil { return false }
-  if _,ok := a.targets[t]; !ok { return false }
-  if _,ok := a.marks[t]; ok {
-    return true
-  }
-  a.marks[t] = true
-  a.Ent.level.GetCellAtPos(bp).highlight |= Targeted
-  return len(a.marks) == a.Count
+  return findMultipleUniqueTargets(bx, by, a.Ent.level, &a.targets, &a.marks, a.Count)
 }
 
 func (a *ActionMultiStrike) Maintain(dt int64) bool {
@@ -72,7 +63,7 @@ func (a *ActionMultiStrike) Maintain(dt int64) bool {
 
 
   for mark,_ := range a.marks {
-    attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3)
+    attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3 - 4)
     defense := mark.CurrentDefenseMod()
 
     mark.s.Command("defend")

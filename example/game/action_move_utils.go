@@ -54,3 +54,26 @@ func getEntsWithinRange(src *Entity, rng int, level *Level) []*Entity {
   }
   return targets
 }
+
+// If there is an entity at bx,by and that entity is in targets, then returns
+// that entity, otherwise returns nil.
+func findTargetOnClick(bx,by float64, level *Level, targets map[*Entity]bool) *Entity {
+  bp := MakeBoardPos(int(bx), int(by))
+  t := level.GetCellAtPos(bp).ent
+  if _,ok := targets[t]; ok {
+    return t
+  }
+  return nil
+}
+
+func findMultipleUniqueTargets(bx,by float64, level *Level, targets,marks *map[*Entity]bool, count int) bool {
+  t := findTargetOnClick(bx, by, level, *targets)
+  if _,ok := (*marks)[t]; ok {
+    return true
+  }
+  if t != nil {
+    (*marks)[t] = true
+    level.GetCellAtPos(MakeBoardPos(int(bx),int(by))).highlight |= Targeted
+  }
+  return len(*marks) == count
+}
