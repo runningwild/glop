@@ -62,6 +62,29 @@
   }
 },
 {
+  "Type" : "linear shift",
+  "Name" : "Harpoon",
+  "Icon_path" : "weapons/harpoon.png",
+  "Int_params" : {
+    "Cost" : 3,
+    "Range" : 10,
+    "Pull" : 2,
+    "Push" : 3
+  }
+},
+{
+  "Type" : "multistrike",
+  "Name" : "Multi",
+  "Icon_path" : "weapons/uzi.png",
+  "Int_params" : {
+    "Cost" : 3,
+    "Range" : 10,
+    "Power" : 2,
+    "Melee" : 0,
+    "Count" : 3
+  }
+},
+{
   "Type" : "charge attack",
   "Name" : "Pounce",
   "Icon_path" : "weapons/bite.png",

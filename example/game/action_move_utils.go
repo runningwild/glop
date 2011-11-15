@@ -54,4 +54,3 @@ func getEntsWithinRange(src *Entity, rng int, level *Level) []*Entity {
   }
   return targets
 }
-

@@ -50,6 +50,10 @@ const (
   Attackable
   // If the attack action is selected this indicates cells that the unit can attack
 
+  Targeted
+  // For some actions that require selecting multiple targets this can serve to
+  // indicate something that has been selected
+
   AttackMouseOver
   // MouseOver effect when in attack mode - could be multiple cells for an AOE
 
@@ -136,7 +140,10 @@ func (t *CellData) Render(x, y, z, scale float32) {
         r, g, b, a = 0.7, 0.2, 0.2, 0.5
         draw_quad()
       }
-      if t.highlight&Attackable != 0 {
+      if t.highlight&Targeted != 0 {
+        r, g, b, a = 0.7, 0.2, 0.2, 0.7
+        draw_quad()
+      } else if t.highlight&Attackable != 0 {
         r, g, b, a = 0.7, 0.2, 0.2, 0.2
         draw_quad()
       }
