@@ -70,9 +70,9 @@ func (a *ActionMultiStrike) Maintain(dt int64) bool {
     a.Ent.s.Command("ranged")
   }
 
-  attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3)
 
   for mark,_ := range a.marks {
+    attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3)
     defense := mark.CurrentDefenseMod()
 
     mark.s.Command("defend")
