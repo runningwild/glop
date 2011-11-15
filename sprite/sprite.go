@@ -563,6 +563,9 @@ func (s *Sprite) CurAnim() string {
 func (s *Sprite) CurState() string {
   return s.cur_state.Name
 }
+func (s *Sprite) NumPendingCommands() int {
+  return len(s.pending_cmds)
+}
 
 func (s *Sprite) Command(cmd string) {
   edge := s.cur_state.FindEdge(cmd)
