@@ -5,6 +5,7 @@ import (
   "glop/gin"
   "glop/gui"
   "glop/sprite"
+  "glop/util/algorithm"
   "gl"
   "math"
   "github.com/arbaal/mathgl"
@@ -382,6 +383,10 @@ func (l *Level) Round() {
   } else {
     l.side_gui.SetText("It is The Man's turn to move")
   }
+
+  // Filter out dead entities
+  l.Entities = algorithm.Choose(l.Entities, func (a interface{}) bool { return a.(*Entity).Health > 0 }).([]*Entity)
+
   for i := range l.Entities {
     if l.Entities[i].side != l.side {
       continue
