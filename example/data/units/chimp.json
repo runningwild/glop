@@ -1,14 +1,18 @@
 {
   "Name" : "Chimp",
+  "Stats" : {
+    "DynamicStats" : {
+      "Health" : 3,
+      "Ap" : 3
+    },
+    "Defense" : 2,
+    "Atts" : [
+      "standard"
+    ]
+  },
   "Sprite" : "blue",
-  "AP" : 3,
-  "Defense" : 2,
-  "Health" : 3,
   "Weapons" : [
     "Spear",
     "Thrown Spear"
-  ],
-  "Attribute_names" : [
-    "standard"
   ]
 }

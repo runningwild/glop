@@ -1,14 +1,18 @@
 {
   "Name" : "Cheetah",
+  "Stats" : {
+    "DynamicStats" : {
+      "Health" : 3000,
+      "Ap" : 6
+    },
+    "Defense" : 2,
+    "Atts" : [
+      "standard",
+      "fleet"
+    ]
+  },
   "Sprite" : "green",
-  "AP" : 6,
-  "Defense" : 2,
-  "Health" : 3000,
   "Weapons" : [
     "Cheetah Bite"
-  ],
-  "Attribute_names" : [
-    "standard",
-    "fleet"
   ]
 }

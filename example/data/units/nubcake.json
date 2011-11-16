@@ -1,0 +1,20 @@
+{
+  "Name" : "Nubcake",
+  "Stats" : {
+    "DynamicStats" : {
+      "Health" : 50,
+      "Ap" : 400
+    },
+    "Defense" : 2,
+    "Atts" : [
+      "standard"
+    ]
+  },
+  "Sprite" : "orange",
+  "Weapons" : [
+    "Harpoon",
+    "Multi",
+    "Chain",
+    "Spray"
+  ]
+}

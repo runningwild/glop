@@ -55,7 +55,7 @@ func smoosh(a,b terrainVals, f func(av,bv int) bool) {
 
 // takes all attributes listed for a unit and combines them by taking the
 // best parts of all attributes.
-func processAttributes(attlist []string, attmap map[string]Attributes) {
+func processAttributes(attlist []string, attmap map[string]Attributes) Attributes {
   var atts Attributes
   atts.LosDistance = 0
   atts.LosMods = make(map[base.Terrain]int)
@@ -77,6 +77,7 @@ func processAttributes(attlist []string, attmap map[string]Attributes) {
     smoosh(atts.AttackMods, terrainVals.AttackMods, func(a,b int) bool { return true })
     smoosh(atts.DefenseMods, terrainVals.DefenseMods, func(a,b int) bool { return true })
   }
+  return atts
 }
 
 func LoadAttributes(path string) (map[string]Attributes, error) {
