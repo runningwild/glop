@@ -67,6 +67,12 @@ func (a *ActionChainAttack) Maintain(dt int64) bool {
   mark := a.marks[0]
   for _,ent := range []*Entity{ a.Ent, mark } {
     if ent.s.NumPendingCommands() != 0 { return false }
+    if ent.s.CurState() == "killed" {
+      // The mark may have already died from a previous attack in this chain,
+      // in that case we just skip this entity
+      a.marks = a.marks[1 : ]
+      return a.Maintain(dt)
+    }
     if ent.s.CurAnim() != "ready" { return false }
   }
 
