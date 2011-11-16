@@ -1,6 +1,7 @@
 package game
 
 import (
+  "game/base"
   "glop/gin"
   "glop/gui"
   "os"
@@ -84,7 +85,7 @@ func MakeEditor(level_data *StaticLevelData, dir, filename string) *Editor {
   e.ui.AddChild(e.cell_parent)
 
   var terrain_names []string
-  err := loadJson(filepath.Join(dir, "terrains.json"), &terrain_names)
+  err := base.LoadJson(filepath.Join(dir, "terrains.json"), &terrain_names)
   if err != nil {
     fmt.Printf("err: %s\n", err.Error())
   }
@@ -117,7 +118,7 @@ func (e *Editor) SelectCell(x, y int) {
   e.cell_parent.Collapsed = len(e.selected) == 0
 
   if len(e.selected) > 0 {
-    var terrain Terrain
+    var terrain base.Terrain
     var unit string
     var side int
     for cell, _ := range e.selected {
@@ -155,7 +156,7 @@ func (e *Editor) GetGui() gui.Widget {
 func (e *Editor) Think() {
   for cell, _ := range e.selected {
     if e.terrain_type.GetSelectedIndex() != -1 {
-      cell.Terrain = Terrain(e.terrain_type.GetSelectedOption().(string))
+      cell.Terrain = base.Terrain(e.terrain_type.GetSelectedOption().(string))
     }
     if e.starting_unit.GetSelectedIndex() != -1 {
       cell.Unit.Name = e.starting_unit.GetSelectedOption().(string)

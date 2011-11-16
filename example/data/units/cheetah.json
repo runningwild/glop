@@ -3,7 +3,7 @@
   "Sprite" : "green",
   "AP" : 6,
   "Defense" : 2,
-  "Health" : 3,
+  "Health" : 3000,
   "Weapons" : [
     "Cheetah Bite"
   ],

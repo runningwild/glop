@@ -1,7 +1,10 @@
 package game
 
-import "glop/util/algorithm"
-import "fmt"
+import (
+  "game/base"
+  "glop/util/algorithm"
+  "fmt"
+)
 
 func init() {
   registerActionType("charge attack", &ActionCharge{})
@@ -20,13 +23,13 @@ type ActionCharge struct {
 func (a *ActionCharge) Prep() bool {
   a.valid_marks = nil
   a.pos_to_path = make(map[int][]BoardPos)
-  graph := &unitGraph{a.Ent.level, a.Ent.Base.attributes.MoveMods}
+  graph := &unitGraph{a.Ent.level, a.Ent}
   vertex_to_boardpos := func(v interface{}) interface{} {
     return a.Ent.level.MakeBoardPosFromVertex(v.(int))
   }
   for _,ent := range a.Ent.level.Entities {
     if ent.side == a.Ent.side { continue }
-    if maxNormi(a.Ent.pos.Xi(), a.Ent.pos.Yi(), ent.pos.Xi(), ent.pos.Yi()) <= 2 {
+    if base.MaxNormi(a.Ent.pos.Xi(), a.Ent.pos.Yi(), ent.pos.Xi(), ent.pos.Yi()) <= 2 {
       continue
     }
     var dsts []int
@@ -39,7 +42,7 @@ func (a *ActionCharge) Prep() bool {
       }
     }
     ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, dsts)
-    if int(ap) > a.Ent.AP { continue }
+    if int(ap) > a.Ent.CurAp() { continue }
     a.valid_marks = append(a.valid_marks, ent.pos)
     a.pos_to_path[ent.pos.Vertex(a.Ent.level)] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
   }
@@ -90,29 +93,15 @@ func (a *ActionCharge) Maintain(dt int64) bool {
   if AdvanceEntity(a.Ent, &a.path, dt) {
     a.Ent.s.Command("melee")
 
-    mod_map := map[int]int{
-       2 : -3,
-       3 : -2,
-       4 : -1,
-       5 : -1,
-       6 :  0,
-       7 :  0,
-       8 :  0,
-       9 :  1,
-      10 :  1,
-      11 :  2,
-      12 :  3,
-    }
-    attack := a.Power + a.Ent.CurrentAttackMod() + mod_map[Dice("2d6")]
-    defense := a.mark.CurrentDefenseMod()
-
+    attack := a.Power + a.Ent.CurAttack() + ((Dice("5d5") - 2) / 3 - 4)
+    defense := a.mark.CurDefense()
 
     a.mark.s.Command("defend")
     if attack <= defense {
       a.mark.s.Command("undamaged")
     } else {
-      a.mark.Health -= attack - defense
-      if a.mark.Health <= 0 {
+      a.mark.DoDamage(attack - defense)
+      if a.mark.CurHealth() <= 0 {
         a.mark.s.Command("killed")
       } else {
         a.mark.s.Command("damaged")

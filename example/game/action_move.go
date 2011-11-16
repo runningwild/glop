@@ -17,8 +17,8 @@ func (a *ActionMove) Prep() bool {
   level := a.Ent.level
   bx := int(a.Ent.pos.X)
   by := int(a.Ent.pos.Y)
-  graph := &unitGraph{level, a.Ent.Base.attributes.MoveMods}
-  reachable := algorithm.ReachableWithinLimit(graph, []int{level.toVertex(bx, by)}, float64(a.Ent.AP))
+  graph := &unitGraph{level, a.Ent}
+  reachable := algorithm.ReachableWithinLimit(graph, []int{level.toVertex(bx, by)}, float64(a.Ent.CurAp()))
 
   if len(reachable) == 0 {
     return false
@@ -62,9 +62,9 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
   }
   if !found { return false }
 
-  graph := &unitGraph{level, a.Ent.Base.attributes.MoveMods}
+  graph := &unitGraph{level, a.Ent}
   ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, []int{dst.Vertex(a.Ent.level)})
-  if len(path) <= 1 || int(ap) > a.Ent.AP {
+  if len(path) <= 1 || int(ap) > a.Ent.CurAp() {
     return false
   }
 

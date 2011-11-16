@@ -1,6 +1,7 @@
 package game
 
 import (
+  "game/stats"
   "math"
   "fmt"
   "glop/gui"
@@ -16,32 +17,19 @@ import (
 type UnitType struct {
   Name string
 
-  // Name of the sprite that should be used to represent this unit
-  Sprite string
-
-  Health int
-
-  AP int
-
-  // basic combat stats, will be replaced with more interesting things later
-  Attack  int
-  Defense int
-
-  // List of the names of the weapons this unit comes with
-  Weapons []string
+  // All gameplay relevant stats are in a separate package so we are forced to
+  // go through the appropriate channels to read/modify these values
+  Stats stats.BaseStats
 
   // These attribute names are referenced against a master list of all
   // attributes and combined to determine the final attributes for this unit
   Attribute_names []string
 
-  attributes Attributes
-}
+  // Name of the sprite that should be used to represent this unit
+  Sprite string
 
-type UnitStats struct {
-  // Contains base stats before any modifier for this unit type
-  Base    *UnitType
-  Health  int
-  AP      int
+  // List of the names of the weapons this unit comes with
+  Weapons []string
 }
 
 type CosmeticStats struct {
@@ -115,8 +103,8 @@ func (w *EntityStatsWindow) update() {
   if w.ent == nil {
     return
   }
-  w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.Health, w.ent.Base.Health))
-  w.ap.SetText(fmt.Sprintf("Ap: %d/%d", w.ent.AP, w.ent.Base.AP))
+  w.health.SetText(fmt.Sprintf("Health: %d/%d", w.ent.CurHealth(), w.ent.BaseHealth()))
+  w.ap.SetText(fmt.Sprintf("Ap: %d/%d", w.ent.CurAp(), w.ent.BaseAp()))
 }
 func (w *EntityStatsWindow) DoThink(int64, bool) {
   if w.ent == nil {
@@ -141,7 +129,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
   if e != nil {
     thumb := e.s.Thumbnail()
     w.image.SetImageByTexture(thumb.Texture(), thumb.Dx(), thumb.Dy())
-    w.name.SetText(e.Base.Name)
+    w.name.SetText(e.Name)
     var paths, names []string
     for i := 1; i < len(e.actions); i++ {
       paths = append(paths, filepath.Join(e.level.directory, "icons", e.actions[i].IconPath()))
@@ -162,7 +150,9 @@ func (w *EntityStatsWindow) Draw(region gui.Region) {
 }
 
 type Entity struct {
-  UnitStats
+  Name string
+
+  *stats.Stats
   CosmeticStats
 
   // 0 indicates that the unit is unaffiliated
@@ -182,6 +172,7 @@ type Entity struct {
 }
 
 // Returns total current attack modifier
+/*
 func (e *Entity) CurrentAttackMod() int {
   x := int(e.pos.X)
   y := int(e.pos.Y)
@@ -202,6 +193,7 @@ func (e *Entity) CurrentDefenseMod() int {
   }
   return e.Base.Defense
 }
+*/
 
 func bresenham(x, y, x2, y2 int) [][2]int {
   dx := x2 - x
@@ -261,8 +253,8 @@ func bresenham(x, y, x2, y2 int) [][2]int {
 func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
   for _, v := range line {
     e.visible[e.level.toVertex(v[0], v[1])] = true
-    concealment, ok := e.UnitStats.Base.attributes.LosMods[e.level.grid[v[0]][v[1]].Terrain]
-    if concealment < 0 || !ok {
+    concealment := e.Concealment(e.level.grid[v[0]][v[1]].Terrain)
+    if concealment < 0 {
       break
     }
     vision -= concealment + 1
@@ -273,7 +265,7 @@ func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
 }
 
 func (e *Entity) figureVisibility() {
-  vision := e.UnitStats.Base.attributes.LosDistance
+  vision := e.LosDistance()
   ex := int(e.pos.X)
   ey := int(e.pos.Y)
 
@@ -312,14 +304,18 @@ func (e *Entity) Coords() (x, y int) {
 }
 
 func (e *Entity) OnSetup() {
-  e.Health = e.Base.Health
-  e.AP = e.Base.AP
+  e.Stats.Setup()
   e.figureVisibility()
 }
 func (e *Entity) OnRound() {
-  e.AP = e.Base.AP
+  e.Stats.Round()
 }
-
+func (e *Entity) CurAttack() int {
+  return e.Stats.CurAttack(e.level.GetCellAtPos(e.pos).Terrain)
+}
+func (e *Entity) CurDefense() int {
+  return e.Stats.CurDefense(e.level.GetCellAtPos(e.pos).Terrain)
+}
 // TODO: This is the method that should determine if something triggered as we
 // moved into a cell.  It will also need to return this information to the
 // caller, who can decide how to proceed.  There should be a very limited
@@ -411,10 +407,6 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
   if err != nil {
     panic(fmt.Sprintf("Error reading directory %s: %s\n", dir, err.Error()))
   }
-  atts, err := loadAttributes(dir)
-  if err != nil {
-    panic(fmt.Sprintf("Error loading attributes: %s\n", err.Error()))
-  }
 
   var units []*UnitType
   for _, path := range paths {
@@ -432,7 +424,6 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
     if err != nil {
       return nil, err
     }
-    unit.processAttributes(atts)
     units = append(units, &unit)
   }
   return units, nil

@@ -2,6 +2,8 @@ package game
 
 import (
   "errors"
+  "game/base"
+  "game/stats"
   "glop/gin"
   "glop/gui"
   "glop/sprite"
@@ -16,8 +18,6 @@ import (
   "os"
   "fmt"
 )
-
-type Terrain string
 
 type UnitPlacement struct {
   // What side the unit initially in this cell belongs to.  0 Means that there
@@ -34,7 +34,7 @@ type Highlight uint32
 
 type CellData struct {
   // Permanent data
-  Terrain Terrain
+  Terrain base.Terrain
   Unit    UnitPlacement
 
   // Transient data
@@ -175,29 +175,32 @@ func (s *StaticLevelData) toVertex(x, y int) int {
   return x + y*len(s.grid)
 }
 
+type moveCoster interface {
+  MoveCost(base.Terrain) int
+}
 type unitGraph struct {
   *Level
-  move_cost map[Terrain]int
+  moveCoster
 }
 // Assumes that src and dst are adjacent
 func (l unitGraph) costToMove(src, dst int) float64 {
   x, y := l.fromVertex(src)
   x2, y2 := l.fromVertex(dst)
 
-  cost_c, ok := l.move_cost[l.grid[x2][y2].Terrain]
-  if !ok {
+  cost_c := l.MoveCost(l.grid[x2][y2].Terrain)
+  if cost_c < 0 {
     return -1
   }
   if x == x2 || y == y2 {
     return float64(cost_c + 1)
   }
 
-  cost_a, ok := l.move_cost[l.grid[x][y2].Terrain]
-  if !ok {
+  cost_a := l.MoveCost(l.grid[x][y2].Terrain)
+  if cost_a < 0 {
     return -1
   }
-  cost_b, ok := l.move_cost[l.grid[x2][y].Terrain]
-  if !ok {
+  cost_b := l.MoveCost(l.grid[x2][y].Terrain)
+  if cost_b < 0 {
     return -1
   }
 
@@ -305,7 +308,7 @@ func (bp BoardPos) IntEquals(t BoardPos) bool {
 
 // Returns the maxnorm distance between two points
 func (bp BoardPos) Dist(t BoardPos) int {
-  return maxNormi(bp.Xi(), bp.Yi(), t.Xi(), t.Yi())
+  return base.MaxNormi(bp.Xi(), bp.Yi(), t.Xi(), t.Yi())
 }
 
 func (bp BoardPos) Valid(level *Level) bool {
@@ -385,7 +388,7 @@ func (l *Level) Round() {
   }
 
   // Filter out dead entities
-  l.Entities = algorithm.Choose(l.Entities, func (a interface{}) bool { return a.(*Entity).Health > 0 }).([]*Entity)
+  l.Entities = algorithm.Choose(l.Entities, func (a interface{}) bool { return a.(*Entity).CurHealth() > 0 }).([]*Entity)
 
   for i := range l.Entities {
     if l.Entities[i].side != l.side {
@@ -627,7 +630,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
 }
 
 type levelDataCell struct {
-  Terrain Terrain
+  Terrain base.Terrain
   Unit    UnitPlacement
 }
 type levelData struct {
@@ -740,6 +743,11 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
     panic(fmt.Sprintf("Error reading %s: %s\n", mapname, err.Error()))
   }
 
+  attmap, err := stats.LoadAttributes(filepath.Join(datadir, "attributes.json"))
+  if err != nil {
+    panic(fmt.Sprintf("Error loading attributes: %s\n", err.Error()))
+  }
+
   var level Level
   level.directory = datadir
 
@@ -771,7 +779,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
             return nil, err
           }
           side := level.grid[i][j].Unit.Side
-          level.addEntity(*unit, i, j, side, 0.0075, sprite)
+          level.addEntity(*unit, attmap, i, j, side, 0.0075, sprite)
         }
       }
     }
@@ -811,12 +819,11 @@ func (l *Level) ToggleEditor() {
   l.editor_gui.Collapsed = !l.editor_gui.Collapsed
 }
 
-func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32, sprite *sprite.Sprite) *Entity {
+func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes, x, y, side int, move_speed float32, sprite *sprite.Sprite) *Entity {
   var ent Entity
   ent = Entity{
-    UnitStats: UnitStats{
-      Base: &unit_type,
-    },
+    Name : unit_type.Name,
+    Stats : stats.MakeStats(unit_type.Stats, attmap),
     pos:   MakeBoardPos(x, y),
     side:  side,
     s:     sprite,

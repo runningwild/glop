@@ -18,7 +18,7 @@ type ActionChainAttack struct {
 }
 
 func (a *ActionChainAttack) Prep() bool {
-  if a.Ent.AP < a.Cost {
+  if a.Ent.CurAp() < a.Cost {
     return false
   }
 
@@ -52,7 +52,7 @@ func (a *ActionChainAttack) MouseClick(bx,by float64) bool {
   a.marks = append(a.marks, t)
 
   if len(a.marks) == a.Adds {
-    a.Ent.AP -= a.Cost
+    a.Ent.SpendAp(a.Cost)
     return true
   }
   return false
@@ -78,8 +78,8 @@ func (a *ActionChainAttack) Maintain(dt int64) bool {
     a.Ent.s.Command("ranged")
   }
 
-  attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3 - 4)
-  defense := mark.CurrentDefenseMod()
+  attack := a.Power + a.Ent.CurAttack() + ((Dice("5d5") - 2) / 3 - 4)
+  defense := mark.CurDefense()
 
   mark.s.Command("defend")
   if attack <= defense {
@@ -89,8 +89,8 @@ func (a *ActionChainAttack) Maintain(dt int64) bool {
     a.Cancel()
     return true
   } else {
-    mark.Health -= attack - defense
-    if mark.Health <= 0 {
+    mark.DoDamage(attack - defense)
+    if mark.CurHealth() <= 0 {
       mark.s.Command("killed")
     } else {
       mark.s.Command("damaged")

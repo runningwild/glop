@@ -17,7 +17,7 @@ type ActionMultiStrike struct {
 }
 
 func (a *ActionMultiStrike) Prep() bool {
-  if a.Ent.AP < a.Cost {
+  if a.Ent.CurAp() < a.Cost {
     return false
   }
 
@@ -49,11 +49,11 @@ func (a *ActionMultiStrike) MouseClick(bx,by float64) bool {
 }
 
 func (a *ActionMultiStrike) Maintain(dt int64) bool {
-  if a.marks == nil || a.Ent.AP < a.Cost {
+  if a.marks == nil || a.Ent.CurAp() < a.Cost {
     a.Cancel()
     return true
   }
-  a.Ent.AP -= a.Cost
+  a.Ent.SpendAp(a.Cost)
 
   if a.Melee != 0 {
     a.Ent.s.Command("melee")
@@ -63,15 +63,15 @@ func (a *ActionMultiStrike) Maintain(dt int64) bool {
 
 
   for mark,_ := range a.marks {
-    attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3 - 4)
-    defense := mark.CurrentDefenseMod()
+    attack := a.Power + a.Ent.CurAttack() + ((Dice("5d5") - 2) / 3 - 4)
+    defense := mark.CurDefense()
 
     mark.s.Command("defend")
     if attack <= defense {
       mark.s.Command("undamaged")
     } else {
-      mark.Health -= attack - defense
-      if mark.Health <= 0 {
+      mark.DoDamage(attack - defense)
+      if mark.CurHealth() <= 0 {
         mark.s.Command("killed")
       } else {
         mark.s.Command("damaged")

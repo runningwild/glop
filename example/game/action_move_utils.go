@@ -1,15 +1,17 @@
 package game
 
+import "game/base"
+
 // Subtracts the AP cost of moving into the next cell from the Entity's 
 // available AP.  Returns false if the Entity didn't have enough AP.
 func payForMove(ent *Entity, dst BoardPos) bool {
   level := ent.level
-  graph := unitGraph{level, ent.Base.attributes.MoveMods}
+  graph := unitGraph{level, ent}
   cost := int(graph.costToMove(ent.pos.Vertex(ent.level), dst.Vertex(ent.level)))
-  if cost > ent.AP {
+  if cost > ent.CurAp() {
     return false
   }
-  ent.AP -= cost
+  ent.SpendAp(cost)
   return true
 }
 
@@ -47,7 +49,7 @@ func getEntsWithinRange(src *Entity, rng int, level *Level) []*Entity {
   var targets []*Entity
   for _,ent := range level.Entities {
     if ent.side == src.side { continue }
-    dist := maxNormi(src.pos.Xi(), src.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
+    dist := base.MaxNormi(src.pos.Xi(), src.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
     if _,ok := src.visible[ent.pos.Vertex(ent.level)]; !ok { continue }
     if dist > rng { continue }
     targets = append(targets, ent)

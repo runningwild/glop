@@ -37,7 +37,7 @@ type ActionLinearShift struct {
 }
 
 func (a *ActionLinearShift) Prep() bool {
-  if a.Ent.AP < a.Cost {
+  if a.Ent.CurAp() < a.Cost {
     return false
   }
 
@@ -141,11 +141,11 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) bool {
       if target.IntEquals(bp) {
         // Start the action
         a.shift_target = target
-        if a.Ent.AP < a.Cost {
+        if a.Ent.CurAp() < a.Cost {
           a.Cancel()
           return false
         }
-        a.Ent.AP -= a.Cost
+        a.Ent.SpendAp(a.Cost)
         return true
       }
     }

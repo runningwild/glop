@@ -16,7 +16,7 @@ type ActionBasicAttack struct {
 }
 
 func (a *ActionBasicAttack) Prep() bool {
-  if a.Ent.AP < a.Cost {
+  if a.Ent.CurAp() < a.Cost {
     return false
   }
 
@@ -52,11 +52,11 @@ func (a *ActionBasicAttack) MouseClick(bx,by float64) bool {
 
 func (a *ActionBasicAttack) Maintain(dt int64) bool {
   if a.mark == nil { return false }
-  if a.Ent.AP < a.Cost {
+  if a.Ent.CurAp() < a.Cost {
     a.Cancel()
     return true
   }
-  a.Ent.AP -= a.Cost
+  a.Ent.SpendAp(a.Cost)
 
   if a.Melee != 0 {
     a.Ent.s.Command("melee")
@@ -64,15 +64,16 @@ func (a *ActionBasicAttack) Maintain(dt int64) bool {
     a.Ent.s.Command("ranged")
   }
 
-  attack := a.Power + a.Ent.CurrentAttackMod() + ((Dice("5d5") - 2) / 3)
-  defense := a.mark.CurrentDefenseMod()
+
+  attack := a.Power + a.Ent.CurAttack() + ((Dice("5d5") - 2) / 3 - 4)
+  defense := a.mark.CurDefense()
 
   a.mark.s.Command("defend")
   if attack <= defense {
     a.mark.s.Command("undamaged")
   } else {
-    a.mark.Health -= attack - defense
-    if a.mark.Health <= 0 {
+    a.mark.DoDamage(attack - defense)
+    if a.mark.CurHealth() <= 0 {
       a.mark.s.Command("killed")
     } else {
       a.mark.s.Command("damaged")

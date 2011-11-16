@@ -79,9 +79,34 @@
   "Int_params" : {
     "Cost" : 3,
     "Range" : 10,
-    "Power" : 2,
+    "Power" : 3,
     "Melee" : 0,
     "Count" : 3
+  }
+},
+{
+  "Type" : "chain attack",
+  "Name" : "Chain",
+  "Icon_path" : "weapons/chain.png",
+  "Int_params" : {
+    "Cost" : 3,
+    "Range" : 10,
+    "Power" : 3,
+    "Melee" : 0,
+    "Adds" : 3
+  }
+},
+{
+  "Type" : "spray attack",
+  "Name" : "Spray",
+  "Icon_path" : "weapons/spray.png",
+  "Int_params" : {
+    "Cost" : 3,
+    "Power" : 3,
+    "Melee" : 0,
+    "Length" : 1,
+    "Start" : 1,
+    "End" : 1
   }
 },
 {
