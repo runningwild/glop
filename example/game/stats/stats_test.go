@@ -5,6 +5,7 @@ import (
   "gospec"
   "game/stats"
   "game/base"
+  "fmt"
 )
 
 func StatsSpec(c gospec.Context) {
@@ -65,6 +66,29 @@ func StatsSpec(c gospec.Context) {
   })
 }
 
+func init() {
+  err := stats.RegisterEffectsFromJson([]byte(`
+      [{
+        "Type" : "static effect",
+        "Name" : "Slow",
+        "Int_params" : {
+          "TimedEffect" : 2,
+          "MoveCost" : 1
+        }
+      }]
+    `))
+  if err != nil {
+    panic(fmt.Sprintf("Unable to register effect: %s\n", err.Error()))
+  }
+}
+
+func MakeEffectsSpec(c gospec.Context) {
+
+  c.Specify("Effects can be made with the MakeEffect function.", func() {
+    stats.MakeEffect("Slow")
+  })
+}
+
 func EffectsSpec(c gospec.Context) {
   b := stats.BaseStats{
     DynamicStats : stats.DynamicStats{
@@ -96,7 +120,7 @@ func EffectsSpec(c gospec.Context) {
   })
   c.Specify("Movement can be affected by effects", func() {
     stat := stats.MakeStats(b, attmap)
-    stat.AddEffect(&stats.Slow{ TimedEffect : 1 })
+    stat.AddEffect(stats.MakeEffect("Slow"))
     c.Expect(stat.MoveCost("grass"), Equals, 2)
     c.Expect(stat.MoveCost("hills"), Equals, 4)
   })

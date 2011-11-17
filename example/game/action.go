@@ -57,9 +57,9 @@ type Action interface {
 }
 
 type ActionSpec struct {
-  Type      string
-  Icon_path string
-  Name      string
+  Type       string
+  Icon_path  string
+  Name       string
   Int_params map[string]int
 }
 
@@ -93,7 +93,7 @@ func assignParams(action_val reflect.Value, ent *Entity, icon_path string, int_p
     if field.Kind() != reflect.Int {
       panic(fmt.Sprintf("int param '%s' specified, but field is of type %s.", k, field.Kind()))
     }
-    field.Set(reflect.ValueOf(v))
+    field.SetInt(int64(v))
   }
 }
 
