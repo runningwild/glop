@@ -1,6 +1,5 @@
 {
   "standard" : {
-  	"LosDistance" : 15,
   	"LosMods" : {
   		"swamp" : 2,
   		"jungle" : 2,

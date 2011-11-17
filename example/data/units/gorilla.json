@@ -6,6 +6,7 @@
       "Ap" : 4
     },
     "Defense" : 3,
+    "LosDist" : 15,
     "Atts" : [
       "standard",
       "arboreal"

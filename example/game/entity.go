@@ -250,7 +250,6 @@ func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
   for _, v := range line {
     e.visible[e.level.toVertex(v[0], v[1])] = true
     concealment := e.Concealment(e.level.grid[v[0]][v[1]].Terrain)
-    fmt.Printf("Conc: %d\n", concealment)
     if concealment < 0 {
       break
     }
@@ -262,7 +261,7 @@ func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
 }
 
 func (e *Entity) figureVisibility() {
-  vision := e.LosDistance()
+  vision := e.CurLosDist(e.level.GetCellAtPos(e.pos).Terrain)
   ex := int(e.pos.X)
   ey := int(e.pos.Y)
 
@@ -423,7 +422,5 @@ func LoadAllUnits(dir string) ([]*UnitType, error) {
     }
     units = append(units, &unit)
   }
-  d,_ := json.Marshal(units[0])
-  fmt.Printf("Data\n%s\n", string(d))
   return units, nil
 }

@@ -21,9 +21,6 @@ func (m *terrainVals) UnmarshalJSON(data []byte) error {
   return nil
 }
 type Attributes struct {
-  // How far the unit is able to see
-  LosDistance int
-
   // How much less the unit can see if it has to look through this terrain
   // 0 indicates that its vision is not affected by this terrain
   // any unspecified terrain blocks los
@@ -57,7 +54,6 @@ func smoosh(a,b terrainVals, f func(av,bv int) bool) {
 // best parts of all attributes.
 func processAttributes(attlist []string, attmap map[string]Attributes) Attributes {
   var atts Attributes
-  atts.LosDistance = 0
   atts.LosMods = make(map[base.Terrain]int)
   atts.MoveMods = make(map[base.Terrain]int)
   atts.AttackMods = make(map[base.Terrain]int)
@@ -69,9 +65,6 @@ func processAttributes(attlist []string, attmap map[string]Attributes) Attribute
       panic(fmt.Sprintf("Attribute '%s' could not be found.", name))
     }
 
-    if atts.LosDistance < terrainVals.LosDistance {
-      atts.LosDistance = terrainVals.LosDistance
-    }
     smoosh(atts.LosMods, terrainVals.LosMods, func(a,b int) bool { return a < b })
     smoosh(atts.MoveMods, terrainVals.MoveMods, func(a,b int) bool { return a < b })
     smoosh(atts.AttackMods, terrainVals.AttackMods, func(a,b int) bool { return true })

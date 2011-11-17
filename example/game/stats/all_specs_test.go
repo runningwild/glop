@@ -1,13 +1,15 @@
-package game_test
+package stats_test
 
 import (
   "gospec"
   "testing"
 )
 
+
 func TestAllSpecs(t *testing.T) {
   r := gospec.NewRunner()
-  r.AddSpec(WeaponLoadingSpec)
-  r.AddSpec(WeaponSpecsSpec)
+  r.AddSpec(StatsSpec)
+  r.AddSpec(EffectsSpec)
   gospec.MainGoTest(r, t)
 }
+

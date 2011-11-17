@@ -6,6 +6,7 @@
       "Ap" : 400
     },
     "Defense" : 2,
+    "LosDist" : 15,
     "Atts" : [
       "standard"
     ]
