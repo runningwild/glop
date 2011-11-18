@@ -20,6 +20,16 @@ func (icon basicIcon) IconPath() string {
   return string(icon)
 }
 
+type nonInterrupt struct {}
+func (nonInterrupt) Interrupt() bool { return false }
+
+type ActionCommit int
+const (
+  NoAction ActionCommit = iota
+  StandardAction
+  StandardInterrupt
+)
+
 // An Action represents anything that a unit can spend AP to do, move, attack,
 // charge, anything where the user will have to use some sort of GUI to make
 // it explicit how to perform the action, etc...
@@ -44,10 +54,12 @@ type Action interface {
   MouseOver(bx,by float64)
 
   // Called after Prep() and indicates that the user clicked at a particular
-  // location.  This function should return true if this click means that the
-  // user has chosen to commit to this action.
-  // bx and by are board coordinates
-  MouseClick(bx,by float64) bool
+  // location.  This return value indicates one of the following:
+  // NoAction - The user has not committed to this action
+  // StandardAction - The user has committed to this action, begin resolving it.
+  // StandardInterrupt - The user has committed to this action, keep it resident
+  // and poll it as an interrupt when appropriate to see if it activates.
+  MouseClick(bx,by float64) ActionCommit
 
   // Called periodically after Prep() and after the action has been committed.
   // The method should return false until the action is complete, at which
@@ -55,6 +67,12 @@ type Action interface {
   // methods and Maintain() will not be called again until the action has been
   // prepped again.
   Maintain(dt int64) bool
+
+  // Actions that act as interrupts should return true when this method is
+  // called if they want to take effect.  Once an interrupt returns true from
+  // this method it will take over as the active action and its Maintain method
+  // will be called regularly until it returns true.
+  Interrupt() bool
 }
 
 type ActionSpec struct {

@@ -7,6 +7,7 @@ func init() {
 }
 type ActionAoe struct {
   basicIcon
+  nonInterrupt
   Ent     *Entity
   Cost    int
   Range   int
@@ -43,8 +44,8 @@ func (a *ActionAoe) Cancel() {
 func (a *ActionAoe) MouseOver(bx,by float64) {
 }
 
-func (a *ActionAoe) MouseClick(bx,by float64) bool {
-  return true
+func (a *ActionAoe) MouseClick(bx,by float64) ActionCommit {
+  return StandardAction
 }
 
 func (a *ActionAoe) Maintain(dt int64) bool {

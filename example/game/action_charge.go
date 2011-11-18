@@ -11,6 +11,7 @@ func init() {
 }
 type ActionCharge struct {
   basicIcon
+  nonInterrupt
   Ent       *Entity
   Power     int
 
@@ -73,9 +74,9 @@ func (a *ActionCharge) MouseOver(bx,by float64) {
   }
 }
 
-func (a *ActionCharge) MouseClick(bx,by float64) bool {
+func (a *ActionCharge) MouseClick(bx,by float64) ActionCommit {
   path,ok := a.pos_to_path[a.Ent.level.toVertex(int(bx), int(by))]
-  if !ok { return false }
+  if !ok { return NoAction }
   a.path = path
 
   var mark *Entity
@@ -83,10 +84,10 @@ func (a *ActionCharge) MouseClick(bx,by float64) bool {
   for _,mark = range a.Ent.level.Entities {
     if mark.pos.IntEquals(mark_cell) {
       a.mark = mark
-      return true
+      return StandardAction
     }
   }
-  return false
+  return NoAction
 }
 
 func (a *ActionCharge) Maintain(dt int64) bool {

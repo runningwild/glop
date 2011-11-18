@@ -5,6 +5,7 @@ func init() {
 }
 type ActionSpray struct {
   basicIcon
+  nonInterrupt
   Ent    *Entity
   Cost   int
   Power  int
@@ -75,8 +76,8 @@ func (a *ActionSpray) MouseOver(bx,by float64) {
   }
 }
 
-func (a *ActionSpray) MouseClick(bx,by float64) bool {
-  return true
+func (a *ActionSpray) MouseClick(bx,by float64) ActionCommit {
+  return StandardAction
 }
 
 func (a *ActionSpray) Maintain(dt int64) bool {

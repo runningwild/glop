@@ -589,7 +589,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
       l.selected = ent
     }
   } else {
-    if !l.mid_action && l.current_action.MouseClick(float64(click.X), float64(click.Y)) {
+    if !l.mid_action && l.current_action.MouseClick(float64(click.X), float64(click.Y)) == StandardAction {
       l.mid_action = true
     }
   }

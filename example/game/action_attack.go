@@ -5,6 +5,7 @@ func init() {
 }
 type ActionBasicAttack struct {
   basicIcon
+  nonInterrupt
   Ent     *Entity
   Power   int
   Cost    int
@@ -40,14 +41,14 @@ func (a *ActionBasicAttack) Cancel() {
 func (a *ActionBasicAttack) MouseOver(bx,by float64) {
 }
 
-func (a *ActionBasicAttack) MouseClick(bx,by float64) bool {
+func (a *ActionBasicAttack) MouseClick(bx,by float64) ActionCommit {
   for i := range a.targets {
     if int(bx) == a.targets[i].pos.Xi() && int(by) == a.targets[i].pos.Yi() {
       a.mark = a.targets[i]
-      return true
+      return StandardAction
     }
   }
-  return false
+  return NoAction
 }
 
 func (a *ActionBasicAttack) Maintain(dt int64) bool {

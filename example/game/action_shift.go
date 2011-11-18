@@ -5,6 +5,7 @@ func init() {
 }
 type ActionLinearShift struct {
   basicIcon
+  nonInterrupt
   Ent       *Entity
 
   // Duh
@@ -120,7 +121,7 @@ func (a *ActionLinearShift) figureShiftTargets(target_pos BoardPos) {
 }
 
 
-func (a *ActionLinearShift) MouseClick(bx,by float64) bool {
+func (a *ActionLinearShift) MouseClick(bx,by float64) ActionCommit {
   bp := MakeBoardPos(int(bx), int(by))
   // If current_target is nil then the user hasn't selected the target entity
   // for this action
@@ -132,7 +133,7 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) bool {
       }
     }
     if a.current_target == nil {
-      return false
+      return NoAction
     }
   } else {
     // If current_target isn't nil then the user might be selecting a cell to
@@ -143,10 +144,10 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) bool {
         a.shift_target = target
         if a.Ent.CurAp() < a.Cost {
           a.Cancel()
-          return false
+          return NoAction
         }
         a.Ent.SpendAp(a.Cost)
-        return true
+        return StandardAction
       }
     }
 
@@ -163,7 +164,7 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) bool {
       a.Ent.level.GetCellAtPos(a.current_target.pos).highlight |= Attackable
     }
   }
-  return false
+  return NoAction
 }
 
 func (a *ActionLinearShift) Maintain(dt int64) bool {

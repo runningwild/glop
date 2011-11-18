@@ -7,6 +7,7 @@ func init() {
 }
 type ActionMove struct {
   basicIcon
+  nonInterrupt
   Ent       *Entity
 
   reachable []BoardPos
@@ -50,7 +51,7 @@ func (a *ActionMove) MouseOver(bx,by float64) {
   // the user clicked here
 }
 
-func (a *ActionMove) MouseClick(bx,by float64) bool {
+func (a *ActionMove) MouseClick(bx,by float64) ActionCommit {
   level := a.Ent.level
   dst := MakeBoardPos(int(bx), int(by))
   found := false
@@ -60,12 +61,12 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
       break
     }
   }
-  if !found { return false }
+  if !found { return NoAction }
 
   graph := &unitGraph{level, a.Ent}
   ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, []int{dst.Vertex(a.Ent.level)})
   if len(path) <= 1 || int(ap) > a.Ent.CurAp() {
-    return false
+    return NoAction
   }
 
   vertex_to_boardpos := func(v interface{}) interface{} {
@@ -81,9 +82,9 @@ func (a *ActionMove) MouseClick(bx,by float64) bool {
   }
   if !payForMove(a.Ent, a.path[0]) {
     a.path = nil
-    return false
+    return NoAction
   }
-  return true
+  return StandardAction
 }
 
 func (a *ActionMove) Maintain(dt int64) bool {

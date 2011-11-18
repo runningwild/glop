@@ -5,6 +5,7 @@ func init() {
 }
 type ActionChainAttack struct {
   basicIcon
+  nonInterrupt
   Ent   *Entity
 
   Power int
@@ -45,17 +46,17 @@ func (a *ActionChainAttack) Cancel() {
 func (a *ActionChainAttack) MouseOver(bx,by float64) {
 }
 
-func (a *ActionChainAttack) MouseClick(bx,by float64) bool {
+func (a *ActionChainAttack) MouseClick(bx,by float64) ActionCommit {
   t := findTargetOnClick(bx, by, a.Ent.level, a.targets)
-  if t == nil { return false }
+  if t == nil { return NoAction }
   a.Ent.level.GetCellAtPos(t.pos).highlight |= Targeted
   a.marks = append(a.marks, t)
 
   if len(a.marks) == a.Adds {
     a.Ent.SpendAp(a.Cost)
-    return true
+    return StandardAction
   }
-  return false
+  return NoAction
 }
 
 func (a *ActionChainAttack) Maintain(dt int64) bool {

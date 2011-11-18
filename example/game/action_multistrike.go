@@ -5,6 +5,7 @@ func init() {
 }
 type ActionMultiStrike struct {
   basicIcon
+  nonInterrupt
   Ent     *Entity
   Power   int
   Cost    int
@@ -44,8 +45,11 @@ func (a *ActionMultiStrike) Cancel() {
 func (a *ActionMultiStrike) MouseOver(bx,by float64) {
 }
 
-func (a *ActionMultiStrike) MouseClick(bx,by float64) bool {
-  return findMultipleUniqueTargets(bx, by, a.Ent.level, &a.targets, &a.marks, a.Count)
+func (a *ActionMultiStrike) MouseClick(bx,by float64) ActionCommit {
+  if findMultipleUniqueTargets(bx, by, a.Ent.level, &a.targets, &a.marks, a.Count) {
+    return StandardAction
+  }
+  return NoAction
 }
 
 func (a *ActionMultiStrike) Maintain(dt int64) bool {
