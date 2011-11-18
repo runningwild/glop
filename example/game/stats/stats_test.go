@@ -75,6 +75,20 @@ func init() {
           "TimedEffect" : 2,
           "MoveCost" : 1
         }
+      },
+      {
+        "Type" : "shield",
+        "Name" : "Shield2",
+        "Int_params" : {
+          "Amount" : 2
+        }
+      },
+      {
+        "Type" : "shield",
+        "Name" : "Shield4",
+        "Int_params" : {
+          "Amount" : 4
+        }
       }]
     `))
   if err != nil {
@@ -83,7 +97,6 @@ func init() {
 }
 
 func MakeEffectsSpec(c gospec.Context) {
-
   c.Specify("Effects can be made with the MakeEffect function.", func() {
     stats.MakeEffect("Slow")
   })
@@ -120,8 +133,85 @@ func EffectsSpec(c gospec.Context) {
   })
   c.Specify("Movement can be affected by effects", func() {
     stat := stats.MakeStats(b, attmap)
-    stat.AddEffect(stats.MakeEffect("Slow"))
+    stat.AddEffect(stats.MakeEffect("Slow"), false)
     c.Expect(stat.MoveCost("grass"), Equals, 2)
     c.Expect(stat.MoveCost("hills"), Equals, 4)
+  })
+}
+
+func DamageSpec(c gospec.Context) {
+  b := stats.BaseStats{
+    DynamicStats : stats.DynamicStats{
+      Health : 10,
+      Ap : 10,
+    },
+  }
+  c.Specify("Damage and shield effects work and interact properly", func() {
+    stat := stats.MakeStats(b, nil)
+    c.Expect(stat.BaseHealth(), Equals, 10)
+    c.Expect(stat.CurHealth(), Equals, 10)
+    stat.DoDamage(3)
+    c.Expect(stat.CurHealth(), Equals, 7)
+
+    shield := stats.MakeEffect("Shield2")
+    stat.AddEffect(shield, false)
+    c.Expect(shield.Active(), Equals, true)
+    stat.DoDamage(5)
+    c.Expect(stat.CurHealth(), Equals, 4)
+    c.Expect(shield.Active(), Equals, false)
+
+    shield = stats.MakeEffect("Shield2")
+    stat.AddEffect(shield, false)
+    c.Expect(shield.Active(), Equals, true)
+    stat.DoDamage(1)
+    c.Expect(stat.CurHealth(), Equals, 4)
+    c.Expect(shield.Active(), Equals, true)
+    stat.DoDamage(1)
+    c.Expect(stat.CurHealth(), Equals, 4)
+    c.Expect(shield.Active(), Equals, false)
+    stat.DoDamage(1)
+    c.Expect(stat.CurHealth(), Equals, 3)
+    c.Expect(shield.Active(), Equals, false)
+  })
+}
+
+func DupSpec(c gospec.Context) {
+  b := stats.BaseStats{
+    DynamicStats : stats.DynamicStats{
+      Health : 10,
+      Ap : 10,
+    },
+  }
+  c.Specify("Only one effect of any name should be present at a time.", func() {
+    stat := stats.MakeStats(b, nil)
+    c.Expect(stat.BaseHealth(), Equals, 10)
+    c.Expect(stat.CurHealth(), Equals, 10)
+
+    stat.AddEffect(stats.MakeEffect("Shield2"), false)
+    stat.AddEffect(stats.MakeEffect("Shield2"), false)
+    stat.AddEffect(stats.MakeEffect("Shield2"), false)
+    stat.DoDamage(10)
+    c.Expect(stat.CurHealth(), Equals, 2)
+  })
+  c.Specify("New effects overwrite old effects by the same name.", func() {
+    stat := stats.MakeStats(b, nil)
+    c.Expect(stat.BaseHealth(), Equals, 10)
+    c.Expect(stat.CurHealth(), Equals, 10)
+
+    stat.AddEffect(stats.MakeEffect("Shield2"), false)
+    stat.DoDamage(1)
+    stat.AddEffect(stats.MakeEffect("Shield2"), false)
+    stat.DoDamage(5)
+    c.Expect(stat.CurHealth(), Equals, 7)
+  })
+  c.Specify("Different effects of the same time can coexist.", func() {
+    stat := stats.MakeStats(b, nil)
+    c.Expect(stat.BaseHealth(), Equals, 10)
+    c.Expect(stat.CurHealth(), Equals, 10)
+
+    stat.AddEffect(stats.MakeEffect("Shield2"), false)
+    stat.AddEffect(stats.MakeEffect("Shield4"), false)
+    stat.DoDamage(10)
+    c.Expect(stat.CurHealth(), Equals, 6)
   })
 }

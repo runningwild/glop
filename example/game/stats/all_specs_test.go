@@ -11,6 +11,8 @@ func TestAllSpecs(t *testing.T) {
   r.AddSpec(StatsSpec)
   r.AddSpec(MakeEffectsSpec)
   r.AddSpec(EffectsSpec)
+  r.AddSpec(DamageSpec)
+  r.AddSpec(DupSpec)
   gospec.MainGoTest(r, t)
 }
 

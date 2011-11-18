@@ -34,6 +34,12 @@ func (s *Stats) AddEffect(e Effect, apply_now bool) {
       return
     }
   }
+  for i := range s.effects {
+    if s.effects[i].Name() == e.Name() {
+      s.effects[i] = e
+      return
+    }
+  }
   s.effects = append(s.effects, e)
 }
 func (s *Stats) BaseHealth() int {
@@ -105,6 +111,9 @@ func (s *Stats) Round() {
   }).([]Effect)
 }
 func (s *Stats) DoDamage(dmg int) {
+  for _,effect := range s.effects {
+    dmg = effect.ModifyIncomingDamage(dmg, s.base)
+  }
   s.cur.Health -= dmg
   if s.cur.Health < 0 {
     s.cur.Health = 0

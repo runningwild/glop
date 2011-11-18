@@ -12,6 +12,10 @@ import (
 )
 
 type Effect interface {
+  // Two effects with the same Name() are equivalent.  This is used to prevent
+  // the same effect from being applied to one unit more than once at a time.
+  Name() string
+
   // Can apply modifiers to BaseStats, but cannot actually change them, since we
   // need to keep the original data around
   ModifyStats(BaseStats) BaseStats
@@ -22,7 +26,11 @@ type Effect interface {
 
   // Given an amount of damage, returns a modified amount of damage that this
   // unit should take.
-  ModifyDamage(int, BaseStats) int
+  ModifyIncomingDamage(int, BaseStats) int
+
+  // Given an amount of damage, returns a modified amount of damage that this
+  // unit should deal.
+  ModifyOutgoingDamage(int, BaseStats) int
 
   // Modifies an Attribute based on the terrain and its current value
   ModifyMovement(base.Terrain, int) int
@@ -37,10 +45,14 @@ type Effect interface {
   Active() bool
 }
 
-type NullEffect struct {}
+type NullEffect struct {
+  Id string
+}
+func (n NullEffect) Name() string { return n.Id }
 func (NullEffect) ModifyStats(b BaseStats) BaseStats { return b }
 func (NullEffect) ModifyDynamicStats(*DynamicStats, BaseStats) { }
-func (NullEffect) ModifyDamage(dmg int, b BaseStats) int { return dmg }
+func (NullEffect) ModifyIncomingDamage(dmg int, b BaseStats) int { return dmg }
+func (NullEffect) ModifyOutgoingDamage(dmg int, b BaseStats) int { return dmg }
 func (NullEffect) ModifyMovement(t base.Terrain, n int) int { return n }
 func (NullEffect) ModifyLos(t base.Terrain, n int) int { return n }
 func (NullEffect) ModifyAttack(t base.Terrain, n int) int { return n }
@@ -57,6 +69,9 @@ func (e *TimedEffect) Active() bool {
   return (*e) > 0
 }
 
+func init() {
+  registerEffectType("static effect", &StaticEffect{})
+}
 type StaticEffect struct {
   NullEffect
   TimedEffect
@@ -87,10 +102,25 @@ func (e *StaticEffect) ModifyLos(_ base.Terrain, cost int) int {
 }
 
 func init() {
-  registerEffectType("static effect", &StaticEffect{})
+  registerEffectType("shield", &ShieldEffect{})
 }
-
-
+type ShieldEffect struct {
+  NullEffect
+  Amount int
+}
+func (e *ShieldEffect) ModifyIncomingDamage(dmg int, b BaseStats) int {
+  if e.Amount >= dmg {
+    e.Amount -= dmg
+    return 0
+  }
+  dmg -= e.Amount
+  e.Amount = 0
+  return dmg
+}
+func (e *ShieldEffect) Round() { }
+func (e *ShieldEffect) Active() bool {
+  return e.Amount > 0
+}
 
 type EffectSpec struct {
   Type       string
@@ -107,7 +137,8 @@ func registerEffectType(name string, effect Effect) {
   effect_type_registry[name] = reflect.TypeOf(effect).Elem()
 }
 
-func assignParams(effect_val reflect.Value, int_params map[string]int) {
+func assignParams(effect_val reflect.Value, name string, int_params map[string]int) {
+  reflect.Indirect(effect_val).FieldByName("Id").Set(reflect.ValueOf(name))
   for k,v := range int_params {
     field := reflect.Indirect(effect_val).FieldByName(k)
     if field.Kind() == reflect.Invalid {
@@ -122,6 +153,12 @@ func assignParams(effect_val reflect.Value, int_params map[string]int) {
 
 var effect_spec_registry map[string]EffectSpec
 
+// TODO: This is basically so that we can test, or potentially reload specs on
+// the fly, without having to deal with passing around a stats registry object.
+// Singletons are a bad idea though, so maybe this should change.
+func ClearSpecRegistry() {
+    effect_spec_registry = nil
+}
 func registerEffectSpec(spec EffectSpec) {
   if effect_spec_registry == nil {
     effect_spec_registry = make(map[string]EffectSpec)
@@ -145,7 +182,7 @@ func MakeEffect(spec_name string) Effect {
     panic(fmt.Sprintf("Tried to load an unknown EffectSpec '%s'.", spec_name))
   }
   effect := reflect.New(effect_type_registry[spec.Type])
-  assignParams(effect, spec.Int_params)
+  assignParams(effect, spec_name, spec.Int_params)
   return effect.Interface().(Effect)
 }
 
