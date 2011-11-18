@@ -1,0 +1,66 @@
+[
+{
+  "Type" : "static effect",
+  "Name" : "Heal",
+  "Int_params" : {
+    "TimedEffect" : 0,
+    "Health" : 1
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Lead Charge",
+  "Int_params" : {
+    "TimedEffect" : 0,
+    "Ap" : 2
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Guide",
+  "Int_params" : {
+    "TimedEffect" : 1,
+    "MoveCost" : -1
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Poison",
+  "Int_params" : {
+    "TimedEffect" : 3,
+    "Health" : -1
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Stultify",
+  "Int_params" : {
+    "TimedEffect" : 1,
+    "Ap" : -2
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Confuse",
+  "Int_params" : {
+    "TimedEffect" : 1,
+    "Attack" : -1
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Blind",
+  "Int_params" : {
+    "TimedEffect" : 1,
+    "LosCost" : 1
+  }
+},
+{
+  "Type" : "static effect",
+  "Name" : "Slow",
+  "Int_params" : {
+    "TimedEffect" : 1,
+    "MoveCost" : 1
+  }
+}
+]

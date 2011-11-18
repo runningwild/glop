@@ -7,6 +7,7 @@ import (
   "glop/gui"
   "glop/system"
   "game"
+  "game/stats"
   "runtime"
   "runtime/pprof"
   "fmt"
@@ -83,6 +84,9 @@ func actualMain() {
   ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
   //  table := gui.MakeVerticalTable()
   //  ui.AddChild(table)
+
+  effects_dir := filepath.Join(basedir, "effects")
+  stats.RegisterAllEffectsInDir(effects_dir)
 
   actions_dir := filepath.Join(basedir, "actions")
   game.RegisterAllSpecsInDir(actions_dir)

@@ -1,6 +1,7 @@
 package game
 
 import (
+  "game/stats"
   "fmt"
   "reflect"
   "path/filepath"
@@ -60,6 +61,7 @@ type ActionSpec struct {
   Type       string
   Icon_path  string
   Name       string
+  Effects    []string
   Int_params map[string]int
 }
 
@@ -72,18 +74,41 @@ func registerActionType(name string, action Action) {
   action_type_registry[name] = reflect.TypeOf(action).Elem()
 }
 
-func assignParams(action_val reflect.Value, ent *Entity, icon_path string, int_params map[string]int) {
+func assignParams(spec_name string, action_val reflect.Value, ent *Entity, icon_path string, effects []string, int_params map[string]int) {
   ent_field := reflect.Indirect(action_val).FieldByName("Ent")
   if ent_field.Kind() == reflect.Invalid {
-    panic(fmt.Sprintf("Action %v has no Entity field.", action_val))
+    panic(fmt.Sprintf("Action '%s' has no Entity field.", spec_name))
   }
   ent_field.Set(reflect.ValueOf(ent))
 
   icon_field := reflect.Indirect(action_val).FieldByName("basicIcon")
   if icon_field.Kind() == reflect.Invalid {
-    panic(fmt.Sprintf("Action %v has no basicIcon field.", action_val))
+    panic(fmt.Sprintf("Action '%s' has no basicIcon field.", spec_name))
   }
   icon_field.Set(reflect.ValueOf(basicIcon(icon_path)))
+
+  effects_field := reflect.Indirect(action_val).FieldByName("Effects")
+  if effects_field.IsValid() {
+    if effects == nil {
+      panic(fmt.Sprintf("Action '%s' expected an Effects field, but it was not supplied.", spec_name))
+    }
+    func () {
+      defer func() {
+        if r := recover(); r != nil {
+          panic(fmt.Sprintf("Action '%s' specified an unknown effect: %v\n", spec_name, r))
+        }
+      } ()
+      // Just check that all of the effects are valid effects
+      for _,effect := range effects {
+        stats.MakeEffect(effect)
+      }
+    } ()
+    effects_field.Set(reflect.ValueOf(effects))
+  } else {
+    if effects != nil {
+      panic(fmt.Sprintf("Action '%s' did not expect an Effects field, but it was supplied.", spec_name))
+    }
+  }
 
   for k,v := range int_params {
     field := reflect.Indirect(action_val).FieldByName(k)
@@ -122,7 +147,7 @@ func MakeAction(spec_name string, ent *Entity) Action {
     panic(fmt.Sprintf("Tried to load an unknown ActionSpec '%s'.", spec_name))
   }
   action := reflect.New(action_type_registry[spec.Type])
-  assignParams(action, ent, spec.Icon_path, spec.Int_params)
+  assignParams(spec_name, action, ent, spec.Icon_path, spec.Effects, spec.Int_params)
   return action.Interface().(Action)
 }
 

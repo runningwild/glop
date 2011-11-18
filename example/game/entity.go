@@ -306,6 +306,9 @@ func (e *Entity) OnSetup() {
 func (e *Entity) OnRound() {
   e.Stats.Round()
 }
+func (e *Entity) AddEffect(effect stats.Effect) {
+  e.Stats.AddEffect(effect, e.side == e.level.side)
+}
 func (e *Entity) CurAttack() int {
   return e.Stats.CurAttack(e.level.GetCellAtPos(e.pos).Terrain)
 }

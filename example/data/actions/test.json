@@ -104,9 +104,9 @@
     "Cost" : 3,
     "Power" : 3,
     "Melee" : 0,
-    "Length" : 1,
+    "Length" : 6,
     "Start" : 1,
-    "End" : 1
+    "End" : 3
   }
 },
 {
@@ -115,6 +115,21 @@
   "Icon_path" : "weapons/bite.png",
   "Int_params" : {
     "Power" : 3
+  }
+},
+{
+  "Type" : "aoe",
+  "Name" : "Guerrilla Tactics",
+  "Icon_path" : "weapons/gorilla.png",
+  "Effects" : [
+    "Poison"
+  ],
+  "Int_params" : {
+    "Cost" : 1,
+    "Range" : 0,
+    "Size" : 2,
+    "Allies" : 1,
+    "Enemies" : 0
   }
 }
 ]

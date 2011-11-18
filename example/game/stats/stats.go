@@ -24,7 +24,16 @@ type Stats struct {
   effects []Effect
 }
 
-func (s *Stats) AddEffect(e Effect) {
+func (s *Stats) AddEffect(e Effect, apply_now bool) {
+  if apply_now {
+    e.ModifyDynamicStats(&s.cur, s.base)
+    if s.cur.Health > s.base.Health {
+      s.cur.Health = s.base.Health
+    }
+    if !e.Active() {
+      return
+    }
+  }
   s.effects = append(s.effects, e)
 }
 func (s *Stats) BaseHealth() int {
@@ -85,7 +94,11 @@ func (s *Stats) Setup() {
 func (s *Stats) Round() {
   s.cur.Ap = s.base.Ap
   for i := range s.effects {
+    s.effects[i].ModifyDynamicStats(&s.cur, s.base)
     s.effects[i].Round()
+  }
+  if s.cur.Health > s.base.Health {
+    s.cur.Health = s.base.Health
   }
   s.effects = algorithm.Choose(s.effects, func(a interface{}) bool {
     return a.(Effect).Active()
