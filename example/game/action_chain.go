@@ -59,22 +59,26 @@ func (a *ActionChainAttack) MouseClick(bx,by float64) ActionCommit {
   return NoAction
 }
 
-func (a *ActionChainAttack) Maintain(dt int64) bool {
+func (a *ActionChainAttack) Pause() bool {
+  return true
+}
+
+func (a *ActionChainAttack) Maintain(dt int64) MaintenanceStatus {
   if len(a.marks) == 0 {
     a.Cancel()
-    return true
+    return Complete
   }
 
   mark := a.marks[0]
   for _,ent := range []*Entity{ a.Ent, mark } {
-    if ent.s.NumPendingCommands() != 0 { return false }
+    if ent.s.NumPendingCommands() != 0 { return InProgress }
     if ent.s.CurState() == "killed" {
       // The mark may have already died from a previous attack in this chain,
       // in that case we just skip this entity
       a.marks = a.marks[1 : ]
       return a.Maintain(dt)
     }
-    if ent.s.CurAnim() != "ready" { return false }
+    if ent.s.CurAnim() != "ready" { return InProgress }
   }
 
   a.marks = a.marks[1 : ]
@@ -94,7 +98,7 @@ func (a *ActionChainAttack) Maintain(dt int64) bool {
 
     // Chain attacks only continue after successful attacks
     a.Cancel()
-    return true
+    return Complete
   } else {
     mark.DoDamage(attack - defense)
     if mark.CurHealth() <= 0 {
@@ -106,5 +110,5 @@ func (a *ActionChainAttack) Maintain(dt int64) bool {
 
   a.Ent.turnToFace(mark.pos)
 
-  return false
+  return InProgress
 }

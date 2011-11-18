@@ -6,6 +6,7 @@ func init() {
 type ActionBasicAttack struct {
   basicIcon
   nonInterrupt
+  uninterruptable
   Ent     *Entity
   Power   int
   Cost    int
@@ -51,11 +52,10 @@ func (a *ActionBasicAttack) MouseClick(bx,by float64) ActionCommit {
   return NoAction
 }
 
-func (a *ActionBasicAttack) Maintain(dt int64) bool {
-  if a.mark == nil { return false }
-  if a.Ent.CurAp() < a.Cost {
+func (a *ActionBasicAttack) Maintain(dt int64) MaintenanceStatus {
+  if a.mark == nil || a.Ent.CurAp() < a.Cost {
     a.Cancel()
-    return true
+    return Complete
   }
   a.Ent.SpendAp(a.Cost)
 
@@ -84,5 +84,5 @@ func (a *ActionBasicAttack) Maintain(dt int64) bool {
   a.Ent.turnToFace(a.mark.pos)
 
   a.Cancel()
-  return true
+  return Complete
 }

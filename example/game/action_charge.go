@@ -90,7 +90,11 @@ func (a *ActionCharge) MouseClick(bx,by float64) ActionCommit {
   return NoAction
 }
 
-func (a *ActionCharge) Maintain(dt int64) bool {
+func (a *ActionCharge) Pause() bool {
+  return true
+}
+
+func (a *ActionCharge) Maintain(dt int64) MaintenanceStatus {
   if AdvanceEntity(a.Ent, &a.path, dt) {
     a.Ent.s.Command("melee")
 
@@ -113,7 +117,7 @@ func (a *ActionCharge) Maintain(dt int64) bool {
 
 
     a.Cancel()
-    return true
+    return Complete
   }
-  return false
+  return InProgress
 }

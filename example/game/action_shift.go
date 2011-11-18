@@ -6,6 +6,7 @@ func init() {
 type ActionLinearShift struct {
   basicIcon
   nonInterrupt
+  uninterruptable
   Ent       *Entity
 
   // Duh
@@ -167,11 +168,11 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) ActionCommit {
   return NoAction
 }
 
-func (a *ActionLinearShift) Maintain(dt int64) bool {
+func (a *ActionLinearShift) Maintain(dt int64) MaintenanceStatus {
   path := []BoardPos{ a.shift_target }
   if AdvanceEntity(a.current_target, &path, dt) {
     a.Cancel()
-    return true
+    return Complete
   }
-  return false
+  return InProgress
 }

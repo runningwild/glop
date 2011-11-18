@@ -8,6 +8,7 @@ func init() {
 type ActionAoe struct {
   basicIcon
   nonInterrupt
+  uninterruptable
   Ent     *Entity
   Cost    int
   Range   int
@@ -48,7 +49,7 @@ func (a *ActionAoe) MouseClick(bx,by float64) ActionCommit {
   return StandardAction
 }
 
-func (a *ActionAoe) Maintain(dt int64) bool {
+func (a *ActionAoe) Maintain(dt int64) MaintenanceStatus {
   a.Ent.SpendAp(a.Cost)
   if a.Range == 0 {
     for dx := -a.Size; dx <= a.Size; dx++ {
@@ -68,5 +69,5 @@ func (a *ActionAoe) Maintain(dt int64) bool {
     
   }
   a.Cancel()
-  return true
+  return Complete
 }

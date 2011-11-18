@@ -6,6 +6,7 @@ func init() {
 type ActionMultiStrike struct {
   basicIcon
   nonInterrupt
+  uninterruptable
   Ent     *Entity
   Power   int
   Cost    int
@@ -52,10 +53,10 @@ func (a *ActionMultiStrike) MouseClick(bx,by float64) ActionCommit {
   return NoAction
 }
 
-func (a *ActionMultiStrike) Maintain(dt int64) bool {
+func (a *ActionMultiStrike) Maintain(dt int64) MaintenanceStatus {
   if a.marks == nil || a.Ent.CurAp() < a.Cost {
     a.Cancel()
-    return true
+    return Complete
   }
   a.Ent.SpendAp(a.Cost)
 
@@ -89,5 +90,5 @@ func (a *ActionMultiStrike) Maintain(dt int64) bool {
   }
 
   a.Cancel()
-  return true
+  return Complete
 }

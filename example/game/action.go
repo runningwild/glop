@@ -23,11 +23,24 @@ func (icon basicIcon) IconPath() string {
 type nonInterrupt struct {}
 func (nonInterrupt) Interrupt() bool { return false }
 
+type uninterruptable struct {}
+func (uninterruptable) Pause() bool { panic("This action should never be paused.") }
+
+type cancelOnPause struct {}
+func (cancelOnPause) Pause() bool { return false }
+
 type ActionCommit int
 const (
   NoAction ActionCommit = iota
   StandardAction
   StandardInterrupt
+)
+
+type MaintenanceStatus int
+const (
+  InProgress MaintenanceStatus = iota
+  CheckForInterrupts
+  Complete
 )
 
 // An Action represents anything that a unit can spend AP to do, move, attack,
@@ -48,6 +61,13 @@ type Action interface {
   // to keep around.  Can be called redundantly.
   Cancel()
 
+  // Actions will be paused if interrupted.  This method will only be called
+  // immediately after a call to Maintain() if the return value of the call to
+  // Maintain() is CheckForInterrupts.  Actions may choose to completely cancel
+  // themselves when they are paused, if they do so they should return false
+  // from this method, otherwise they should return true.
+  Pause() bool
+
   // Called regularly after Prep() but before Do() and gives the action a
   // chance to modify any UI in response to mouse location.
   // bx and by are board coordinates
@@ -62,11 +82,11 @@ type Action interface {
   MouseClick(bx,by float64) ActionCommit
 
   // Called periodically after Prep() and after the action has been committed.
-  // The method should return false until the action is complete, at which
-  // point it should return true.  After this method returns true the Mouse*()
-  // methods and Maintain() will not be called again until the action has been
-  // prepped again.
-  Maintain(dt int64) bool
+  // The method should return InProgress until the action is complete, at which
+  // point it should return Complete.  After this method returns true the
+  // Mouse*() methods and Maintain() will not be called again until the action
+  // has been prepped again.
+  Maintain(dt int64) MaintenanceStatus
 
   // Actions that act as interrupts should return true when this method is
   // called if they want to take effect.  Once an interrupt returns true from

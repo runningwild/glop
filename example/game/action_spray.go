@@ -6,6 +6,7 @@ func init() {
 type ActionSpray struct {
   basicIcon
   nonInterrupt
+  uninterruptable
   Ent    *Entity
   Cost   int
   Power  int
@@ -80,7 +81,7 @@ func (a *ActionSpray) MouseClick(bx,by float64) ActionCommit {
   return StandardAction
 }
 
-func (a *ActionSpray) Maintain(dt int64) bool {
+func (a *ActionSpray) Maintain(dt int64) MaintenanceStatus {
   a.Ent.SpendAp(a.Cost)
   if a.Melee != 0 {
     a.Ent.s.Command("melee")
@@ -106,5 +107,5 @@ func (a *ActionSpray) Maintain(dt int64) bool {
     }
   }
   a.Cancel()
-  return true
+  return Complete
 }
