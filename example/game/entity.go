@@ -161,35 +161,18 @@ type Entity struct {
   // Board coordinates of this entity's current position
   pos BoardPos
 
+  // Board coordinates of this entity's previous position, needed to update the
+  // level grid as this entity moves around the board.
+  prev_pos BoardPos
+
   // set of vertices that this unit can see from its current location
   visible map[int]bool
 
   actions []Action
-}
 
-// Returns total current attack modifier
-/*
-func (e *Entity) CurrentAttackMod() int {
-  x := int(e.pos.X)
-  y := int(e.pos.Y)
-  terrain := e.level.grid[x][y].Terrain
-  if val,ok := e.UnitStats.Base.attributes.AttackMods[terrain]; ok {
-    return val
-  }
-  return 0
+  // If the Entity has used an interrupt action it will be put into this slice.
+  interrupts []Action
 }
-
-// Returns total current defense modifier
-func (e *Entity) CurrentDefenseMod() int {
-  x := int(e.pos.X)
-  y := int(e.pos.Y)
-  terrain := e.level.grid[x][y].Terrain
-  if val,ok := e.UnitStats.Base.attributes.DefenseMods[terrain]; ok {
-    return e.Base.Defense + val
-  }
-  return e.Base.Defense
-}
-*/
 
 func bresenham(x, y, x2, y2 int) [][2]int {
   dx := x2 - x
@@ -365,6 +348,9 @@ func (e *Entity) Advance(bp BoardPos, max_dist float32) (float32, bool) {
   // return, the caller can decide whether or not to continue.
   if dist <= max_dist {
     e.pos.Assign(&bp.Vec2)
+    e.level.GetCellAtPos(e.prev_pos).ent = nil
+    e.level.GetCellAtPos(e.pos).ent = e
+    e.prev_pos = e.pos
     return dist, true
   }
 

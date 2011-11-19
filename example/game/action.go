@@ -26,9 +26,6 @@ func (nonInterrupt) Interrupt() bool { return false }
 type uninterruptable struct {}
 func (uninterruptable) Pause() bool { panic("This action should never be paused.") }
 
-type cancelOnPause struct {}
-func (cancelOnPause) Pause() bool { return false }
-
 type ActionCommit int
 const (
   NoAction ActionCommit = iota

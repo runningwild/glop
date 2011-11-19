@@ -91,10 +91,12 @@ func (a *ActionCharge) MouseClick(bx,by float64) ActionCommit {
 }
 
 func (a *ActionCharge) Pause() bool {
+  a.Ent.s.Command("stop")
   return true
 }
 
 func (a *ActionCharge) Maintain(dt int64) MaintenanceStatus {
+  plen := len(a.path)
   if AdvanceEntity(a.Ent, &a.path, dt) {
     a.Ent.s.Command("melee")
 
@@ -118,6 +120,9 @@ func (a *ActionCharge) Maintain(dt int64) MaintenanceStatus {
 
     a.Cancel()
     return Complete
+  }
+  if len(a.path) < plen {
+    return CheckForInterrupts
   }
   return InProgress
 }

@@ -354,7 +354,12 @@ type Level struct {
   // start yet
   mid_action bool
 
-  current_action Action
+  current_interupt Action
+  current_action   Action
+
+  // Contains all Actions that have been registered as interrupts.  Gets
+  // partially cleared out every round.
+  interrupts []Action
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -386,6 +391,23 @@ func (l *Level) Round() {
   } else {
     l.side_gui.SetText("It is The Man's turn to move")
   }
+
+  // Any unit whose turn it is should no longer have interrupts pending, so go
+  // through and remove those entities' interrupts from their slices and the
+  // Level's slice of interrupts
+  interrupts := make(map[Action]bool)
+  for _,ent := range l.Entities {
+    if ent.side == l.side {
+      for _,interrupt := range ent.interrupts {
+        interrupts[interrupt] = true
+      }
+      ent.interrupts = nil
+    }
+  }
+  l.interrupts = algorithm.Choose(l.interrupts, func (a interface{}) bool {
+    _,ok := interrupts[a.(Action)]
+    return !ok
+  }).([]Action)
 
   // Filter out dead entities
   l.Entities = algorithm.Choose(l.Entities, func (a interface{}) bool { return a.(*Entity).CurHealth() > 0 }).([]*Entity)
@@ -457,16 +479,51 @@ func (l *Level) figureVisible() {
   }
 }
 
+func (l *Level) findInterrupt() Action {
+  var interrupt Action
+  for i := range l.interrupts {
+    if l.interrupts[i].Interrupt() {
+      interrupt = l.interrupts[i]
+      break
+    }
+  }
+  if interrupt == nil {
+    return nil
+  }
+  l.interrupts = algorithm.Choose(l.interrupts, func (a interface{}) bool {
+    return a.(Action) != interrupt
+  }).([]Action)
+  return interrupt
+}
+
 func (l *Level) Think(dt int64) {
+  // If there is an action happening right now then work on that action, unless
+  // that action is being interrupted, in which case work on the interrupt
+  // instead.
   if l.current_action != nil {
-    if l.mid_action {
+    if l.current_interupt != nil {
+      if l.current_interupt.Maintain(dt) == Complete {
+        l.current_interupt = l.findInterrupt()
+      }
+    }
+    if l.mid_action && l.current_interupt == nil {
       switch l.current_action.Maintain(dt) {
         case Complete:
         l.selected_gui.actions.SetSelectedIndex(-1)
         l.current_action = nil
         l.mid_action = false
+        fallthrough
 
         case CheckForInterrupts:
+        interrupt := l.findInterrupt()
+        if interrupt != nil {
+          if l.current_action != nil && l.current_action.Pause() {
+            l.current_interupt = interrupt
+          } else {
+            l.current_action = interrupt
+            l.mid_action = true
+          }
+        }
 
         case InProgress:
       }
@@ -596,8 +653,18 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
       l.selected = ent
     }
   } else {
-    if !l.mid_action && l.current_action.MouseClick(float64(click.X), float64(click.Y)) == StandardAction {
-      l.mid_action = true
+    if !l.mid_action {
+      switch l.current_action.MouseClick(float64(click.X), float64(click.Y)) {
+        case StandardAction:
+        l.mid_action = true
+
+        case StandardInterrupt:
+        l.selected.interrupts = append(l.selected.interrupts, l.current_action)
+        l.interrupts = append(l.interrupts, l.current_action)
+        l.current_action = nil
+
+        case NoAction:
+      }
     }
   }
 }
@@ -832,6 +899,7 @@ func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes
     Name : unit_type.Name,
     Stats : stats.MakeStats(unit_type.Stats, attmap),
     pos:   MakeBoardPos(x, y),
+    prev_pos:   MakeBoardPos(x, y),
     side:  side,
     s:     sprite,
     level: l,

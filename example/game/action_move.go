@@ -8,7 +8,6 @@ func init() {
 type ActionMove struct {
   basicIcon
   nonInterrupt
-  cancelOnPause
   Ent       *Entity
 
   reachable []BoardPos
@@ -88,10 +87,20 @@ func (a *ActionMove) MouseClick(bx,by float64) ActionCommit {
   return StandardAction
 }
 
+func (a *ActionMove) Pause() bool {
+  a.Ent.s.Command("stop")
+  a.Cancel()
+  return false
+}
+
 func (a *ActionMove) Maintain(dt int64) MaintenanceStatus {
+  plen := len(a.path)
   if AdvanceEntity(a.Ent, &a.path, dt) {
     a.Cancel()
     return Complete
+  }
+  if len(a.path) < plen {
+    return CheckForInterrupts
   }
   return InProgress
 }

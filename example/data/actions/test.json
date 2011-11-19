@@ -131,5 +131,16 @@
     "Allies" : 1,
     "Enemies" : 0
   }
+},
+{
+  "Type" : "counter attack",
+  "Name" : "Counter Attack",
+  "Icon_path" : "weapons/mp5.png",
+  "Int_params" : {
+    "Cost" : 5,
+    "Range" : 2,
+    "Power" : 3,
+    "Melee" : 1
+  }
 }
 ]

@@ -3,7 +3,7 @@
   "Stats" : {
     "DynamicStats" : {
       "Health" : 3000,
-      "Ap" : 6
+      "Ap" : 60
     },
     "Defense" : 2,
     "LosDist" : 15,
@@ -14,6 +14,7 @@
   },
   "Sprite" : "green",
   "Weapons" : [
-    "Cheetah Bite"
+    "Cheetah Bite",
+    "Pounce"
   ]
 }
