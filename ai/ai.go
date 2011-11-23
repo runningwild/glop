@@ -6,13 +6,36 @@ import (
   "rand"
 )
 
+type Error struct {
+  ErrorString string
+}
+func (e *Error) Error() string {
+  return e.ErrorString
+}
+var TermError error = &Error{ "Evaluation was terminated early." }
+
 type AiGraph struct {
   Graph   *yed.Graph
   Context *polish.Context
+
+  // This is a flag that will terminate evaluation early if it is set
+  term bool
+}
+
+func NewGraph() *AiGraph {
+  return &AiGraph{}
+}
+
+func (aig *AiGraph) Term() {
+  aig.term = true
 }
 
 func (aig *AiGraph) subEval(node *yed.Node) error {
   res, err := aig.Context.Eval(node.Label)
+  if aig.term {
+    aig.term = false
+    return TermError
+  }
   if err != nil {
     return err
   }
@@ -59,7 +82,10 @@ func (aig *AiGraph) subEval(node *yed.Node) error {
 func (aig *AiGraph) Eval() error {
   for _,node := range aig.Graph.Nodes {
     if node.Label == "start" {
-      aig.subEval(aig.Graph.Nodes[node.Outputs[0].Dst])
+      err := aig.subEval(aig.Graph.Nodes[node.Outputs[0].Dst])
+      if err != nil {
+        return err
+      }
     }
   }
   return nil
