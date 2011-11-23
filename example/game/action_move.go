@@ -93,6 +93,9 @@ func (a *ActionMove) Pause() bool {
   return false
 }
 
+// TODO: Need to make sure that we check for interrupts after every change in
+// position - otherwise a slow frame (i.e. a large dt) can cause us to skip
+// cells and potentially miss an interrupt that would fire from that cell.
 func (a *ActionMove) Maintain(dt int64) MaintenanceStatus {
   plen := len(a.path)
   if AdvanceEntity(a.Ent, &a.path, dt) {
