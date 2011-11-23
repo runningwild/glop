@@ -1,6 +1,9 @@
 package game
 
 import (
+  "glop/ai"
+  "yed"
+  "polish"
   "game/stats"
   "math"
   "fmt"
@@ -172,6 +175,22 @@ type Entity struct {
 
   // If the Entity has used an interrupt action it will be put into this slice.
   interrupts []Action
+
+  // AI stuff
+  aig *ai.AiGraph
+}
+
+func (e *Entity) MakeAi(filename string) error {
+  doc,err := yed.ParseFromFile(filename)
+  if err != nil {
+    return err
+  }
+  e.aig = ai.NewGraph()
+  e.aig.Graph = &doc.Graph
+  e.aig.Context = polish.MakeContext()
+  polish.AddIntMathContext(e.aig.Context)
+  AddEntityContext(e, e.aig.Context)
+  return nil
 }
 
 func bresenham(x, y, x2, y2 int) [][2]int {
