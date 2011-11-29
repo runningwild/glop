@@ -528,11 +528,20 @@ func (l *Level) findInterrupt() Action {
 // immediately.
 func (l *Level) allEntsReady() bool {
   for _,ent := range l.Entities {
-    if ent.CurHealth() > 0 && ent.s.CurAnim() != "ready" {
+    if ent.s.NumPendingCommands() > 0 || (ent.s.CurAnim() != "killed" && ent.s.CurAnim() != "ready") {
       return false
     }
   }
   return true
+}
+
+func (l *Level) GetAnim() string {
+  for _,ent := range l.Entities {
+    if ent.Name == "Nubcake" {
+      return ent.s.CurAnim()
+    }
+  }
+  panic("wtf")
 }
 
 func (l *Level) Think(dt int64) {
@@ -553,10 +562,10 @@ func (l *Level) Think(dt int64) {
     }
     if l.mid_action && l.current_interupt == nil {
       cont := false
-      fmt.Printf("Checking current action\n")
+//      fmt.Printf("Checking current action\n")
       switch l.current_action.Maintain(dt) {
         case Complete:
-          fmt.Printf("complete\n")
+//          fmt.Printf("complete\n")
         l.selected_gui.actions.SetSelectedIndex(-1)
         l.current_action = nil
         l.mid_action = false
@@ -573,18 +582,18 @@ func (l *Level) Think(dt int64) {
             l.mid_action = true
           }
           if l.side == 2 {
-            fmt.Printf("Stopping...\n")
+//            fmt.Printf("Stopping...\n")
             l.selected.cont <- false
           }
         } else if cont {
           if l.side == 2 {
-            fmt.Printf("Continuing...\n")
+//            fmt.Printf("Continuing...\n")
             l.selected.cont <- true
           }
         }
 
         case InProgress:
-          fmt.Printf("in progress\n")
+//          fmt.Printf("in progress\n")
       }
     }
   } else if l.side == 2 {
@@ -597,12 +606,12 @@ func (l *Level) Think(dt int64) {
       select {
         case f := <-l.selected.cmds:
           if !f() {
-            fmt.Printf("Not f()\n")
+//            fmt.Printf("Not f()\n")
             l.selected.cont <- false
           }
         case err = <-l.aig_errs:
           l.selected.done = true
-          fmt.Printf("Error evaluating Ai: %v\n", err)
+//          fmt.Printf("Error evaluating Ai: %v\n", err)
         default:
       }
       if l.selected.done || err != nil {
@@ -616,7 +625,7 @@ func (l *Level) Think(dt int64) {
           l.selected = ent
           go func(aig *ai.AiGraph) {
             l.aig_errs <- aig.Eval()
-            fmt.Printf("Completed evaluation\n")
+//            fmt.Printf("Completed evaluation\n")
           } (l.selected.aig)
           break
         }

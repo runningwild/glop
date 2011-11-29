@@ -2,7 +2,7 @@
   "Name" : "Nubcake",
   "Stats" : {
     "DynamicStats" : {
-      "Health" : 50,
+      "Health" : 500,
       "Ap" : 400
     },
     "Defense" : 2,

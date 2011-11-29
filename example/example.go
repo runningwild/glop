@@ -124,7 +124,6 @@ func actualMain() {
 
   profiling := false
   var load_widget gui.Widget
-  counter := 0
   for {
     n++
     next := time.Nanoseconds()
@@ -172,12 +171,6 @@ func actualMain() {
       dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
       level.Terrain.Move(dx, dy)
       zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
-  counter++
-//      if gin.In().GetKey('o').FramePressCount() > 0 {
-  if counter % 10 == -1 {
-        level.Round()
-  }
-//      }
       if gin.In().GetKey('o').FramePressCount() > 0 {
         level.Round()
       }
