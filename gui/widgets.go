@@ -333,6 +333,7 @@ func MakeSelectBox(options []SelectableWidget, vertical bool) *SelectBox {
     sb.AddChild(option)
     option.SetSelected(false)
   }
+  sb.SetSelectedIndex(-1)
   return &sb
 }
 
@@ -382,13 +383,14 @@ func (w *SelectBox) SetSelectedOption(option interface{}) {
 }
 
 func (w *SelectBox) selectIndex(index int) {
-  if w.selected >= 0 {
-    w.GetChildren()[w.selected].(SelectableWidget).SetSelected(false)
+  children := w.GetChildren()
+  if w.selected >= 0 && w.selected < len(children) {
+    children[w.selected].(SelectableWidget).SetSelected(false)
   }
-  if index < 0 || index >= len(w.GetChildren()) {
+  if index < 0 || index >= len(children) {
     index = -1
   } else {
-    w.GetChildren()[index].(SelectableWidget).SetSelected(true)
+    children[index].(SelectableWidget).SetSelected(true)
   }
   w.selected = index
 }

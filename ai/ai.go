@@ -13,29 +13,34 @@ func (e *Error) Error() string {
   return e.ErrorString
 }
 var TermError error = &Error{ "Evaluation was terminated early." }
+var StartError error = &Error{ "No start node was found." }
 
 type AiGraph struct {
   Graph   *yed.Graph
   Context *polish.Context
 
-  // This is a flag that will terminate evaluation early if it is set
-  term bool
+  // If a signal is sent along this channel it will terminate evaluation
+  term chan bool
 }
 
 func NewGraph() *AiGraph {
-  return &AiGraph{}
+  return &AiGraph{
+    term: make(chan bool, 1),
+  }
 }
 
-func (aig *AiGraph) Term() {
-  aig.term = true
+func (aig *AiGraph) Term() chan<- bool {
+  return aig.term
 }
 
 func (aig *AiGraph) subEval(node *yed.Node) error {
-  res, err := aig.Context.Eval(node.Label)
-  if aig.term {
-    aig.term = false
+  select {
+    case <-aig.term:
     return TermError
+
+    default:
   }
+  res, err := aig.Context.Eval(node.Label)
   if err != nil {
     return err
   }
@@ -63,7 +68,10 @@ func (aig *AiGraph) subEval(node *yed.Node) error {
       red = append(red, edge)
       green = append(green, edge)
     }
-    if res.Bool() {
+    if len(res) != 1 {
+      panic("Needed to evaluate a node, but it didn't leave exactly one value after evalutation.")
+    }
+    if res[0].Bool() {
       edges = green
     } else {
       edges = red
@@ -88,5 +96,5 @@ func (aig *AiGraph) Eval() error {
       }
     }
   }
-  return nil
+  return StartError
 }

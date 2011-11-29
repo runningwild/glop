@@ -9,6 +9,7 @@ import (
   "game"
   "game/stats"
   "runtime"
+  "runtime/debug"
   "runtime/pprof"
   "fmt"
   "io/ioutil"
@@ -49,6 +50,20 @@ func init() {
 }
 
 func actualMain() {
+  defer func() {
+    quit <- true
+  }()
+  defer func() {
+    if r := recover(); r != nil {
+      data := debug.Stack()
+      fmt.Printf("%s\n", string(data))
+      out,err := os.Open("crash.txt")
+      if err != nil {
+        out.Write(data)
+        out.Close()
+      }
+    }
+  } ()
   sys.Startup()
   runtime.LockOSThread()
   for !sys.Think() {
@@ -56,9 +71,6 @@ func actualMain() {
     runtime.Gosched()
     runtime.LockOSThread()
   }
-  defer func() {
-    quit <- true
-  }()
   // Running a binary via osx's package mechanism will add a flag that begins with
   // '-psn' so we have to find it and pretend like we were expecting it so that go
   // doesn't asplode because of an unexpected flag.

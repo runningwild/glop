@@ -51,6 +51,26 @@ func (a *ActionMove) MouseOver(bx,by float64) {
   // the user clicked here
 }
 
+func (a *ActionMove) aiMoveToWithin(tx,ty,rnge int) ActionCommit {
+  var dsts []int
+  for x := tx - 1; x <= tx + 1; x++ {
+    for y := ty - 1; y <= ty + 1; y++ {
+      if x == tx && y == ty { continue }
+      dsts = append(dsts, a.Ent.level.toVertex(x, y))
+    }
+  }
+  graph := &unitGraph{a.Ent.level, a.Ent}
+  _, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, dsts)
+  if path == nil {
+    return NoAction
+  }
+  vertex_to_boardpos := func(v interface{}) interface{} {
+    return a.Ent.level.MakeBoardPosFromVertex(v.(int))
+  }
+  a.path = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
+  return StandardAction
+}
+
 func (a *ActionMove) MouseClick(bx,by float64) ActionCommit {
   level := a.Ent.level
   dst := MakeBoardPos(int(bx), int(by))

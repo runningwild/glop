@@ -176,8 +176,21 @@ type Entity struct {
   // If the Entity has used an interrupt action it will be put into this slice.
   interrupts []Action
 
+  //
   // AI stuff
-  aig *ai.AiGraph
+  //
+  aig  *ai.AiGraph
+
+  // Whether this entity is done with its actions for this round
+  done bool
+
+  // If the entity needs to execute an action it sends a closure along this
+  // channel that starts up everything it needs.
+  cmds chan func() bool
+
+  // For every closure sent along cmds, a response will be sent back along this
+  // channel.  If true the ai can keep working, if false it should terminate.
+  cont chan bool
 }
 
 func (e *Entity) MakeAi(filename string) error {
@@ -191,6 +204,11 @@ func (e *Entity) MakeAi(filename string) error {
   polish.AddIntMathContext(e.aig.Context)
   AddEntityContext(e, e.aig.Context)
   return nil
+}
+
+func (e *Entity) RunAi() {
+  err := e.aig.Eval()
+  e.done = (err != nil)
 }
 
 func bresenham(x, y, x2, y2 int) [][2]int {

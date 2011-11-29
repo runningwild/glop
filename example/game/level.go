@@ -360,6 +360,11 @@ type Level struct {
   // Contains all Actions that have been registered as interrupts.  Gets
   // partially cleared out every round.
   interrupts []Action
+
+  //
+  // Ai stuff
+  //
+  aig_errs chan error
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -384,6 +389,9 @@ func (l *Level) Round() {
     l.current_action.Cancel()
   }
   l.current_action = nil
+  if l.side == 2 && l.selected != nil {
+    l.selected.cont <- false
+  }
   l.clearCache(all_highlights)
   l.side = l.side%2 + 1
   if l.side == 1 {
@@ -402,6 +410,10 @@ func (l *Level) Round() {
         interrupts[interrupt] = true
       }
       ent.interrupts = nil
+
+      // Also, if this is an Ai controlled entity, then it should be flagged
+      // as not having finished its moves for this turn.
+      ent.done = false
     }
   }
   l.interrupts = algorithm.Choose(l.interrupts, func (a interface{}) bool {
@@ -507,11 +519,13 @@ func (l *Level) Think(dt int64) {
       }
     }
     if l.mid_action && l.current_interupt == nil {
+      cont := false
       switch l.current_action.Maintain(dt) {
         case Complete:
         l.selected_gui.actions.SetSelectedIndex(-1)
         l.current_action = nil
         l.mid_action = false
+        cont = true
         fallthrough
 
         case CheckForInterrupts:
@@ -523,14 +537,55 @@ func (l *Level) Think(dt int64) {
             l.current_action = interrupt
             l.mid_action = true
           }
+          if l.side == 2 {
+            l.selected.cont <- false
+          }
+        } else if cont {
+          if l.side == 2 {
+            l.selected.cont <- true
+          }
         }
 
         case InProgress:
       }
     }
+  } else if l.side == 2 {
+    // Do Ai stuff here
+    // Right now we just go through all entities and let the act in that order,
+    // TODO: Need a higher-level ai graph that determines what order to
+    // activate entities in
+    if l.selected != nil {
+      var err error
+      select {
+        case f := <-l.selected.cmds:
+          if !f() {
+            l.selected.aig.Term() <- true
+          }
+        case err = <-l.aig_errs:
+          l.selected.done = true
+          fmt.Printf("Error evaluating Ai: %v\n", err)
+        default:
+      }
+      if l.selected.done || err != nil {
+        l.selected = nil
+      }
+    }
+    if l.selected == nil {
+      for _,ent := range l.Entities {
+        if ent.side != 2 { continue }
+        if !ent.done {
+          l.selected = ent
+          go func() {
+            l.aig_errs <- l.selected.aig.Eval()
+            fmt.Printf("Completed evaluation\n")
+          } ()
+          break
+        }
+      }
+    }
   }
 
-  if l.selected != nil {
+  if l.selected != nil && l.side == 1 {
     // If we are committed to an action let's make sure that the UI doesn't
     // let us choose other actions until it's done.
     if l.mid_action {
@@ -670,6 +725,12 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
+  if l.side == 2 {
+    // side == 2 is the computer, we shouldn't be doing anything according to
+    // the player's input until its the player's turn again.
+    return
+  }
+
   defer l.updateDependantGuis()
 
   cursor := event_group.Events[0].Key.Cursor()
@@ -853,7 +914,13 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
             return nil, err
           }
           side := level.grid[i][j].Unit.Side
-          level.addEntity(*unit, attmap, i, j, side, 0.0075, sprite)
+          ent := level.addEntity(*unit, attmap, i, j, side, 0.0075, sprite)
+          if ent.side == 2 {
+            err = ent.MakeAi(filepath.Join(datadir, "ai", "basic.xgml"))
+            if err != nil {
+              return nil, err
+            }
+          }
         }
       }
     }
@@ -882,6 +949,10 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   level.game_gui.AddChild(game_only_gui)
   level.editor_gui = gui.MakeCollapseWrapper(level.editor.GetGui())
   level.game_gui.AddChild(level.editor_gui)
+
+  // Ai stuff
+  level.aig_errs = make(chan error)
+
   return &level, nil
 }
 
@@ -906,6 +977,8 @@ func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes
     CosmeticStats: CosmeticStats{
       Move_speed: move_speed,
     },
+    cmds: make(chan func() bool),
+    cont: make(chan bool),
   }
   ent.actions = append(ent.actions, MakeAction("move", &ent))
   for _, name := range unit_type.Weapons {
