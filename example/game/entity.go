@@ -206,11 +206,6 @@ func (e *Entity) MakeAi(filename string) error {
   return nil
 }
 
-func (e *Entity) RunAi() {
-  err := e.aig.Eval()
-  e.done = (err != nil)
-}
-
 func bresenham(x, y, x2, y2 int) [][2]int {
   dx := x2 - x
   if dx < 0 {

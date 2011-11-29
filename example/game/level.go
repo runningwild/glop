@@ -4,6 +4,7 @@ import (
   "errors"
   "game/base"
   "game/stats"
+  "glop/ai"
   "glop/gin"
   "glop/gui"
   "glop/sprite"
@@ -365,6 +366,7 @@ type Level struct {
   // Ai stuff
   //
   aig_errs chan error
+  ai_done  bool
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -384,14 +386,17 @@ func (l *Level) Round() {
   // Can't start the next round until the current action completes
   if l.mid_action { return }
 
+  // Don't let us change sides while the Ai is going
+  if l.side == 2 && !l.ai_done { return }
+
+
+  l.ai_done = false
+
   l.selected = nil
   if l.current_action != nil {
     l.current_action.Cancel()
   }
   l.current_action = nil
-  if l.side == 2 && l.selected != nil {
-    l.selected.cont <- false
-  }
   l.clearCache(all_highlights)
   l.side = l.side%2 + 1
   if l.side == 1 {
@@ -520,8 +525,10 @@ func (l *Level) Think(dt int64) {
     }
     if l.mid_action && l.current_interupt == nil {
       cont := false
+//      fmt.Printf("Checking current action\n")
       switch l.current_action.Maintain(dt) {
         case Complete:
+//          fmt.Printf("complete\n")
         l.selected_gui.actions.SetSelectedIndex(-1)
         l.current_action = nil
         l.mid_action = false
@@ -538,15 +545,18 @@ func (l *Level) Think(dt int64) {
             l.mid_action = true
           }
           if l.side == 2 {
+//            fmt.Printf("Stopping...\n")
             l.selected.cont <- false
           }
         } else if cont {
           if l.side == 2 {
+//            fmt.Printf("Continuing...\n")
             l.selected.cont <- true
           }
         }
 
         case InProgress:
+//          fmt.Printf("in progress\n")
       }
     }
   } else if l.side == 2 {
@@ -554,16 +564,18 @@ func (l *Level) Think(dt int64) {
     // Right now we just go through all entities and let the act in that order,
     // TODO: Need a higher-level ai graph that determines what order to
     // activate entities in
+//    fmt.Printf("Selected is nil: %t\n", l.selected == nil)
     if l.selected != nil {
       var err error
       select {
         case f := <-l.selected.cmds:
           if !f() {
+//            fmt.Printf("Not f()\n")
             l.selected.aig.Term() <- true
           }
         case err = <-l.aig_errs:
           l.selected.done = true
-          fmt.Printf("Error evaluating Ai: %v\n", err)
+//          fmt.Printf("Error evaluating Ai: %v\n", err)
         default:
       }
       if l.selected.done || err != nil {
@@ -575,12 +587,16 @@ func (l *Level) Think(dt int64) {
         if ent.side != 2 { continue }
         if !ent.done {
           l.selected = ent
-          go func() {
-            l.aig_errs <- l.selected.aig.Eval()
-            fmt.Printf("Completed evaluation\n")
-          } ()
+          go func(aig *ai.AiGraph) {
+            l.aig_errs <- aig.Eval()
+//            fmt.Printf("Completed evaluation\n")
+          } (l.selected.aig)
           break
         }
+      }
+      if l.selected == nil {
+        l.ai_done = true
+        defer l.Round()
       }
     }
   }

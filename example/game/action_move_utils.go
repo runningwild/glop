@@ -16,7 +16,7 @@ func payForMove(ent *Entity, dst BoardPos) bool {
 }
 
 func AdvanceEntity(ent *Entity, path *[]BoardPos, dt int64) bool {
-  if len(*path) == 0 { return false }
+  if len(*path) == 0 { return true }
   dst := (*path)[0]
   tomove := ent.Move_speed * float32(dt)
   for tomove > 0 {

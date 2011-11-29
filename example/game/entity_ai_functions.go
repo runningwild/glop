@@ -16,7 +16,7 @@ func AddEntityContext(ent *Entity, context *polish.Context) {
   context.AddFunc("distBetween", distBetween)
   context.AddFunc("attack", func(t *Entity) { ent.attack(t) })
   context.AddFunc("advanceTowards", func(t *Entity) { ent.advanceTowards(t) })
-  context.AddFunc("done", func() { ent.done = true })
+  context.AddFunc("done", func() { ent.aig.Term() <- true })
   context.SetValue("me", ent)
 }
 
@@ -51,7 +51,7 @@ func distBetween(e1,e2 *Entity) int {
 }
 
 func (e *Entity) attack(target *Entity) {
-  panic("done")
+  e.aig.Term() <- true
 }
 
 func (e *Entity) getAction(typ reflect.Type) Action {
@@ -68,7 +68,6 @@ func (e *Entity) doCmd(f func() bool) {
   if !(<-e.cont) {
     e.aig.Term() <- true    
   }
-  fmt.Printf("Command complete\n")
 }
 
 func (e *Entity) advanceTowards(target *Entity) {
