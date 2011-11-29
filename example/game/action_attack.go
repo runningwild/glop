@@ -52,6 +52,13 @@ func (a *ActionBasicAttack) MouseClick(bx,by float64) ActionCommit {
   return NoAction
 }
 
+func (a *ActionBasicAttack) aiDoAttack(mark *Entity) bool {
+  if a.Range < mark.pos.Dist(a.Ent.pos) { return false }
+  if a.Ent.CurAp() < a.Cost { return false }
+  a.mark = mark
+  return true
+}
+
 func (a *ActionBasicAttack) Maintain(dt int64) MaintenanceStatus {
   if a.mark == nil || a.Ent.CurAp() < a.Cost {
     a.Cancel()

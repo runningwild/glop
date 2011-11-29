@@ -33,10 +33,19 @@ func (e *Entity) numVisibleEnemies() int {
 
 func (e *Entity) nearestEnemy() *Entity {
   var nearest *Entity
-  for v,_ := range e.visible {
+
+  // This is so that we always iterate through the visible vertices in the same
+  // order
+  visible := make([]int, 0, len(e.visible))
+  for v := range e.visible {
+    visible = append(visible, v)
+  }
+
+  for _,v := range visible {
     ent := e.level.GetCellAtVertex(v).ent
     if ent == nil { continue }
     if ent.side == e.side { continue }
+    if ent.CurHealth() <= 0 { continue }
     if nearest == nil {
       nearest = ent
     } else if ent.pos.Dist(e.pos) < nearest.pos.Dist(e.pos) {
@@ -51,7 +60,24 @@ func distBetween(e1,e2 *Entity) int {
 }
 
 func (e *Entity) attack(target *Entity) {
-  e.aig.Term() <- true
+  if target == nil {
+    panic("No target")
+  }
+  var att *ActionBasicAttack
+  att = e.getAction(reflect.TypeOf(&ActionBasicAttack{})).(*ActionBasicAttack)
+  if att == nil {
+    panic("couldn't find an attack action")
+  }
+
+  e.doCmd(func() bool {
+    // TODO: This preamble should be in a level method
+    if att.aiDoAttack(target) {
+      e.level.pending_action = att
+      e.level.mid_action = true
+      return true
+    }
+    return false
+  })
 }
 
 func (e *Entity) getAction(typ reflect.Type) Action {
@@ -82,8 +108,8 @@ func (e *Entity) advanceTowards(target *Entity) {
 
   e.doCmd(func() bool {
     // TODO: This preamble should be in a level method
-    if move.aiMoveToWithin(target.pos.Xi(), target.pos.Yi(), 1) == StandardAction {
-      e.level.current_action = move
+    if move.aiMoveToWithin(target.pos.Xi(), target.pos.Yi(), 1) {
+      e.level.pending_action = move
       e.level.mid_action = true
       return true
     }

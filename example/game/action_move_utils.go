@@ -15,6 +15,13 @@ func payForMove(ent *Entity, dst BoardPos) bool {
   return true
 }
 
+func canPayForMove(ent *Entity, dst BoardPos) bool {
+  level := ent.level
+  graph := unitGraph{level, ent}
+  cost := int(graph.costToMove(ent.pos.Vertex(ent.level), dst.Vertex(ent.level)))
+  return cost <= ent.CurAp()
+}
+
 func AdvanceEntity(ent *Entity, path *[]BoardPos, dt int64) bool {
   if len(*path) == 0 { return true }
   dst := (*path)[0]

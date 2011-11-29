@@ -3,7 +3,7 @@
   "Stats" : {
     "DynamicStats" : {
       "Health" : 3000,
-      "Ap" : 60
+      "Ap" : 6
     },
     "Defense" : 2,
     "LosDist" : 15,

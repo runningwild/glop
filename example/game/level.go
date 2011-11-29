@@ -355,8 +355,18 @@ type Level struct {
   // start yet
   mid_action bool
 
-  current_interupt Action
+  // The action that is currently executing
   current_action   Action
+
+  // The next action to execute, should only be set if there isn't already an
+  // action executing.  This action is stored here until all entities are in
+  // the ready state so that animations don't get backed up.
+  pending_action   Action
+
+  // If an action has been paused while an interrupt happens then this is the
+  // interrupt.  If the action is cancelled then the interrupt becomes the
+  // current action.
+  current_interupt Action
 
   // Contains all Actions that have been registered as interrupts.  Gets
   // partially cleared out every round.
@@ -513,7 +523,25 @@ func (l *Level) findInterrupt() Action {
   return interrupt
 }
 
+// Returns true if all living ents are in the ready state, meaning that if an
+// animation is applied to them that they will be able to respond to it
+// immediately.
+func (l *Level) allEntsReady() bool {
+  for _,ent := range l.Entities {
+    if ent.CurHealth() > 0 && ent.s.CurAnim() != "ready" {
+      return false
+    }
+  }
+  return true
+}
+
 func (l *Level) Think(dt int64) {
+  if l.allEntsReady() {
+    if l.current_action == nil && l.pending_action != nil {
+      l.current_action = l.pending_action
+      l.pending_action = nil
+    }
+  }
   // If there is an action happening right now then work on that action, unless
   // that action is being interrupted, in which case work on the interrupt
   // instead.
@@ -525,10 +553,10 @@ func (l *Level) Think(dt int64) {
     }
     if l.mid_action && l.current_interupt == nil {
       cont := false
-//      fmt.Printf("Checking current action\n")
+      fmt.Printf("Checking current action\n")
       switch l.current_action.Maintain(dt) {
         case Complete:
-//          fmt.Printf("complete\n")
+          fmt.Printf("complete\n")
         l.selected_gui.actions.SetSelectedIndex(-1)
         l.current_action = nil
         l.mid_action = false
@@ -545,18 +573,18 @@ func (l *Level) Think(dt int64) {
             l.mid_action = true
           }
           if l.side == 2 {
-//            fmt.Printf("Stopping...\n")
+            fmt.Printf("Stopping...\n")
             l.selected.cont <- false
           }
         } else if cont {
           if l.side == 2 {
-//            fmt.Printf("Continuing...\n")
+            fmt.Printf("Continuing...\n")
             l.selected.cont <- true
           }
         }
 
         case InProgress:
-//          fmt.Printf("in progress\n")
+          fmt.Printf("in progress\n")
       }
     }
   } else if l.side == 2 {
@@ -564,18 +592,17 @@ func (l *Level) Think(dt int64) {
     // Right now we just go through all entities and let the act in that order,
     // TODO: Need a higher-level ai graph that determines what order to
     // activate entities in
-//    fmt.Printf("Selected is nil: %t\n", l.selected == nil)
     if l.selected != nil {
       var err error
       select {
         case f := <-l.selected.cmds:
           if !f() {
-//            fmt.Printf("Not f()\n")
-            l.selected.aig.Term() <- true
+            fmt.Printf("Not f()\n")
+            l.selected.cont <- false
           }
         case err = <-l.aig_errs:
           l.selected.done = true
-//          fmt.Printf("Error evaluating Ai: %v\n", err)
+          fmt.Printf("Error evaluating Ai: %v\n", err)
         default:
       }
       if l.selected.done || err != nil {
@@ -589,7 +616,7 @@ func (l *Level) Think(dt int64) {
           l.selected = ent
           go func(aig *ai.AiGraph) {
             l.aig_errs <- aig.Eval()
-//            fmt.Printf("Completed evaluation\n")
+            fmt.Printf("Completed evaluation\n")
           } (l.selected.aig)
           break
         }
@@ -873,7 +900,7 @@ func (l *Level) SelectAction(n int) {
   }
 
   if l.selected.actions[n].Prep() {
-    l.current_action = l.selected.actions[n]
+    l.pending_action = l.selected.actions[n]
     l.selected_gui.actions.SetSelectedIndex(n-1)
   }
 }
