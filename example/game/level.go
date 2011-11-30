@@ -583,13 +583,13 @@ func (l *Level) Think(dt int64) {
             l.mid_action = true
           }
           if l.ai_evaluating {
-           fmt.Printf("Stopping...\n")
+//           fmt.Printf("Stopping...\n")
             l.selected.cont <- aiEvalPause
             l.ai_evaluating = false
           }
         } else if cont {
           if l.ai_evaluating {
-           fmt.Printf("Continuing...\n")
+//           fmt.Printf("Continuing...\n")
             l.selected.cont <- aiEvalCont
 //            l.ai_evaluating = false
           }
@@ -610,14 +610,14 @@ func (l *Level) Think(dt int64) {
       select {
         case f := <-l.selected.cmds:
           if !f() {
-            fmt.Printf("Not f()\n")
+//            fmt.Printf("Not f()\n")
             l.selected.cont <- aiEvalTerm
             l.ai_evaluating = false
           }
         case err = <-l.aig_errs:
-          fmt.Printf("aig done\n")
+//          fmt.Printf("aig done\n")
           if err == ai.TermError {
-            fmt.Printf("terminated\n")
+//            fmt.Printf("terminated\n")
             l.selected.done = true
             l.selected = nil
           }
@@ -635,9 +635,9 @@ func (l *Level) Think(dt int64) {
           l.selected = ent
           l.ai_evaluating = true
           go func(aig *ai.AiGraph) {
-            fmt.Printf("evaluating\n")
+//            fmt.Printf("evaluating\n")
             l.aig_errs <- aig.Eval()
-            fmt.Printf("Completed evaluation\n")
+//            fmt.Printf("Completed evaluation\n")
           } (l.selected.aig)
           break
         }

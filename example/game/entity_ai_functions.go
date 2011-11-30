@@ -163,20 +163,14 @@ const (
 func (e *Entity) doCmd(f func() bool) {
   e.cmds <- f
   cont := <-e.cont
-  fmt.Printf("cont val: %d\n", cont)
   switch cont {
     case aiEvalCont:
-    fmt.Printf("aiEvalCont\n")
 
     case aiEvalTerm:
-    fmt.Printf("ai.Term...\n")
     e.aig.Term() <- ai.TermError
-    fmt.Printf("ai.Term sent\n")
 
     case aiEvalPause:
-    fmt.Printf("ai.Interrupt...\n")
     e.aig.Term() <- ai.InterruptError
-    fmt.Printf("ai.Interrupt sent\n")
   }
 }
 
