@@ -5,7 +5,7 @@ import (
   "gospec"
   "yed"
   "polish"
-  "ai"
+  "glop/ai"
 )
 
 func AiSpec(c gospec.Context) {

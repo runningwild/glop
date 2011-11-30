@@ -12,6 +12,8 @@ type Error struct {
 func (e *Error) Error() string {
   return e.ErrorString
 }
+
+var InterruptError error = &Error{ "Evaluation was terminated due to an interrupt." }
 var TermError error = &Error{ "Evaluation was terminated early." }
 var StartError error = &Error{ "No start node was found." }
 
@@ -19,24 +21,25 @@ type AiGraph struct {
   Graph   *yed.Graph
   Context *polish.Context
 
-  // If a signal is sent along this channel it will terminate evaluation
-  term chan bool
+  // If a signal is sent along this channel it will terminate evaluation with
+  // the error that was sent
+  term chan error
 }
 
 func NewGraph() *AiGraph {
   return &AiGraph{
-    term: make(chan bool, 1),
+    term: make(chan error, 1),
   }
 }
 
-func (aig *AiGraph) Term() chan<- bool {
+func (aig *AiGraph) Term() chan<- error {
   return aig.term
 }
 
 func (aig *AiGraph) subEval(node *yed.Node) error {
   select {
-    case <-aig.term:
-    return TermError
+    case err := <-aig.term:
+    return err
 
     default:
   }

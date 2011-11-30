@@ -2,7 +2,7 @@
   "Name" : "Lion",
   "Stats" : {
     "DynamicStats" : {
-      "Health" : 5,
+      "Health" : 1,
       "Ap" : 5
     },
     "Defense" : 3,

@@ -190,7 +190,7 @@ type Entity struct {
 
   // For every closure sent along cmds, a response will be sent back along this
   // channel.  If true the ai can keep working, if false it should terminate.
-  cont chan bool
+  cont chan aiEvalSignal
 }
 
 func (e *Entity) MakeAi(filename string) error {

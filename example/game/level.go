@@ -375,8 +375,9 @@ type Level struct {
   //
   // Ai stuff
   //
-  aig_errs chan error
-  ai_done  bool
+  aig_errs      chan error
+  ai_done       bool
+  ai_evaluating bool
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -581,14 +582,16 @@ func (l *Level) Think(dt int64) {
             l.current_action = interrupt
             l.mid_action = true
           }
-          if l.side == 2 {
-//            fmt.Printf("Stopping...\n")
-            l.selected.cont <- false
+          if l.ai_evaluating {
+           fmt.Printf("Stopping...\n")
+            l.selected.cont <- aiEvalPause
+            l.ai_evaluating = false
           }
         } else if cont {
-          if l.side == 2 {
-//            fmt.Printf("Continuing...\n")
-            l.selected.cont <- true
+          if l.ai_evaluating {
+           fmt.Printf("Continuing...\n")
+            l.selected.cont <- aiEvalCont
+//            l.ai_evaluating = false
           }
         }
 
@@ -596,7 +599,8 @@ func (l *Level) Think(dt int64) {
 //          fmt.Printf("in progress\n")
       }
     }
-  } else if l.side == 2 {
+  }
+  if l.side == 2 {
     // Do Ai stuff here
     // Right now we just go through all entities and let the act in that order,
     // TODO: Need a higher-level ai graph that determines what order to
@@ -606,16 +610,22 @@ func (l *Level) Think(dt int64) {
       select {
         case f := <-l.selected.cmds:
           if !f() {
-//            fmt.Printf("Not f()\n")
-            l.selected.cont <- false
+            fmt.Printf("Not f()\n")
+            l.selected.cont <- aiEvalTerm
+            l.ai_evaluating = false
           }
         case err = <-l.aig_errs:
-          l.selected.done = true
+          fmt.Printf("aig done\n")
+          if err == ai.TermError {
+            fmt.Printf("terminated\n")
+            l.selected.done = true
+            l.selected = nil
+          }
+          if err == ai.InterruptError {
+            l.selected = nil
+          }
 //          fmt.Printf("Error evaluating Ai: %v\n", err)
         default:
-      }
-      if l.selected.done || err != nil {
-        l.selected = nil
       }
     }
     if l.selected == nil {
@@ -623,9 +633,11 @@ func (l *Level) Think(dt int64) {
         if ent.side != 2 { continue }
         if !ent.done {
           l.selected = ent
+          l.ai_evaluating = true
           go func(aig *ai.AiGraph) {
+            fmt.Printf("evaluating\n")
             l.aig_errs <- aig.Eval()
-//            fmt.Printf("Completed evaluation\n")
+            fmt.Printf("Completed evaluation\n")
           } (l.selected.aig)
           break
         }
@@ -1030,7 +1042,7 @@ func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes
       Move_speed: move_speed,
     },
     cmds: make(chan func() bool),
-    cont: make(chan bool),
+    cont: make(chan aiEvalSignal),
   }
   ent.actions = append(ent.actions, MakeAction("move", &ent))
   for _, name := range unit_type.Weapons {

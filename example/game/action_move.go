@@ -53,8 +53,8 @@ func (a *ActionMove) MouseOver(bx,by float64) {
 
 func (a *ActionMove) aiMoveToWithin(tx,ty,rnge int) bool {
   var dsts []int
-  for x := tx - 1; x <= tx + 1; x++ {
-    for y := ty - 1; y <= ty + 1; y++ {
+  for x := tx - rnge; x <= tx + rnge; x++ {
+    for y := ty - rnge; y <= ty + rnge; y++ {
       if x == tx && y == ty { continue }
       dsts = append(dsts, a.Ent.level.toVertex(x, y))
     }

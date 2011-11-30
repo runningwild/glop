@@ -1,7 +1,5 @@
 package game
 
-import "fmt"
-
 func init() {
   registerActionType("counter attack", &ActionCounterAttack{})
 }
@@ -44,7 +42,6 @@ func (a *ActionCounterAttack) Interrupt() bool {
         mark := a.Ent.level.GetCellAtPos(t).ent
         if mark != nil && mark.side != a.Ent.side {
           a.mark = mark
-          fmt.Printf("Found a mark: %v\n", a.mark)
           return true
         }
       }
@@ -54,7 +51,6 @@ func (a *ActionCounterAttack) Interrupt() bool {
 }
 
 func (a *ActionCounterAttack) Maintain(dt int64) MaintenanceStatus {
-          fmt.Printf("the mark: %v\n", a.mark)
   if a.mark == nil {
     a.Cancel()
     print("Cancelig\n")
