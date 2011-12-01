@@ -2,6 +2,7 @@ package stats
 
 import (
   "game/base"
+  "gob"
   "fmt"
   "os"
   "strings"
@@ -16,21 +17,21 @@ type Effect interface {
   // the same effect from being applied to one unit more than once at a time.
   Name() string
 
-  // Can apply modifiers to BaseStats, but cannot actually change them, since we
+  // Can apply modifiers to baseStats, but cannot actually change them, since we
   // need to keep the original data around
-  ModifyStats(BaseStats) BaseStats
+  ModifyStats(baseStats) baseStats
 
-  // Can change DynamicStats however it wants, and may reference BaseStats to do
+  // Can change dynamicStats however it wants, and may reference baseStats to do
   // so.
-  ModifyDynamicStats(*DynamicStats, BaseStats)
+  ModifyDynamicStats(*dynamicStats, baseStats)
 
   // Given an amount of damage, returns a modified amount of damage that this
   // unit should take.
-  ModifyIncomingDamage(int, BaseStats) int
+  ModifyIncomingDamage(int, baseStats) int
 
   // Given an amount of damage, returns a modified amount of damage that this
   // unit should deal.
-  ModifyOutgoingDamage(int, BaseStats) int
+  ModifyOutgoingDamage(int, baseStats) int
 
   // Modifies an Attribute based on the terrain and its current value
   ModifyMovement(base.Terrain, int) int
@@ -49,10 +50,10 @@ type NullEffect struct {
   Id string
 }
 func (n NullEffect) Name() string { return n.Id }
-func (NullEffect) ModifyStats(b BaseStats) BaseStats { return b }
-func (NullEffect) ModifyDynamicStats(*DynamicStats, BaseStats) { }
-func (NullEffect) ModifyIncomingDamage(dmg int, b BaseStats) int { return dmg }
-func (NullEffect) ModifyOutgoingDamage(dmg int, b BaseStats) int { return dmg }
+func (NullEffect) ModifyStats(b baseStats) baseStats { return b }
+func (NullEffect) ModifyDynamicStats(*dynamicStats, baseStats) { }
+func (NullEffect) ModifyIncomingDamage(dmg int, b baseStats) int { return dmg }
+func (NullEffect) ModifyOutgoingDamage(dmg int, b baseStats) int { return dmg }
 func (NullEffect) ModifyMovement(t base.Terrain, n int) int { return n }
 func (NullEffect) ModifyLos(t base.Terrain, n int) int { return n }
 func (NullEffect) ModifyAttack(t base.Terrain, n int) int { return n }
@@ -84,13 +85,13 @@ type StaticEffect struct {
   MoveCost int
   LosCost  int
 }
-func (e *StaticEffect) ModifyStats(b BaseStats) BaseStats {
+func (e *StaticEffect) ModifyStats(b baseStats) baseStats {
   b.Attack += e.Attack
   b.Defense += e.Defense
   b.LosDist += e.LosDist
   return b
 }
-func (e *StaticEffect) ModifyDynamicStats(d *DynamicStats, b BaseStats) {
+func (e *StaticEffect) ModifyDynamicStats(d *dynamicStats, b baseStats) {
   d.Health += e.Health
   d.Ap += e.Ap
 }
@@ -108,7 +109,7 @@ type ShieldEffect struct {
   NullEffect
   Amount int
 }
-func (e *ShieldEffect) ModifyIncomingDamage(dmg int, b BaseStats) int {
+func (e *ShieldEffect) ModifyIncomingDamage(dmg int, b baseStats) int {
   if e.Amount >= dmg {
     e.Amount -= dmg
     return 0
@@ -131,6 +132,7 @@ type EffectSpec struct {
 var effect_type_registry map[string]reflect.Type
 
 func registerEffectType(name string, effect Effect) {
+  gob.Register(effect)
   if effect_type_registry == nil {
     effect_type_registry = make(map[string]reflect.Type)
   }

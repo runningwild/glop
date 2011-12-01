@@ -52,7 +52,7 @@ func smoosh(a,b terrainVals, f func(av,bv int) bool) {
 
 // takes all attributes listed for a unit and combines them by taking the
 // best parts of all attributes.
-func processAttributes(attlist []string, attmap map[string]Attributes) Attributes {
+func processAttributes(attlist []string) Attributes {
   var atts Attributes
   atts.LosMods = make(map[base.Terrain]int)
   atts.MoveMods = make(map[base.Terrain]int)

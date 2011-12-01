@@ -3,33 +3,30 @@ package stats_test
 import (
   . "gospec"
   "gospec"
+  "gob"
+  "bytes"
   "game/stats"
   "game/base"
   "fmt"
 )
 
+func init() {
+  stats.SetAttmap(map[string]stats.Attributes{
+      "basic" : stats.Attributes{
+        MoveMods : map[base.Terrain]int{
+          "grass" : 0,
+          "hills" : 2,
+        },
+      },
+      "tag" : stats.Attributes{
+      },
+    })
+}
+
 func StatsSpec(c gospec.Context) {
-  b := stats.BaseStats{
-    DynamicStats : stats.DynamicStats{
-      Health : 10,
-      Ap : 10,
-    },
-    Attack : 10,
-    Defense : 10,
-    LosDist : 10,
-    Atts : []string{
-      "basic",
-      "tag",
-    },
-  }
-  attmap := map[string]stats.Attributes{
-    "basic" : stats.Attributes{
-    },
-    "tag" : stats.Attributes{
-    },
-  }
+  stat := stats.MakeStats(10, 10, 10, 10, 10, []string{ "basic", "tag" })
+
   c.Specify("Dynamic stats stuff", func() {
-    stat := stats.MakeStats(b, attmap)
     c.Expect(stat.BaseAp(), Equals, 10)
     c.Expect(stat.BaseHealth(), Equals, 10)
     c.Expect(stat.CurAp(), Equals, 10)
@@ -103,36 +100,12 @@ func MakeEffectsSpec(c gospec.Context) {
 }
 
 func EffectsSpec(c gospec.Context) {
-  b := stats.BaseStats{
-    DynamicStats : stats.DynamicStats{
-      Health : 10,
-      Ap : 10,
-    },
-    Attack : 10,
-    Defense : 10,
-    LosDist : 10,
-    Atts : []string{
-      "basic",
-      "tag",
-    },
-  }
-  attmap := map[string]stats.Attributes{
-    "basic" : stats.Attributes{
-      MoveMods : map[base.Terrain]int{
-        "grass" : 0,
-        "hills" : 2,
-      },
-    },
-    "tag" : stats.Attributes{
-    },
-  }
+  stat := stats.MakeStats(10, 10, 10, 10, 10, []string{ "basic", "tag" })
   c.Specify("Movement cost is 1 + whatever is in the MoveMods", func() {
-    stat := stats.MakeStats(b, attmap)
     c.Expect(stat.MoveCost("grass"), Equals, 1)
     c.Expect(stat.MoveCost("hills"), Equals, 3)
   })
   c.Specify("Movement can be affected by effects", func() {
-    stat := stats.MakeStats(b, attmap)
     stat.AddEffect(stats.MakeEffect("Slow"), false)
     c.Expect(stat.MoveCost("grass"), Equals, 2)
     c.Expect(stat.MoveCost("hills"), Equals, 4)
@@ -140,14 +113,8 @@ func EffectsSpec(c gospec.Context) {
 }
 
 func DamageSpec(c gospec.Context) {
-  b := stats.BaseStats{
-    DynamicStats : stats.DynamicStats{
-      Health : 10,
-      Ap : 10,
-    },
-  }
+  stat := stats.MakeStats(10, 10, 10, 10, 10, []string{ "basic", "tag" })
   c.Specify("Damage and shield effects work and interact properly", func() {
-    stat := stats.MakeStats(b, nil)
     c.Expect(stat.BaseHealth(), Equals, 10)
     c.Expect(stat.CurHealth(), Equals, 10)
     stat.DoDamage(3)
@@ -176,14 +143,8 @@ func DamageSpec(c gospec.Context) {
 }
 
 func DupSpec(c gospec.Context) {
-  b := stats.BaseStats{
-    DynamicStats : stats.DynamicStats{
-      Health : 10,
-      Ap : 10,
-    },
-  }
+  stat := stats.MakeStats(10, 10, 10, 10, 10, []string{ "basic", "tag" })
   c.Specify("Only one effect of any name should be present at a time.", func() {
-    stat := stats.MakeStats(b, nil)
     c.Expect(stat.BaseHealth(), Equals, 10)
     c.Expect(stat.CurHealth(), Equals, 10)
 
@@ -194,7 +155,6 @@ func DupSpec(c gospec.Context) {
     c.Expect(stat.CurHealth(), Equals, 2)
   })
   c.Specify("New effects overwrite old effects by the same name.", func() {
-    stat := stats.MakeStats(b, nil)
     c.Expect(stat.BaseHealth(), Equals, 10)
     c.Expect(stat.CurHealth(), Equals, 10)
 
@@ -205,7 +165,6 @@ func DupSpec(c gospec.Context) {
     c.Expect(stat.CurHealth(), Equals, 7)
   })
   c.Specify("Different effects of the same time can coexist.", func() {
-    stat := stats.MakeStats(b, nil)
     c.Expect(stat.BaseHealth(), Equals, 10)
     c.Expect(stat.CurHealth(), Equals, 10)
 
@@ -213,5 +172,34 @@ func DupSpec(c gospec.Context) {
     stat.AddEffect(stats.MakeEffect("Shield4"), false)
     stat.DoDamage(10)
     c.Expect(stat.CurHealth(), Equals, 6)
+  })
+}
+
+type container struct {
+  S stats.Stats
+}
+
+func GobSpec(c gospec.Context) {
+  var c1,c2 container
+  c1.S = stats.MakeStats(10, 20, 30, 40, 50, []string{ "basic", "tag" })
+  buffer := bytes.NewBuffer([]byte{})
+  enc := gob.NewEncoder(buffer)
+  dec := gob.NewDecoder(buffer)
+  c.Specify("Stats can be gobbed and ungobbed without loss of data.", func() {
+    err := enc.Encode(c1)
+    if err != nil {
+      panic(err.Error())
+    }
+    err = dec.Decode(&c2)
+    if err != nil {
+      panic(err.Error())
+    }
+    c.Expect(c1.S.BaseHealth(), Equals, c2.S.BaseHealth())
+    c.Expect(c1.S.BaseAp(), Equals, c2.S.BaseAp())
+    c.Expect(c1.S.BaseAttack(), Equals, c2.S.BaseAttack())
+    c.Expect(c1.S.BaseDefense(), Equals, c2.S.BaseDefense())
+    c.Expect(c1.S.BaseLosDist(), Equals, c2.S.BaseLosDist())
+    c.Expect(c1.S.CurHealth(), Equals, c2.S.CurHealth())
+    c.Expect(c1.S.CurAp(), Equals, c2.S.CurAp())
   })
 }
