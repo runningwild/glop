@@ -329,7 +329,7 @@ type Level struct {
   editor_gui *gui.CollapseWrapper
 
   // whose turn it is, side 1 goes first, then 2, then back to 1...
-  side     int
+  Side     int
   side_gui *gui.TextLine
 
   // The single gui element containing all other elements related to the
@@ -398,7 +398,7 @@ func (l *Level) Round() {
   if l.mid_action { return }
 
   // Don't let us change sides while the Ai is going
-  if l.side == 2 && !l.ai_done { return }
+  if l.Side == 2 && !l.ai_done { return }
 
 
   l.ai_done = false
@@ -409,8 +409,8 @@ func (l *Level) Round() {
   }
   l.current_action = nil
   l.clearCache(all_highlights)
-  l.side = l.side%2 + 1
-  if l.side == 1 {
+  l.Side = l.Side%2 + 1
+  if l.Side == 1 {
     l.side_gui.SetText("It is The Jungle's turn to move")
   } else {
     l.side_gui.SetText("It is The Man's turn to move")
@@ -421,7 +421,7 @@ func (l *Level) Round() {
   // Level's slice of interrupts
   interrupts := make(map[Action]bool)
   for _,ent := range l.Entities {
-    if ent.side == l.side {
+    if ent.Side == l.Side {
       for _,interrupt := range ent.interrupts {
         interrupts[interrupt] = true
       }
@@ -441,7 +441,7 @@ func (l *Level) Round() {
   l.Entities = algorithm.Choose(l.Entities, func (a interface{}) bool { return a.(*Entity).CurHealth() > 0 }).([]*Entity)
 
   for i := range l.Entities {
-    if l.Entities[i].side != l.side {
+    if l.Entities[i].Side != l.Side {
       continue
     }
     l.Entities[i].OnRound()
@@ -491,7 +491,7 @@ func (l *Level) figureVisible() {
   // union of all visible vertices.
   visible := make(map[int]bool, 100)
   for i := range l.Entities {
-    if l.Entities[i].side != l.side {
+    if l.Entities[i].Side != l.Side {
       continue
     }
     for v, _ := range l.Entities[i].visible {
@@ -600,7 +600,7 @@ func (l *Level) Think(dt int64) {
       }
     }
   }
-  if l.side == 2 {
+  if l.Side == 2 {
     // Do Ai stuff here
     // Right now we just go through all entities and let the act in that order,
     // TODO: Need a higher-level ai graph that determines what order to
@@ -630,7 +630,7 @@ func (l *Level) Think(dt int64) {
     }
     if l.selected == nil {
       for _,ent := range l.Entities {
-        if ent.side != 2 { continue }
+        if ent.Side != 2 { continue }
         if !ent.done {
           l.selected = ent
           l.ai_evaluating = true
@@ -649,7 +649,7 @@ func (l *Level) Think(dt int64) {
     }
   }
 
-  if l.selected != nil && l.side == 1 {
+  if l.selected != nil && l.Side == 1 {
     // If we are committed to an action let's make sure that the UI doesn't
     // let us choose other actions until it's done.
     if l.mid_action {
@@ -768,7 +768,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
     ent = nil
   }
   if l.current_action == nil {
-    if ent != nil && ent.side == l.side {
+    if ent != nil && ent.Side == l.Side {
       l.selected = ent
     }
   } else {
@@ -789,8 +789,8 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
 }
 
 func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
-  if l.side == 2 {
-    // side == 2 is the computer, we shouldn't be doing anything according to
+  if l.Side == 2 {
+    // Side == 2 is the computer, we shouldn't be doing anything according to
     // the player's input until its the player's turn again.
     return
   }
@@ -980,7 +980,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
           }
           side := level.grid[i][j].Unit.Side
           ent := level.addEntity(*unit, attmap, i, j, side, 0.0075, sprite)
-          if ent.side == 2 {
+          if ent.Side == 2 {
             err = ent.MakeAi(filepath.Join(datadir, "ai", "basic.xgml"))
             if err != nil {
               return nil, err
@@ -1036,7 +1036,7 @@ func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes
     Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
     pos:   MakeBoardPos(x, y),
     prev_pos:   MakeBoardPos(x, y),
-    side:  side,
+    Side:  side,
     s:     sprite,
     level: l,
     CosmeticStats: CosmeticStats{

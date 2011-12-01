@@ -55,7 +55,7 @@ func AdvanceEntity(ent *Entity, path *[]BoardPos, dt int64) bool {
 func getEntsWithinRange(src *Entity, rng int, level *Level) []*Entity {
   var targets []*Entity
   for _,ent := range level.Entities {
-    if ent.side == src.side { continue }
+    if ent.Side == src.Side { continue }
     dist := base.MaxNormi(src.pos.Xi(), src.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
     if _,ok := src.visible[ent.pos.Vertex(ent.level)]; !ok { continue }
     if dist > rng { continue }

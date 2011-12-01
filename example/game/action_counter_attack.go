@@ -40,7 +40,7 @@ func (a *ActionCounterAttack) Interrupt() bool {
       t := a.Ent.pos.Add(MakeBoardPos(dx, dy))
       if t.Valid(a.Ent.level) {
         mark := a.Ent.level.GetCellAtPos(t).ent
-        if mark != nil && mark.side != a.Ent.side {
+        if mark != nil && mark.Side != a.Ent.Side {
           a.mark = mark
           return true
         }

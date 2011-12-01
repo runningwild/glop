@@ -88,7 +88,7 @@ func (e *Entity) numVisibleEntities(ally bool) int {
   count := 0
   for v,_ := range e.visible {
     ent := e.level.GetCellAtVertex(v).ent
-    if ent != nil && (ent.side == e.side) == ally {
+    if ent != nil && (ent.Side == e.Side) == ally {
       count++
     }
   }
@@ -108,7 +108,7 @@ func (e *Entity) nearestEntity(ally bool) *Entity {
   for _,v := range visible {
     ent := e.level.GetCellAtVertex(v).ent
     if ent == nil { continue }
-    if (ent.side == e.side) != ally { continue }
+    if (ent.Side == e.Side) != ally { continue }
     if ent.CurHealth() <= 0 { continue }
     if nearest == nil {
       nearest = ent

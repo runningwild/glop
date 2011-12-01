@@ -159,7 +159,7 @@ type Entity struct {
   CosmeticStats
 
   // 0 indicates that the unit is unaffiliated
-  side int
+  Side int
 
   s *sprite.Sprite
 
@@ -326,7 +326,7 @@ func (e *Entity) OnRound() {
   e.Stats.Round()
 }
 func (e *Entity) AddEffect(effect stats.Effect) {
-  e.Stats.AddEffect(effect, e.side == e.level.side)
+  e.Stats.AddEffect(effect, e.Side == e.level.Side)
 }
 func (e *Entity) CurAttack() int {
   return e.Stats.CurAttack(e.level.GetCellAtPos(e.pos).Terrain)

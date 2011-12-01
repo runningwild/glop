@@ -29,7 +29,7 @@ func (a *ActionCharge) Prep() bool {
     return a.Ent.level.MakeBoardPosFromVertex(v.(int))
   }
   for _,ent := range a.Ent.level.Entities {
-    if ent.side == a.Ent.side { continue }
+    if ent.Side == a.Ent.Side { continue }
     if base.MaxNormi(a.Ent.pos.Xi(), a.Ent.pos.Yi(), ent.pos.Xi(), ent.pos.Yi()) <= 2 {
       continue
     }
