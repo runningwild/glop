@@ -31,7 +31,7 @@ func (a *ActionSpray) Cancel() {
 }
 
 func (a *ActionSpray) getDir(bp BoardPos) BoardPos {
-  diff := bp.Sub(a.Ent.pos)
+  diff := bp.Sub(a.Ent.Pos)
   dx := diff.Xi()
   if dx < 0 { dx = -dx }
   dy := diff.Yi()
@@ -57,7 +57,7 @@ func (a *ActionSpray) MouseOver(bx,by float64) {
   a.dir = dir
   a.cells = nil
   side := MakeBoardPos(a.dir.Yi(), a.dir.Xi())
-  pos := a.Ent.pos
+  pos := a.Ent.Pos
   for i := 0; i < a.Length; i++ {
     pos = pos.Add(a.dir)
     var width int

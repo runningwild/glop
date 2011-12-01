@@ -233,7 +233,7 @@ func (l *unitGraph) Adjacent(v int) ([]int, []float64) {
       // Don't want to be able to walk through other units
       occupied := false
       for i := range l.Entities {
-        if int(l.Entities[i].pos.X) == x+dx && int(l.Entities[i].pos.Y) == y+dy {
+        if int(l.Entities[i].Pos.X) == x+dx && int(l.Entities[i].Pos.Y) == y+dy {
           occupied = true
           break
         }
@@ -672,14 +672,14 @@ func (l *Level) Think(dt int64) {
   // Draw all sprites
   for i := range l.Entities {
     e := l.Entities[i]
-    pbx := int(e.pos.X)
-    pby := int(e.pos.Y)
+    pbx := int(e.Pos.X)
+    pby := int(e.Pos.Y)
     e.Think(dt)
-    if pbx != int(e.pos.X) || pby != int(e.pos.Y) {
+    if pbx != int(e.Pos.X) || pby != int(e.Pos.Y) {
       l.clearCache(game_highlights)
     }
-    if l.grid[int(e.pos.X)][int(e.pos.Y)].highlight&FogOfWar == 0 {
-      l.Terrain.AddUprightDrawable(e.pos.X+0.25, e.pos.Y+0.25, e.s)
+    if l.grid[int(e.Pos.X)][int(e.Pos.Y)].highlight&FogOfWar == 0 {
+      l.Terrain.AddUprightDrawable(e.Pos.X+0.25, e.Pos.Y+0.25, e.s)
     }
   }
 
@@ -687,7 +687,7 @@ func (l *Level) Think(dt int64) {
 
   // Highlight selected entity
   if l.selected != nil {
-    cell := &l.grid[int(l.selected.pos.X)][int(l.selected.pos.Y)]
+    cell := &l.grid[int(l.selected.Pos.X)][int(l.selected.Pos.Y)]
     cell.highlight |= Selected
   }
 
@@ -719,7 +719,7 @@ func (l *Level) Think(dt int64) {
 
   // Update entity positions
   for _,ent := range l.Entities {
-    l.GetCellAtPos(ent.pos).ent = ent
+    l.GetCellAtPos(ent.Pos).ent = ent
   }
 
 }
@@ -746,7 +746,7 @@ func (l *Level) handleClickInGameMode(click mathgl.Vec2) {
   for i := range l.Entities {
     var cc mathgl.Vec2
     cc.Assign(&click)
-    cc.Subtract(&mathgl.Vec2{l.Entities[i].pos.X + 0.5, l.Entities[i].pos.Y + 0.5})
+    cc.Subtract(&mathgl.Vec2{l.Entities[i].Pos.X + 0.5, l.Entities[i].Pos.Y + 0.5})
     dx := cc.X
     if dx < 0 {
       dx = -dx
@@ -1034,7 +1034,7 @@ func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes
   ent = Entity{
     Name : unit_type.Name,
     Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
-    pos:   MakeBoardPos(x, y),
+    Pos:   MakeBoardPos(x, y),
     prev_pos:   MakeBoardPos(x, y),
     Side:  side,
     s:     sprite,

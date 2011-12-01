@@ -37,7 +37,7 @@ func (a *ActionCounterAttack) Interrupt() bool {
   print("Checking counter attack\n")
   for dx := -a.Range; dx <= a.Range; dx++ {
     for dy := -a.Range; dy <= a.Range; dy++ {
-      t := a.Ent.pos.Add(MakeBoardPos(dx, dy))
+      t := a.Ent.Pos.Add(MakeBoardPos(dx, dy))
       if t.Valid(a.Ent.level) {
         mark := a.Ent.level.GetCellAtPos(t).ent
         if mark != nil && mark.Side != a.Ent.Side {
@@ -80,7 +80,7 @@ func (a *ActionCounterAttack) Maintain(dt int64) MaintenanceStatus {
     }
   }
 
-  a.Ent.turnToFace(a.mark.pos)
+  a.Ent.turnToFace(a.mark.Pos)
 
   a.Cancel()
   return Complete

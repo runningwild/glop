@@ -166,7 +166,7 @@ type Entity struct {
   level *Level
 
   // Board coordinates of this entity's current position
-  pos BoardPos
+  Pos BoardPos
 
   // Board coordinates of this entity's previous position, needed to update the
   // level grid as this entity moves around the board.
@@ -280,9 +280,9 @@ func (e *Entity) addVisibleAlongLine(vision int, line [][2]int) {
 }
 
 func (e *Entity) figureVisibility() {
-  vision := e.CurLosDist(e.level.GetCellAtPos(e.pos).Terrain)
-  ex := int(e.pos.X)
-  ey := int(e.pos.Y)
+  vision := e.CurLosDist(e.level.GetCellAtPos(e.Pos).Terrain)
+  ex := int(e.Pos.X)
+  ey := int(e.Pos.Y)
 
   x := ex - vision
   if x < 0 {
@@ -315,7 +315,7 @@ func (e *Entity) figureVisibility() {
 }
 
 func (e *Entity) Coords() (x, y int) {
-  return int(e.pos.X), int(e.pos.Y)
+  return int(e.Pos.X), int(e.Pos.Y)
 }
 
 func (e *Entity) OnSetup() {
@@ -329,10 +329,10 @@ func (e *Entity) AddEffect(effect stats.Effect) {
   e.Stats.AddEffect(effect, e.Side == e.level.Side)
 }
 func (e *Entity) CurAttack() int {
-  return e.Stats.CurAttack(e.level.GetCellAtPos(e.pos).Terrain)
+  return e.Stats.CurAttack(e.level.GetCellAtPos(e.Pos).Terrain)
 }
 func (e *Entity) CurDefense() int {
-  return e.Stats.CurDefense(e.level.GetCellAtPos(e.pos).Terrain)
+  return e.Stats.CurDefense(e.level.GetCellAtPos(e.Pos).Terrain)
 }
 // TODO: This is the method that should determine if something triggered as we
 // moved into a cell.  It will also need to return this information to the
@@ -375,7 +375,7 @@ func (e *Entity) Advance(bp BoardPos, max_dist float32) (float32, bool) {
     return 0, false
   }
 
-  src := e.pos
+  src := e.Pos
   dst := bp
   dst.Subtract(&src.Vec2)
   dist := dst.Length()
@@ -383,23 +383,23 @@ func (e *Entity) Advance(bp BoardPos, max_dist float32) (float32, bool) {
   // If we can reach the target cell then we can just set our coordinates and
   // return, the caller can decide whether or not to continue.
   if dist <= max_dist {
-    e.pos.Assign(&bp.Vec2)
+    e.Pos.Assign(&bp.Vec2)
     e.level.GetCellAtPos(e.prev_pos).ent = nil
-    e.level.GetCellAtPos(e.pos).ent = e
-    e.prev_pos = e.pos
+    e.level.GetCellAtPos(e.Pos).ent = e
+    e.prev_pos = e.Pos
     return dist, true
   }
 
   dst.Normalize()
   dst.Vec2.Scale(max_dist)
   src.Vec2.Add(&dst.Vec2)
-  e.pos.Assign(&src.Vec2)
+  e.Pos.Assign(&src.Vec2)
   e.turnToFace(bp)
   return max_dist, false
 }
 
 func (e *Entity) turnToFace(dst BoardPos) {
-  dst.Subtract(&e.pos.Vec2)
+  dst.Subtract(&e.Pos.Vec2)
   facing := math.Atan2(float64(dst.Y), float64(dst.X)) / (2 * math.Pi) * 360.0
   var face int
   if facing >= 22.5 || facing < -157.5 {

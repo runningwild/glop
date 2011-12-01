@@ -16,8 +16,8 @@ type ActionMove struct {
 
 func (a *ActionMove) Prep() bool {
   level := a.Ent.level
-  bx := int(a.Ent.pos.X)
-  by := int(a.Ent.pos.Y)
+  bx := int(a.Ent.Pos.X)
+  by := int(a.Ent.Pos.Y)
   graph := &unitGraph{level, a.Ent}
   reachable := algorithm.ReachableWithinLimit(graph, []int{level.toVertex(bx, by)}, float64(a.Ent.CurAp()))
 
@@ -60,7 +60,7 @@ func (a *ActionMove) aiMoveToWithin(tx,ty,rnge int) bool {
     }
   }
   graph := &unitGraph{a.Ent.level, a.Ent}
-  _, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, dsts)
+  _, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Ent.level)}, dsts)
   if path == nil {
     return false
   }
@@ -87,7 +87,7 @@ func (a *ActionMove) MouseClick(bx,by float64) ActionCommit {
   if !found { return NoAction }
 
   graph := &unitGraph{level, a.Ent}
-  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, []int{dst.Vertex(a.Ent.level)})
+  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Ent.level)}, []int{dst.Vertex(a.Ent.level)})
   if len(path) <= 1 || int(ap) > a.Ent.CurAp() {
     return NoAction
   }

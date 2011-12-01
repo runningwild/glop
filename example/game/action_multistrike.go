@@ -32,7 +32,7 @@ func (a *ActionMultiStrike) Prep() bool {
   a.marks = make(map[*Entity]bool, a.Count)
   for _,target := range targets {
     a.targets[target] = true
-    a.Ent.level.GetCellAtPos(target.pos).highlight |= Attackable
+    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -86,7 +86,7 @@ func (a *ActionMultiStrike) Maintain(dt int64) MaintenanceStatus {
     // TODO: This is kinda dumb, we just change facing a bunch and stay facing
     // at the last target (which is random).  Might want to do something like
     // face the average of all of the targets
-    a.Ent.turnToFace(mark.pos)
+    a.Ent.turnToFace(mark.Pos)
   }
 
   a.Cancel()

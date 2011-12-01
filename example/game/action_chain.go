@@ -32,7 +32,7 @@ func (a *ActionChainAttack) Prep() bool {
   a.marks = nil
   for _,target := range targets {
     a.targets[target] = true
-    a.Ent.level.GetCellAtPos(target.pos).highlight |= Attackable
+    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -49,7 +49,7 @@ func (a *ActionChainAttack) MouseOver(bx,by float64) {
 func (a *ActionChainAttack) MouseClick(bx,by float64) ActionCommit {
   t := findTargetOnClick(bx, by, a.Ent.level, a.targets)
   if t == nil { return NoAction }
-  a.Ent.level.GetCellAtPos(t.pos).highlight |= Targeted
+  a.Ent.level.GetCellAtPos(t.Pos).highlight |= Targeted
   a.marks = append(a.marks, t)
 
   if len(a.marks) == a.Adds {
@@ -108,7 +108,7 @@ func (a *ActionChainAttack) Maintain(dt int64) MaintenanceStatus {
     }
   }
 
-  a.Ent.turnToFace(mark.pos)
+  a.Ent.turnToFace(mark.Pos)
 
   return InProgress
 }

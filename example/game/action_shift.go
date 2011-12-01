@@ -49,7 +49,7 @@ func (a *ActionLinearShift) Prep() bool {
   }
 
   for _,target := range a.targets {
-    a.Ent.level.GetCellAtPos(target.pos).highlight |= Attackable
+    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -74,7 +74,7 @@ func (a *ActionLinearShift) MouseOver(bx,by float64) {
   a.Ent.level.clearCache(Reachable)
 
   for _,ent := range a.targets {
-    if ent.pos.IntEquals(target_pos) {
+    if ent.Pos.IntEquals(target_pos) {
       target = ent
       break
     }
@@ -83,7 +83,7 @@ func (a *ActionLinearShift) MouseOver(bx,by float64) {
     return
   }
 
-  dist := a.Ent.pos.Dist(target_pos)
+  dist := a.Ent.Pos.Dist(target_pos)
   if dist > a.Range {
     return
   }
@@ -99,11 +99,11 @@ func (a *ActionLinearShift) figureShiftTargets(target_pos BoardPos) {
   a.shift_targets = nil
 
   // For pulling we draw a line from the target to our position
-  pull_line := bresenham(target_pos.Xi(), target_pos.Yi(), a.Ent.pos.Xi(), a.Ent.pos.Yi())
+  pull_line := bresenham(target_pos.Xi(), target_pos.Yi(), a.Ent.Pos.Xi(), a.Ent.Pos.Yi())
 
   // For pushing we draw a line from the target directly away from us
-  far := target_pos.Sub(a.Ent.pos).Scale(a.Push)
-  far = far.Add(a.Ent.pos)
+  far := target_pos.Sub(a.Ent.Pos).Scale(a.Push)
+  far = far.Add(a.Ent.Pos)
   push_line := bresenham(target_pos.Xi(), target_pos.Yi(), far.Xi(), far.Yi())
 
   for _,line := range [][][2]int{ pull_line, push_line } {
@@ -128,7 +128,7 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) ActionCommit {
   // for this action
   if a.current_target == nil {
     for _,target := range a.targets {
-      if target.pos.IntEquals(bp) {
+      if target.Pos.IntEquals(bp) {
         a.current_target = target
         break
       }
@@ -157,12 +157,12 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) ActionCommit {
     if ct != nil {
       a.current_target = ct
       a.Ent.level.clearCache(Attackable | Reachable)
-      a.figureShiftTargets(a.current_target.pos)
-      a.hover_target = &a.current_target.pos
+      a.figureShiftTargets(a.current_target.Pos)
+      a.hover_target = &a.current_target.Pos
       for _,pos := range a.shift_targets {
         a.Ent.level.GetCellAtPos(pos).highlight |= Reachable
       }
-      a.Ent.level.GetCellAtPos(a.current_target.pos).highlight |= Attackable
+      a.Ent.level.GetCellAtPos(a.current_target.Pos).highlight |= Attackable
     }
   }
   return NoAction

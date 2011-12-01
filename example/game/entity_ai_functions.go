@@ -112,7 +112,7 @@ func (e *Entity) nearestEntity(ally bool) *Entity {
     if ent.CurHealth() <= 0 { continue }
     if nearest == nil {
       nearest = ent
-    } else if ent.pos.Dist(e.pos) < nearest.pos.Dist(e.pos) {
+    } else if ent.Pos.Dist(e.Pos) < nearest.Pos.Dist(e.Pos) {
       nearest = ent
     }
   }
@@ -120,7 +120,7 @@ func (e *Entity) nearestEntity(ally bool) *Entity {
 }
 
 func distBetween(e1,e2 *Entity) int {
-  return e1.pos.Dist(e2.pos)
+  return e1.Pos.Dist(e2.Pos)
 }
 
 func (e *Entity) attack(target *Entity) {
@@ -186,7 +186,7 @@ func (e *Entity) advanceTowards(target *Entity) {
 
   e.doCmd(func() bool {
     // TODO: This preamble should be in a level method
-    if move.aiMoveToWithin(target.pos.Xi(), target.pos.Yi(), 1) {
+    if move.aiMoveToWithin(target.Pos.Xi(), target.Pos.Yi(), 1) {
       e.level.pending_action = move
       e.level.mid_action = true
       return true

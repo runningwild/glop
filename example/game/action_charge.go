@@ -30,22 +30,22 @@ func (a *ActionCharge) Prep() bool {
   }
   for _,ent := range a.Ent.level.Entities {
     if ent.Side == a.Ent.Side { continue }
-    if base.MaxNormi(a.Ent.pos.Xi(), a.Ent.pos.Yi(), ent.pos.Xi(), ent.pos.Yi()) <= 2 {
+    if base.MaxNormi(a.Ent.Pos.Xi(), a.Ent.Pos.Yi(), ent.Pos.Xi(), ent.Pos.Yi()) <= 2 {
       continue
     }
     var dsts []int
-    cx := ent.pos.Xi()
-    cy := ent.pos.Yi()
+    cx := ent.Pos.Xi()
+    cy := ent.Pos.Yi()
     for x := cx - 1; x <= cx + 1; x++ {
       for y := cy - 1; y <= cy + 1; y++ {
         if x == cx && y == cy { continue }
         dsts = append(dsts, ent.level.toVertex(x, y))
       }
     }
-    ap, path := algorithm.Dijkstra(graph, []int{a.Ent.pos.Vertex(a.Ent.level)}, dsts)
+    ap, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Ent.level)}, dsts)
     if int(ap) > a.Ent.CurAp() { continue }
-    a.valid_marks = append(a.valid_marks, ent.pos)
-    a.pos_to_path[ent.pos.Vertex(a.Ent.level)] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
+    a.valid_marks = append(a.valid_marks, ent.Pos)
+    a.pos_to_path[ent.Pos.Vertex(a.Ent.level)] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
   }
   if len(a.valid_marks) == 0 {
     return false
@@ -82,7 +82,7 @@ func (a *ActionCharge) MouseClick(bx,by float64) ActionCommit {
   var mark *Entity
   mark_cell := MakeBoardPos(int(bx), int(by))
   for _,mark = range a.Ent.level.Entities {
-    if mark.pos.IntEquals(mark_cell) {
+    if mark.Pos.IntEquals(mark_cell) {
       a.mark = mark
       return StandardAction
     }
@@ -115,7 +115,7 @@ func (a *ActionCharge) Maintain(dt int64) MaintenanceStatus {
       }
     }
 
-    a.Ent.turnToFace(a.mark.pos)
+    a.Ent.turnToFace(a.mark.Pos)
 
 
     a.Cancel()

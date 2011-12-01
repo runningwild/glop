@@ -28,7 +28,7 @@ func (a *ActionBasicAttack) Prep() bool {
   }
 
   for _,target := range a.targets {
-    a.Ent.level.GetCellAtPos(target.pos).highlight |= Attackable
+    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -44,7 +44,7 @@ func (a *ActionBasicAttack) MouseOver(bx,by float64) {
 
 func (a *ActionBasicAttack) MouseClick(bx,by float64) ActionCommit {
   for i := range a.targets {
-    if int(bx) == a.targets[i].pos.Xi() && int(by) == a.targets[i].pos.Yi() {
+    if int(bx) == a.targets[i].Pos.Xi() && int(by) == a.targets[i].Pos.Yi() {
       a.mark = a.targets[i]
       return StandardAction
     }
@@ -53,7 +53,7 @@ func (a *ActionBasicAttack) MouseClick(bx,by float64) ActionCommit {
 }
 
 func (a *ActionBasicAttack) aiDoAttack(mark *Entity) bool {
-  if a.Range < mark.pos.Dist(a.Ent.pos) { return false }
+  if a.Range < mark.Pos.Dist(a.Ent.Pos) { return false }
   if a.Ent.CurAp() < a.Cost { return false }
   a.mark = mark
   return true
@@ -88,7 +88,7 @@ func (a *ActionBasicAttack) Maintain(dt int64) MaintenanceStatus {
     }
   }
 
-  a.Ent.turnToFace(a.mark.pos)
+  a.Ent.turnToFace(a.mark.Pos)
 
   a.Cancel()
   return Complete

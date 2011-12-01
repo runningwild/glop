@@ -7,7 +7,7 @@ import "game/base"
 func payForMove(ent *Entity, dst BoardPos) bool {
   level := ent.level
   graph := unitGraph{level, ent}
-  cost := int(graph.costToMove(ent.pos.Vertex(ent.level), dst.Vertex(ent.level)))
+  cost := int(graph.costToMove(ent.Pos.Vertex(ent.level), dst.Vertex(ent.level)))
   if cost > ent.CurAp() {
     return false
   }
@@ -18,7 +18,7 @@ func payForMove(ent *Entity, dst BoardPos) bool {
 func canPayForMove(ent *Entity, dst BoardPos) bool {
   level := ent.level
   graph := unitGraph{level, ent}
-  cost := int(graph.costToMove(ent.pos.Vertex(ent.level), dst.Vertex(ent.level)))
+  cost := int(graph.costToMove(ent.Pos.Vertex(ent.level), dst.Vertex(ent.level)))
   return cost <= ent.CurAp()
 }
 
@@ -56,8 +56,8 @@ func getEntsWithinRange(src *Entity, rng int, level *Level) []*Entity {
   var targets []*Entity
   for _,ent := range level.Entities {
     if ent.Side == src.Side { continue }
-    dist := base.MaxNormi(src.pos.Xi(), src.pos.Yi(), ent.pos.Xi(), ent.pos.Yi())
-    if _,ok := src.visible[ent.pos.Vertex(ent.level)]; !ok { continue }
+    dist := base.MaxNormi(src.Pos.Xi(), src.Pos.Yi(), ent.Pos.Xi(), ent.Pos.Yi())
+    if _,ok := src.visible[ent.Pos.Vertex(ent.level)]; !ok { continue }
     if dist > rng { continue }
     targets = append(targets, ent)
   }

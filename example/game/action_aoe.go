@@ -26,7 +26,7 @@ func (a *ActionAoe) Prep() bool {
   if a.Range == 0 {
     for dx := -a.Size; dx <= a.Size; dx++ {
       for dy := -a.Size; dy <= a.Size; dy++ {
-        t := a.Ent.pos.Add(MakeBoardPos(dx, dy))
+        t := a.Ent.Pos.Add(MakeBoardPos(dx, dy))
         if t.Valid(a.Ent.level) {
           a.Ent.level.GetCellAtPos(t).highlight |= Attackable
         }
@@ -54,7 +54,7 @@ func (a *ActionAoe) Maintain(dt int64) MaintenanceStatus {
   if a.Range == 0 {
     for dx := -a.Size; dx <= a.Size; dx++ {
       for dy := -a.Size; dy <= a.Size; dy++ {
-        t := a.Ent.pos.Add(MakeBoardPos(dx, dy))
+        t := a.Ent.Pos.Add(MakeBoardPos(dx, dy))
         if !t.Valid(a.Ent.level) { continue }
         ent := a.Ent.level.GetCellAtPos(t).ent
         if ent == nil { continue }
