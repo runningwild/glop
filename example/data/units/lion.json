@@ -1,16 +1,12 @@
 {
   "Name" : "Lion",
-  "Stats" : {
-    "DynamicStats" : {
-      "Health" : 1,
-      "Ap" : 5
-    },
-    "Defense" : 3,
-    "LosDist" : 15,
-    "Atts" : [
-      "standard"
-    ]
-  },
+  "Health" : 1,
+  "Ap" : 5,
+  "Defense" : 3,
+  "LosDist" : 15,
+  "Atts" : [
+    "standard"
+  ],
   "Sprite" : "yellow",
   "Weapons" : [
     "Pounce",

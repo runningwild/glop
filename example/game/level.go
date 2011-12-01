@@ -946,6 +946,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   if err != nil {
     panic(fmt.Sprintf("Error loading attributes: %s\n", err.Error()))
   }
+  stats.SetAttmap(attmap)
 
   var level Level
   level.directory = datadir
@@ -1032,7 +1033,7 @@ func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes
   var ent Entity
   ent = Entity{
     Name : unit_type.Name,
-    Stats : stats.MakeStats(unit_type.Stats, attmap),
+    Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
     pos:   MakeBoardPos(x, y),
     prev_pos:   MakeBoardPos(x, y),
     side:  side,

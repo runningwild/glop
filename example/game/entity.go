@@ -20,9 +20,13 @@ import (
 type UnitType struct {
   Name string
 
-  // All gameplay relevant stats are in a separate package so we are forced to
-  // go through the appropriate channels to read/modify these values
-  Stats stats.BaseStats
+  // All of the stats that are needed to create a stats.Stats interface
+  Health  int
+  Ap      int
+  Attack  int
+  Defense int
+  LosDist int
+  Atts    []string
 
   // Name of the sprite that should be used to represent this unit
   Sprite string
@@ -151,7 +155,7 @@ func (w *EntityStatsWindow) Draw(region gui.Region) {
 type Entity struct {
   Name string
 
-  *stats.Stats
+  stats.Stats
   CosmeticStats
 
   // 0 indicates that the unit is unaffiliated

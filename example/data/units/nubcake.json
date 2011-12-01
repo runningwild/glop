@@ -1,16 +1,12 @@
 {
   "Name" : "Nubcake",
-  "Stats" : {
-    "DynamicStats" : {
-      "Health" : 500,
-      "Ap" : 400
-    },
-    "Defense" : 2,
-    "LosDist" : 15,
-    "Atts" : [
-      "standard"
-    ]
-  },
+  "Health" : 500,
+  "Ap" : 400,
+  "Defense" : 2,
+  "LosDist" : 15,
+  "Atts" : [
+    "standard"
+  ],
   "Sprite" : "orange",
   "Weapons" : [
     "Harpoon",
