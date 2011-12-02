@@ -169,7 +169,7 @@ func actualMain() {
       m_factor := 0.0075
       dx := m_factor * (kd.FramePressSum() - ka.FramePressSum())
       dy := m_factor * (kw.FramePressSum() - ks.FramePressSum())
-      level.Terrain.Move(dx, dy)
+      level.Terrain().Move(dx, dy)
       zoom := gin.In().GetKey('r').FramePressSum() - gin.In().GetKey('f').FramePressSum()
       if gin.In().GetKey('o').FramePressCount() > 0 {
         level.Round()
@@ -227,7 +227,7 @@ func actualMain() {
           ui.AddChild(load_widget)
         }
       }
-      level.Terrain.Zoom(zoom * 0.0025)
+      level.Terrain().Zoom(zoom * 0.0025)
     }
   }
 

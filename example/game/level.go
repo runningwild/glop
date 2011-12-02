@@ -9,6 +9,9 @@ import (
   "glop/gui"
   "glop/sprite"
   "glop/util/algorithm"
+  "gob"
+  "bytes"
+  "time"
   "gl"
   "math"
   "github.com/arbaal/mathgl"
@@ -320,16 +323,53 @@ func (bp BoardPos) Valid(level *Level) bool {
   return true
 }
 
+// All of the data contained in the Level struct that needs to be saved to disk
+// when saving a game.
+// TODO: Should have a function that is called immediately after loading that
+// handles loading things that don't need to be saved, like images and whatnot.
+type levelDiskData struct {
+  // directory that everything is loaded from
+  Directory string
+  
+  // whose turn it is, side 1 goes first, then 2, then back to 1...
+  Side     int
+
+  Entities []*Entity
+}
+
+// TODO: When go issue 2517 is fixed remove this extra struct
+// This struce differs from levelDiskData only in that it has []entityContainer
+// instead of []*Entity.  This is just to appease gob.
+type levelContainer struct {
+  // directory that everything is loaded from
+  Directory string
+  
+  // whose turn it is, side 1 goes first, then 2, then back to 1...
+  Side     int
+
+  Entities []entityContainer
+}
+func (l *Level) makeLevelContainer() levelContainer {
+  var container levelContainer
+  container.Directory = l.Directory
+  container.Side = l.Side
+  mapper := func(a interface{}) interface{} {
+    return entityContainer{
+      entityDiskData: a.(*Entity).entityDiskData,
+    }
+  }
+  container.Entities = algorithm.Map(l.Entities, []entityContainer{}, mapper).([]entityContainer)
+  return container
+}
+
 // Contains everything for the playing of the game
 type Level struct {
   StaticLevelData
-  directory string
+  levelDiskData
 
   editor     *Editor
   editor_gui *gui.CollapseWrapper
 
-  // whose turn it is, side 1 goes first, then 2, then back to 1...
-  Side     int
   side_gui *gui.TextLine
 
   // The single gui element containing all other elements related to the
@@ -337,13 +377,11 @@ type Level struct {
   game_gui *gui.HorizontalTable
 
   // The gui element rendering the terrain and all of the other drawables
-  Terrain *gui.Terrain
+  terrain *gui.Terrain
 
   // The gui elements that show entity information
   selected_gui *EntityStatsWindow
   targeted_gui *EntityStatsWindow
-
-  Entities []*Entity
 
   selected *Entity
   hovered  *Entity
@@ -378,6 +416,10 @@ type Level struct {
   aig_errs      chan error
   ai_done       bool
   ai_evaluating bool
+}
+
+func (l *Level) Terrain() *gui.Terrain {
+  return l.terrain
 }
 
 func (l *Level) GetCellAtVertex(v int) *CellData {
@@ -546,6 +588,28 @@ func (l *Level) GetAnim() string {
 }
 
 func (l *Level) Think(dt int64) {
+  {
+    start := time.Nanoseconds()
+    buffer := bytes.NewBuffer(nil)
+    enc := gob.NewEncoder(buffer)
+    dec := gob.NewDecoder(buffer)
+    err := enc.Encode(l.makeLevelContainer())
+    size := buffer.Len()
+    if err != nil {
+      fmt.Printf("Gobbing: %s\n", err.Error())
+    } else {
+      var l2 Level
+      dec.Decode(&l2)
+      if err != nil {
+        fmt.Printf("Gobbing: %s\n", err.Error())
+      } else {
+        end := time.Nanoseconds()
+        fmt.Printf("Gobbing successful! %d ms\n", (end-start)/1000000)
+        fmt.Printf("Size: %d\n", size)
+      }
+    }
+
+  }
   if l.allEntsReady() {
     if l.current_action == nil && l.pending_action != nil {
       l.current_action = l.pending_action
@@ -679,7 +743,7 @@ func (l *Level) Think(dt int64) {
       l.clearCache(game_highlights)
     }
     if l.grid[int(e.Pos.X)][int(e.Pos.Y)].highlight&FogOfWar == 0 {
-      l.Terrain.AddUprightDrawable(e.Pos.X+0.25, e.Pos.Y+0.25, e.s)
+      l.terrain.AddUprightDrawable(e.Pos.X+0.25, e.Pos.Y+0.25, e.s)
     }
   }
 
@@ -691,7 +755,7 @@ func (l *Level) Think(dt int64) {
     cell.highlight |= Selected
   }
 
-  bx, by := l.Terrain.WindowToBoard(l.winx, l.winy)
+  bx, by := l.terrain.WindowToBoard(l.winx, l.winy)
   // mouseovers
   if l.current_action != nil {
     l.current_action.MouseOver(float64(bx), float64(by))
@@ -709,7 +773,7 @@ func (l *Level) Think(dt int64) {
   for i := range l.grid {
     for j := range l.grid[i] {
       // Draw tiles
-      l.Terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
+      l.terrain.AddFlattenedDrawable(float32(i), float32(j), &l.grid[i][j])
 
       // Erase entities in the grid so that we can replace them with their current
       // positions, since they may have changed
@@ -802,7 +866,7 @@ func (l *Level) HandleEventGroup(event_group gin.EventGroup) {
     return
   }
   l.winx, l.winy = cursor.Point()
-  bx, by := l.Terrain.WindowToBoard(l.winx, l.winy)
+  bx, by := l.terrain.WindowToBoard(l.winx, l.winy)
   if bx < 0 || by < 0 || int(bx) >= len(l.grid) || int(by) >= len(l.grid[0]) {
     return
   }
@@ -949,7 +1013,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   stats.SetAttmap(attmap)
 
   var level Level
-  level.directory = datadir
+  level.Directory = datadir
 
   dx := len(ldc.Level.Cells)
   dy := len(ldc.Level.Cells[0])
@@ -991,12 +1055,12 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
     }
   }
   level.bg_path = ldc.Level.Image
-  bg_path := filepath.Join(filepath.Clean(level.directory), "maps", level.bg_path)
+  bg_path := filepath.Join(filepath.Clean(level.Directory), "maps", level.bg_path)
   terrain, err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
   if err != nil {
     fmt.Printf("Error making terrain: %s\n", err.Error())
   }
-  level.Terrain = terrain
+  level.terrain = terrain
   terrain.SetEventHandler(&level)
 
   level.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
@@ -1008,7 +1072,7 @@ func LoadLevel(datadir, mapname string) (*Level, error) {
   entity_guis := gui.MakeHorizontalTable()
   entity_guis.AddChild(level.selected_gui)
   entity_guis.AddChild(level.targeted_gui)
-  game_only_gui.AddChild(level.Terrain)
+  game_only_gui.AddChild(level.terrain)
   game_only_gui.AddChild(level.side_gui)
   game_only_gui.AddChild(entity_guis)
   level.game_gui.AddChild(game_only_gui)
@@ -1032,16 +1096,18 @@ func (l *Level) ToggleEditor() {
 func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes, x, y, side int, move_speed float32, sprite *sprite.Sprite) *Entity {
   var ent Entity
   ent = Entity{
-    Name : unit_type.Name,
-    Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
-    Pos:   MakeBoardPos(x, y),
+    entityDiskData: entityDiskData{
+      Name : unit_type.Name,
+      Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
+      Pos:   MakeBoardPos(x, y),
+      Side:  side,
+      CosmeticStats: CosmeticStats{
+        Move_speed: move_speed,
+      },
+    },
     prev_pos:   MakeBoardPos(x, y),
-    Side:  side,
     s:     sprite,
     level: l,
-    CosmeticStats: CosmeticStats{
-      Move_speed: move_speed,
-    },
     cmds: make(chan func() bool),
     cont: make(chan aiEvalSignal),
   }

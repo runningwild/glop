@@ -135,7 +135,7 @@ func (w *EntityStatsWindow) SetEntity(e *Entity) {
     w.name.SetText(e.Name)
     var paths, names []string
     for i := 1; i < len(e.actions); i++ {
-      paths = append(paths, filepath.Join(e.level.directory, "icons", e.actions[i].IconPath()))
+      paths = append(paths, filepath.Join(e.level.Directory, "icons", e.actions[i].IconPath()))
       names = append(names, e.actions[i].IconPath())
     }
     w.actions = gui.MakeSelectImageBox(paths, names)
@@ -152,21 +152,31 @@ func (w *EntityStatsWindow) Draw(region gui.Region) {
   w.table.Draw(region)
 }
 
-type Entity struct {
+type entityDiskData struct {
   Name string
-
   stats.Stats
   CosmeticStats
 
   // 0 indicates that the unit is unaffiliated
   Side int
 
+  // Board coordinates of this entity's current position
+  Pos BoardPos
+}
+
+// When saving entityDiskData from an Entity is written into here and then
+// gobbed, this avoids issues with Entity containing channels.
+// When loading this is loaded into an Entity and gob is ok with that.
+type entityContainer struct {
+  entityDiskData
+}
+
+type Entity struct {
+  entityDiskData
+
   s *sprite.Sprite
 
   level *Level
-
-  // Board coordinates of this entity's current position
-  Pos BoardPos
 
   // Board coordinates of this entity's previous position, needed to update the
   // level grid as this entity moves around the board.
