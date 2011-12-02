@@ -3,7 +3,7 @@ package ai
 import (
   "yed"
   "polish"
-  "rand"
+  "math/rand"
 )
 
 type Error struct {

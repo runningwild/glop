@@ -3,7 +3,7 @@ package stats_test
 import (
   . "gospec"
   "gospec"
-  "gob"
+  "encoding/gob"
   "bytes"
   "game/stats"
   "game/base"

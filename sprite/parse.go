@@ -4,7 +4,7 @@ import (
   "errors"
   "fmt"
   "os"
-  "xml"
+  "encoding/xml"
   "strconv"
   "strings"
   "regexp"

@@ -1,7 +1,7 @@
 package main
 
 import (
-  "json"
+  "encoding/json"
   "glop/gos"
   "glop/gin"
   "glop/gui"
@@ -120,13 +120,13 @@ func actualMain() {
   ticker := time.Tick(1e7)
 
   level.Setup()
-  prev := time.Nanoseconds()
+  prev := time.Now().UnixNano()
 
   profiling := false
   var load_widget gui.Widget
   for {
     n++
-    next := time.Nanoseconds()
+    next := time.Now().UnixNano()
     dt := (next - prev) / 1000000
     prev = next
 
@@ -205,10 +205,10 @@ func actualMain() {
             panic(err.Error())
           }
           for _, name := range names {
-            if !strings.HasSuffix(name.Name, "json") {
+            if !strings.HasSuffix(name.Name(), "json") {
               continue
             }
-            var the_name = name.Name // closure madness
+            var the_name = name.Name() // closure madness
             table.AddChild(gui.MakeButton("standard", the_name, 300, 1, 1, 1, 1,
               func(int64) {
                 nlevel, err := game.LoadLevel(basedir, the_name)

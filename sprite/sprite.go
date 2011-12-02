@@ -448,11 +448,11 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, error) {
     ss.state = state_graph
 
     all_facings := make(map[int]bool)
-    err = filepath.Walk(path, func(cur string, info *os.FileInfo, err error) error {
+    err = filepath.Walk(path, func(cur string, info os.FileInfo, err error) error {
       if cur == path {
         return nil
       }
-      if info.IsDirectory() {
+      if info.IsDir() {
         _, name := filepath.Split(cur)
         num, err := strconv.Atoi(name)
         if err == nil {

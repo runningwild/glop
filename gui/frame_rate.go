@@ -18,7 +18,7 @@ func MakeFrameRateWidget() *FrameRateWidget {
 }
 
 func (w *FrameRateWidget) DoThink(t int64, _ bool) {
-  now := time.Nanoseconds()
+  now := time.Now().UnixNano()
   w.frame_times = append(w.frame_times, now)
   prev := now - 1e9
   index := 0

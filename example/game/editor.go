@@ -110,7 +110,7 @@ func MakeEditor(level_data *StaticLevelData, dir, filename string) *Editor {
 
 func (e *Editor) SelectCell(x, y int) {
   if e.invert {
-    e.selected[&e.level.grid[x][y]] = false, false
+    delete(e.selected, &e.level.grid[x][y])
   } else {
     e.selected[&e.level.grid[x][y]] = true
   }

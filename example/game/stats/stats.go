@@ -3,7 +3,7 @@ package stats
 import (
   "game/base"
   "glop/util/algorithm"
-  "gob"
+  "encoding/gob"
 )
 
 type Stats interface {

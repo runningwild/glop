@@ -3,7 +3,7 @@ package sprite
 import (
   "errors"
   "fmt"
-  "rand"
+  "math/rand"
   "strings"
 )
 
@@ -231,7 +231,7 @@ func ProcessAnimWithState(anim, state *Graph) error {
     return errors.New(fmt.Sprintf("The following states were not accounted for in the animation: %v", unused))
   }
 
-  if anim.AllCmds() != state.AllCmds() {
+  {
     ac := anim.AllCmds()
     sc := state.AllCmds()
     a_not_s := make([]string, 0)

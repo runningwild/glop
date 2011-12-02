@@ -2,7 +2,7 @@ package base
 
 import (
   "os"
-  "json"
+  "encoding/json"
   "io/ioutil"
 )
 

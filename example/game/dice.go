@@ -2,7 +2,7 @@ package game
 
 import (
   "fmt"
-  "rand"
+  "math/rand"
   "strings"
   "regexp"
   "strconv"

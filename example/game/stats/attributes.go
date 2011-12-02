@@ -2,7 +2,7 @@ package stats
 
 import(
   "fmt"
-  "json"
+  "encoding/json"
   "game/base"
 )
 

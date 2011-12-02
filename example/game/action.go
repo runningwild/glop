@@ -8,7 +8,7 @@ import (
   "os"
   "strings"
   "io/ioutil"
-  "json"
+  "encoding/json"
 )
 
 type Icon interface {
@@ -188,8 +188,8 @@ func MakeAction(spec_name string, ent *Entity) Action {
 
 // Finds all *.json files in dir and registers all
 func RegisterAllSpecsInDir(dir string) {
-  err := filepath.Walk(dir, func(path string, info *os.FileInfo, err error) error {
-    if info.IsDirectory() {
+  err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+    if info.IsDir() {
       return nil
     }
     if !strings.HasSuffix(path, ".json") {

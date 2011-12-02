@@ -9,7 +9,7 @@ import (
   "fmt"
   "glop/gui"
   "glop/sprite"
-  "json"
+  "encoding/json"
   "io/ioutil"
   "os"
   "path/filepath"
@@ -429,8 +429,8 @@ func (e *Entity) Think(dt int64) {
 func LoadAllUnits(dir string) ([]*UnitType, error) {
   var paths []string
   unit_dir := filepath.Join(dir, "units")
-  err := filepath.Walk(unit_dir, func(path string, info *os.FileInfo, err error) error {
-    if !info.IsDirectory() && strings.HasSuffix(path, ".json") {
+  err := filepath.Walk(unit_dir, func(path string, info os.FileInfo, err error) error {
+    if !info.IsDir() && strings.HasSuffix(path, ".json") {
       paths = append(paths, path)
     }
     return nil

@@ -9,13 +9,13 @@ import (
   "glop/gui"
   "glop/sprite"
   "glop/util/algorithm"
-  "gob"
+  "encoding/gob"
   "bytes"
   "time"
   "gl"
   "math"
   "github.com/arbaal/mathgl"
-  "json"
+  "encoding/json"
   "path/filepath"
   "io"
   "io/ioutil"
@@ -588,13 +588,12 @@ func (l *Level) GetAnim() string {
 }
 
 func (l *Level) Think(dt int64) {
-  {
-    start := time.Nanoseconds()
+  if false {
+    start := time.Now().UnixNano()
     buffer := bytes.NewBuffer(nil)
     enc := gob.NewEncoder(buffer)
     dec := gob.NewDecoder(buffer)
     err := enc.Encode(l.makeLevelContainer())
-    size := buffer.Len()
     if err != nil {
       fmt.Printf("Gobbing: %s\n", err.Error())
     } else {
@@ -603,9 +602,8 @@ func (l *Level) Think(dt int64) {
       if err != nil {
         fmt.Printf("Gobbing: %s\n", err.Error())
       } else {
-        end := time.Nanoseconds()
+        end := time.Now().UnixNano()
         fmt.Printf("Gobbing successful! %d ms\n", (end-start)/1000000)
-        fmt.Printf("Size: %d\n", size)
       }
     }
 

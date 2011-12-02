@@ -2,12 +2,12 @@ package stats
 
 import (
   "game/base"
-  "gob"
+  "encoding/gob"
   "fmt"
   "os"
   "strings"
   "io/ioutil"
-  "json"
+  "encoding/json"
   "reflect"
   "path/filepath"
 )
@@ -201,8 +201,8 @@ func RegisterEffectsFromJson(data []byte) error {
 
 // Finds all *.json files in dir and registers all effects found in those files
 func RegisterAllEffectsInDir(dir string) {
-  err := filepath.Walk(dir, func(path string, info *os.FileInfo, err error) error {
-    if info.IsDirectory() {
+  err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+    if info.IsDir() {
       return nil
     }
     if !strings.HasSuffix(path, ".json") {
