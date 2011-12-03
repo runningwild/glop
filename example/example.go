@@ -103,7 +103,8 @@ func actualMain() {
   actions_dir := filepath.Join(basedir, "actions")
   game.RegisterAllSpecsInDir(actions_dir)
 
-  level, err := game.LoadLevel(basedir, "bosworth.json")
+  level := game.MakeLevel(basedir, "bosworth.json")
+  err := level.Fill()
   if err != nil {
     panic(err.Error())
   }
@@ -211,7 +212,8 @@ func actualMain() {
             var the_name = name.Name() // closure madness
             table.AddChild(gui.MakeButton("standard", the_name, 300, 1, 1, 1, 1,
               func(int64) {
-                nlevel, err := game.LoadLevel(basedir, the_name)
+                nlevel := game.MakeLevel(basedir, the_name)
+                err := level.Fill()
                 if err != nil {
                   panic(err.Error())
                 }

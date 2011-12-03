@@ -7,11 +7,8 @@ import (
   "glop/ai"
   "glop/gin"
   "glop/gui"
-  "glop/sprite"
   "glop/util/algorithm"
   "encoding/gob"
-  "bytes"
-  "time"
   "gl"
   "math"
   "github.com/arbaal/mathgl"
@@ -323,49 +320,27 @@ func (bp BoardPos) Valid(level *Level) bool {
   return true
 }
 
-// All of the data contained in the Level struct that needs to be saved to disk
-// when saving a game.
-// TODO: Should have a function that is called immediately after loading that
-// handles loading things that don't need to be saved, like images and whatnot.
-type levelDiskData struct {
+// Contains everything for the playing of the game
+type Level struct {
+  StaticLevelData
+
+  // *** Begin exported fields
+  // When saving the game the level is gobbed, so all exported fields are
+  // saved, everything else is not.  All information must either be in these
+  // fields, be derived from these fields, or be implicit in the fact that
+  // saves are only allowed at certain times (between turns).
+
   // directory that everything is loaded from
   Directory string
+
+  // Map that this level is using
+  Mapname string
   
   // whose turn it is, side 1 goes first, then 2, then back to 1...
   Side     int
 
   Entities []*Entity
-}
-
-// TODO: When go issue 2517 is fixed remove this extra struct
-// This struce differs from levelDiskData only in that it has []entityContainer
-// instead of []*Entity.  This is just to appease gob.
-type levelContainer struct {
-  // directory that everything is loaded from
-  Directory string
-  
-  // whose turn it is, side 1 goes first, then 2, then back to 1...
-  Side     int
-
-  Entities []entityContainer
-}
-func (l *Level) makeLevelContainer() levelContainer {
-  var container levelContainer
-  container.Directory = l.Directory
-  container.Side = l.Side
-  mapper := func(a interface{}) interface{} {
-    return entityContainer{
-      entityDiskData: a.(*Entity).entityDiskData,
-    }
-  }
-  container.Entities = algorithm.Map(l.Entities, []entityContainer{}, mapper).([]entityContainer)
-  return container
-}
-
-// Contains everything for the playing of the game
-type Level struct {
-  StaticLevelData
-  levelDiskData
+  // *** End exported fields
 
   editor     *Editor
   editor_gui *gui.CollapseWrapper
@@ -587,27 +562,30 @@ func (l *Level) GetAnim() string {
   panic("wtf")
 }
 
-func (l *Level) Think(dt int64) {
-  if false {
-    start := time.Now().UnixNano()
-    buffer := bytes.NewBuffer(nil)
-    enc := gob.NewEncoder(buffer)
-    dec := gob.NewDecoder(buffer)
-    err := enc.Encode(l.makeLevelContainer())
-    if err != nil {
-      fmt.Printf("Gobbing: %s\n", err.Error())
-    } else {
-      var l2 Level
-      dec.Decode(&l2)
-      if err != nil {
-        fmt.Printf("Gobbing: %s\n", err.Error())
-      } else {
-        end := time.Now().UnixNano()
-        fmt.Printf("Gobbing successful! %d ms\n", (end-start)/1000000)
-      }
-    }
-
+func (l *Level) ExpSave(filename string) error {
+  f,err := os.Create(filename)
+  if err != nil {
+    return err
   }
+  defer f.Close()
+  enc := gob.NewEncoder(f)
+  return enc.Encode(*l)
+}
+
+func (l *Level) ExpLoad(filename string) error {
+  f,err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  dec := gob.NewDecoder(f)
+
+  // TODO: Do we need some sort of cleanup mechanism to take down old goroutines?
+  *l = Level{}
+  return dec.Decode(l)
+}
+
+func (l *Level) Think(dt int64) {
   if l.allEntsReady() {
     if l.current_action == nil && l.pending_action != nil {
       l.current_action = l.pending_action
@@ -988,99 +966,108 @@ func (l *Level) SelectAction(n int) {
   }
 }
 
-func LoadLevel(datadir, mapname string) (*Level, error) {
-  datapath := filepath.Join(datadir, "maps", mapname)
-  datafile, err := os.Open(datapath)
+/*
+  Directory string
+  
+  // whose turn it is, side 1 goes first, then 2, then back to 1...
+  Side     int
+
+  Entities []*Entity
+*/
+
+func MakeLevel(directory,mapname string) *Level {
+  var level Level
+  level.Directory = directory
+  level.Mapname = mapname
+  return &level
+}
+
+func (l *Level) Fill() error {
+  mappath := filepath.Join(l.Directory, "maps", l.Mapname)
+  mapfile, err := os.Open(mappath)
   if err != nil {
-    return nil, err
+    return err
   }
-  data, err := ioutil.ReadAll(datafile)
+  mapdata, err := ioutil.ReadAll(mapfile)
   if err != nil {
-    return nil, err
+    return err
   }
   var ldc levelDataContainer
-  err = json.Unmarshal(data, &ldc)
+  err = json.Unmarshal(mapdata, &ldc)
   if err != nil {
-    panic(fmt.Sprintf("Error reading %s: %s\n", mapname, err.Error()))
+    return err
   }
 
-  attmap, err := stats.LoadAttributes(filepath.Join(datadir, "attributes.json"))
+  attmap, err := stats.LoadAttributes(filepath.Join(l.Directory, "attributes.json"))
   if err != nil {
-    panic(fmt.Sprintf("Error loading attributes: %s\n", err.Error()))
+    return err
   }
   stats.SetAttmap(attmap)
-
-  var level Level
-  level.Directory = datadir
 
   dx := len(ldc.Level.Cells)
   dy := len(ldc.Level.Cells[0])
   all_cells := make([]CellData, dx*dy)
-  level.grid = make([][]CellData, dx)
-  for i := range level.grid {
-    level.grid[i] = all_cells[i*dy : (i+1)*dy]
+  l.grid = make([][]CellData, dx)
+  for i := range l.grid {
+    l.grid[i] = all_cells[i*dy : (i+1)*dy]
   }
-  all_units, err := LoadAllUnits(datadir)
+  all_units, err := LoadAllUnits(l.Directory)
   if err != nil {
-    panic(fmt.Sprintf("Error reading unit files: %s\n", err.Error()))
+    return err
   }
   unit_map := make(map[string]*UnitType)
   for _, unit := range all_units {
     unit_map[unit.Name] = unit
   }
-  for i := range level.grid {
-    for j := range level.grid[i] {
-      level.grid[i][j].Terrain = ldc.Level.Cells[i][j].Terrain
-      level.grid[i][j].Unit = ldc.Level.Cells[i][j].Unit
-      if level.grid[i][j].Unit.Name != "" {
-        if unit, ok := unit_map[level.grid[i][j].Unit.Name]; !ok {
-          return nil, errors.New(fmt.Sprintf("Unable to find unit definition for '%s'.", level.grid[i][j].Unit))
+  for i := range l.grid {
+    for j := range l.grid[i] {
+      l.grid[i][j].Terrain = ldc.Level.Cells[i][j].Terrain
+      l.grid[i][j].Unit = ldc.Level.Cells[i][j].Unit
+      if l.grid[i][j].Unit.Name != "" {
+        if unit, ok := unit_map[l.grid[i][j].Unit.Name]; !ok {
+          return errors.New(fmt.Sprintf("Unable to find unit definition for '%s'.", l.grid[i][j].Unit))
         } else {
-          sprite, err := sprite.LoadSprite(filepath.Join(datadir, "sprites", unit.Sprite))
-          if err != nil {
-            return nil, err
-          }
-          side := level.grid[i][j].Unit.Side
-          ent := level.addEntity(*unit, attmap, i, j, side, 0.0075, sprite)
+          side := l.grid[i][j].Unit.Side
+          ent := l.addEntity(*unit, i, j, side, 0.0075, unit_map)
           if ent.Side == 2 {
-            err = ent.MakeAi(filepath.Join(datadir, "ai", "basic.xgml"))
+            err = ent.MakeAi(filepath.Join(l.Directory, "ai", "basic.xgml"))
             if err != nil {
-              return nil, err
+              return err
             }
           }
         }
       }
     }
   }
-  level.bg_path = ldc.Level.Image
-  bg_path := filepath.Join(filepath.Clean(level.Directory), "maps", level.bg_path)
+  l.bg_path = ldc.Level.Image
+  bg_path := filepath.Join(filepath.Clean(l.Directory), "maps", l.bg_path)
   terrain, err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
   if err != nil {
-    fmt.Printf("Error making terrain: %s\n", err.Error())
+    return err
   }
-  level.terrain = terrain
-  terrain.SetEventHandler(&level)
+  l.terrain = terrain
+  terrain.SetEventHandler(l)
 
-  level.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
-  level.editor = MakeEditor(&level.StaticLevelData, datadir, mapname)
-  level.game_gui = gui.MakeHorizontalTable()
+  l.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
+  l.editor = MakeEditor(&l.StaticLevelData, l.Directory, l.Mapname)
+  l.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
-  level.selected_gui = MakeStatsWindow(true)
-  level.targeted_gui = MakeStatsWindow(false)
+  l.selected_gui = MakeStatsWindow(true)
+  l.targeted_gui = MakeStatsWindow(false)
   entity_guis := gui.MakeHorizontalTable()
-  entity_guis.AddChild(level.selected_gui)
-  entity_guis.AddChild(level.targeted_gui)
-  game_only_gui.AddChild(level.terrain)
-  game_only_gui.AddChild(level.side_gui)
+  entity_guis.AddChild(l.selected_gui)
+  entity_guis.AddChild(l.targeted_gui)
+  game_only_gui.AddChild(l.terrain)
+  game_only_gui.AddChild(l.side_gui)
   game_only_gui.AddChild(entity_guis)
-  level.game_gui.AddChild(game_only_gui)
-  level.editor_gui = gui.MakeCollapseWrapper(level.editor.GetGui())
-  level.game_gui.AddChild(level.editor_gui)
+  l.game_gui.AddChild(game_only_gui)
+  l.editor_gui = gui.MakeCollapseWrapper(l.editor.GetGui())
+  l.game_gui.AddChild(l.editor_gui)
 
   // Ai stuff
-  level.aig_errs = make(chan error)
+  l.aig_errs = make(chan error)
 
-  return &level, nil
+  return nil
 }
 
 func (l *Level) GetGui() gui.Widget {
@@ -1091,28 +1078,19 @@ func (l *Level) ToggleEditor() {
   l.editor_gui.Collapsed = !l.editor_gui.Collapsed
 }
 
-func (l *Level) addEntity(unit_type UnitType, attmap map[string]stats.Attributes, x, y, side int, move_speed float32, sprite *sprite.Sprite) *Entity {
+func (l *Level) addEntity(unit_type UnitType, x, y, side int, move_speed float32, unit_map map[string]*UnitType) *Entity {
   var ent Entity
   ent = Entity{
-    entityDiskData: entityDiskData{
-      Name : unit_type.Name,
-      Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
-      Pos:   MakeBoardPos(x, y),
-      Side:  side,
-      CosmeticStats: CosmeticStats{
-        Move_speed: move_speed,
-      },
+    Name : unit_type.Name,
+    Stats: stats.MakeStats(unit_type.Health, unit_type.Ap, unit_type.Attack, unit_type.Defense, unit_type.LosDist, unit_type.Atts),
+    Pos:   MakeBoardPos(x, y),
+    Side:  side,
+    CosmeticStats: CosmeticStats{
+      Move_speed: move_speed,
     },
-    prev_pos:   MakeBoardPos(x, y),
-    s:     sprite,
-    level: l,
-    cmds: make(chan func() bool),
-    cont: make(chan aiEvalSignal),
   }
-  ent.actions = append(ent.actions, MakeAction("move", &ent))
-  for _, name := range unit_type.Weapons {
-    ent.actions = append(ent.actions, MakeAction(name, &ent))
-  }
+  ent.fill(l, unit_map)
+
   l.Entities = append(l.Entities, &ent)
   l.grid[x][y].ent = &ent
   return &ent

@@ -152,7 +152,12 @@ func (w *EntityStatsWindow) Draw(region gui.Region) {
   w.table.Draw(region)
 }
 
-type entityDiskData struct {
+type Entity struct {
+  // *** Begin exported fields
+  // When saving the game all entities are gobbed, so all exported fields are
+  // saved, everything else is not.  All information must either be in these
+  // fields, be derived from these fields, or be implicit in the fact that
+  // saves are only allowed at certain times (not while an action is executing).
   Name string
   stats.Stats
   CosmeticStats
@@ -162,17 +167,8 @@ type entityDiskData struct {
 
   // Board coordinates of this entity's current position
   Pos BoardPos
-}
+  // *** End exported fields
 
-// When saving entityDiskData from an Entity is written into here and then
-// gobbed, this avoids issues with Entity containing channels.
-// When loading this is loaded into an Entity and gob is ok with that.
-type entityContainer struct {
-  entityDiskData
-}
-
-type Entity struct {
-  entityDiskData
 
   s *sprite.Sprite
 
@@ -205,6 +201,38 @@ type Entity struct {
   // For every closure sent along cmds, a response will be sent back along this
   // channel.  If true the ai can keep working, if false it should terminate.
   cont chan aiEvalSignal
+}
+
+type gameError struct {
+  ErrorString string
+}
+func (g *gameError) Error() string {
+  return g.ErrorString
+}
+
+// fill() should be called immediately after an Entity is ungobbed.  This will
+// fill out any fields that are not stored by gob but can be determined from
+// the values stored by gob (such as actions and visible).
+func (e *Entity) fill(level *Level, units map[string]*UnitType) error {
+  e.prev_pos = MakeBoardPos(e.Pos.Xi(), e.Pos.Yi())
+  unit, ok := units[e.Name]
+  if !ok {
+    return &gameError{ fmt.Sprintf("Unknown unit type '%s'", e.Name) }
+  }
+  var err error
+  e.s, err = sprite.LoadSprite(filepath.Join(level.Directory, "sprites", unit.Sprite))
+  if err != nil {
+    return err
+  }
+  e.level = level
+  e.cmds = make(chan func() bool)
+  e.cont = make(chan aiEvalSignal)
+
+  e.actions = append(e.actions, MakeAction("move", e))
+  for _, name := range unit.Weapons {
+    e.actions = append(e.actions, MakeAction(name, e))
+  }
+  return nil
 }
 
 func (e *Entity) MakeAi(filename string) error {
