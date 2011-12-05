@@ -12,7 +12,7 @@ import (
 )
 
 type Editor struct {
-  level    *StaticLevelData
+  level    *staticLevelData
   selected map[*CellData]bool
 
   ui *gui.VerticalTable
@@ -35,7 +35,7 @@ type Editor struct {
   invert bool
 }
 
-func MakeEditor(level_data *StaticLevelData, dir, filename string) *Editor {
+func MakeEditor(level_data *staticLevelData, dir, filename string) *Editor {
   var e Editor
   e.level = level_data
   e.selected = make(map[*CellData]bool, 50)

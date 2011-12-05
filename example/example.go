@@ -1,7 +1,6 @@
 package main
 
 import (
-  "encoding/json"
   "glop/gos"
   "glop/gin"
   "glop/gui"
@@ -12,7 +11,6 @@ import (
   "runtime/debug"
   "runtime/pprof"
   "fmt"
-  "io/ioutil"
   "os"
   "flag"
   "time"
@@ -25,24 +23,6 @@ var (
   font_path *string = flag.String("font", "fonts/skia.ttf", "relative path of a font")
   quit      chan bool
 )
-
-func LoadUnit(path string) (*game.UnitType, error) {
-  f, err := os.Open(path)
-  if err != nil {
-    return nil, err
-  }
-  defer f.Close()
-  data, err := ioutil.ReadAll(f)
-  if err != nil {
-    return nil, err
-  }
-  var unit game.UnitType
-  err = json.Unmarshal(data, &unit)
-  if err != nil {
-    return nil, err
-  }
-  return &unit, nil
-}
 
 func init() {
   sys = system.Make(gos.GetSystemInterface())
@@ -177,6 +157,19 @@ func actualMain() {
       }
       if gin.In().GetKey('e').FramePressCount()%2 == 1 {
         level.ToggleEditor()
+      }
+      if gin.In().GetKey('z').FramePressCount() > 0 {
+        err := level.ExpLoad("/Users/runningwild/code/go-glop/example/game.dat")
+        if err != nil {
+          fmt.Printf("Error: %s\n", err.Error())
+        }
+        level.Fill()
+      }
+      if gin.In().GetKey('x').FramePressCount() > 0 {
+        err := level.ExpSave("/Users/runningwild/code/go-glop/example/game.dat")
+        if err != nil {
+          fmt.Printf("Error: %s\n", err.Error())
+        }
       }
       if gin.In().GetKey('p').FramePressCount() > 0 {
         if !profiling {

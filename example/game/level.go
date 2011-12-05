@@ -162,17 +162,17 @@ func (t *CellData) Render(x, y, z, scale float32) {
 }
 
 // Contains everything about a level that is stored on disk
-type StaticLevelData struct {
+type staticLevelData struct {
   bg_path string
   grid    [][]CellData
 }
-func (s *StaticLevelData) NumVertex() int {
+func (s *staticLevelData) NumVertex() int {
   return len(s.grid) * len(s.grid[0])
 }
-func (s *StaticLevelData) fromVertex(v int) (int, int) {
+func (s *staticLevelData) fromVertex(v int) (int, int) {
   return v % len(s.grid), v / len(s.grid)
 }
-func (s *StaticLevelData) toVertex(x, y int) int {
+func (s *staticLevelData) toVertex(x, y int) int {
   return x + y*len(s.grid)
 }
 
@@ -322,7 +322,7 @@ func (bp BoardPos) Valid(level *Level) bool {
 
 // Contains everything for the playing of the game
 type Level struct {
-  StaticLevelData
+  staticLevelData
 
   // *** Begin exported fields
   // When saving the game the level is gobbed, so all exported fields are
@@ -884,7 +884,7 @@ type levelDataContainer struct {
   Level levelData
 }
 
-func (sld *StaticLevelData) makeLevelDataContainer() *levelDataContainer {
+func (sld *staticLevelData) makeLevelDataContainer() *levelDataContainer {
   var ldc levelDataContainer
   ldc.Level.Image = sld.bg_path
   ldc.Level.Cells = make([][]levelDataCell, len(sld.grid))
@@ -979,6 +979,16 @@ func MakeLevel(directory,mapname string) *Level {
   var level Level
   level.Directory = directory
   level.Mapname = mapname
+
+  all_units, err := LoadAllUnits(l.Directory)
+  if err != nil {
+    return err
+  }
+  unit_map := make(map[string]*UnitType)
+  for _, unit := range all_units {
+    unit_map[unit.Name] = unit
+  }
+
   return &level
 }
 
@@ -1011,14 +1021,6 @@ func (l *Level) Fill() error {
   for i := range l.grid {
     l.grid[i] = all_cells[i*dy : (i+1)*dy]
   }
-  all_units, err := LoadAllUnits(l.Directory)
-  if err != nil {
-    return err
-  }
-  unit_map := make(map[string]*UnitType)
-  for _, unit := range all_units {
-    unit_map[unit.Name] = unit
-  }
   for i := range l.grid {
     for j := range l.grid[i] {
       l.grid[i][j].Terrain = ldc.Level.Cells[i][j].Terrain
@@ -1049,7 +1051,7 @@ func (l *Level) Fill() error {
   terrain.SetEventHandler(l)
 
   l.side_gui = gui.MakeTextLine("standard", "", 500, 1, 1, 1, 1)
-  l.editor = MakeEditor(&l.StaticLevelData, l.Directory, l.Mapname)
+  l.editor = MakeEditor(&l.staticLevelData, l.Directory, l.Mapname)
   l.game_gui = gui.MakeHorizontalTable()
   game_only_gui := gui.MakeVerticalTable()
   l.selected_gui = MakeStatsWindow(true)
