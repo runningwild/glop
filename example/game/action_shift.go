@@ -4,10 +4,10 @@ func init() {
   registerActionType("linear shift", &ActionLinearShift{})
 }
 type ActionLinearShift struct {
+  basicAction
   basicIcon
   nonInterrupt
   uninterruptable
-  Ent       *Entity
 
   // Duh
   Cost  int
@@ -43,13 +43,13 @@ func (a *ActionLinearShift) Prep() bool {
     return false
   }
 
-  a.targets = getEntsWithinRange(a.Ent, a.Range, a.Ent.level)
+  a.targets = getEntsWithinRange(a.Ent, a.Range, a.Level)
   if len(a.targets) == 0 {
     return false
   }
 
   for _,target := range a.targets {
-    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
+    a.Level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -58,7 +58,7 @@ func (a *ActionLinearShift) Cancel() {
   a.targets = nil
   a.hover_target = nil
   a.current_target = nil
-  a.Ent.level.clearCache(Attackable | Reachable)
+  a.Level.clearCache(Attackable | Reachable)
 }
 
 func (a *ActionLinearShift) MouseOver(bx,by float64) {
@@ -71,7 +71,7 @@ func (a *ActionLinearShift) MouseOver(bx,by float64) {
   if a.hover_target != nil && a.hover_target.IntEquals(target_pos) {
     return
   }
-  a.Ent.level.clearCache(Reachable)
+  a.Level.clearCache(Reachable)
 
   for _,ent := range a.targets {
     if ent.Pos.IntEquals(target_pos) {
@@ -91,7 +91,7 @@ func (a *ActionLinearShift) MouseOver(bx,by float64) {
   a.figureShiftTargets(target_pos)
   a.hover_target = &target_pos
   for _,pos := range a.shift_targets {
-    a.Ent.level.GetCellAtPos(pos).highlight |= Reachable
+    a.Level.GetCellAtPos(pos).highlight |= Reachable
   }
 }
 
@@ -111,11 +111,11 @@ func (a *ActionLinearShift) figureShiftTargets(target_pos BoardPos) {
       if i == 0 { continue }
       if i > a.Pull { break }
       if pos[0] < 0 || pos[1] < 0 { break }
-      if pos[0] >= len(a.Ent.level.grid) { break }
-      if pos[1] >= len(a.Ent.level.grid[0]) { break }
-      if a.Ent.level.grid[pos[0]][pos[1]].ent != nil { break }
+      if pos[0] >= len(a.Level.grid) { break }
+      if pos[1] >= len(a.Level.grid[0]) { break }
+      if a.Level.grid[pos[0]][pos[1]].ent != nil { break }
       bp := MakeBoardPos(pos[0], pos[1])
-      a.Ent.level.GetCellAtPos(bp).highlight |= Reachable
+      a.Level.GetCellAtPos(bp).highlight |= Reachable
       a.shift_targets = append(a.shift_targets, bp)
     }
   }
@@ -153,16 +153,16 @@ func (a *ActionLinearShift) MouseClick(bx,by float64) ActionCommit {
     }
 
     // If we got here then maybe the user is selecting a new current_target
-    ct := a.Ent.level.GetCellAtPos(bp).ent
+    ct := a.Level.GetCellAtPos(bp).ent
     if ct != nil {
       a.current_target = ct
-      a.Ent.level.clearCache(Attackable | Reachable)
+      a.Level.clearCache(Attackable | Reachable)
       a.figureShiftTargets(a.current_target.Pos)
       a.hover_target = &a.current_target.Pos
       for _,pos := range a.shift_targets {
-        a.Ent.level.GetCellAtPos(pos).highlight |= Reachable
+        a.Level.GetCellAtPos(pos).highlight |= Reachable
       }
-      a.Ent.level.GetCellAtPos(a.current_target.Pos).highlight |= Attackable
+      a.Level.GetCellAtPos(a.current_target.Pos).highlight |= Attackable
     }
   }
   return NoAction

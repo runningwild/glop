@@ -980,15 +980,6 @@ func MakeLevel(directory,mapname string) *Level {
   level.Directory = directory
   level.Mapname = mapname
 
-  all_units, err := LoadAllUnits(l.Directory)
-  if err != nil {
-    return err
-  }
-  unit_map := make(map[string]*UnitType)
-  for _, unit := range all_units {
-    unit_map[unit.Name] = unit
-  }
-
   return &level
 }
 
@@ -1013,6 +1004,15 @@ func (l *Level) Fill() error {
     return err
   }
   stats.SetAttmap(attmap)
+
+  all_units, err := LoadAllUnits(l.Directory)
+  if err != nil {
+    return err
+  }
+  unit_map := make(map[string]*UnitType)
+  for _, unit := range all_units {
+    unit_map[unit.Name] = unit
+  }
 
   dx := len(ldc.Level.Cells)
   dy := len(ldc.Level.Cells[0])

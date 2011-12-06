@@ -10,9 +10,9 @@ func init() {
   registerActionType("charge attack", &ActionCharge{})
 }
 type ActionCharge struct {
+  basicAction
   basicIcon
   nonInterrupt
-  Ent       *Entity
   Power     int
 
   valid_marks  []BoardPos
@@ -24,11 +24,11 @@ type ActionCharge struct {
 func (a *ActionCharge) Prep() bool {
   a.valid_marks = nil
   a.pos_to_path = make(map[int][]BoardPos)
-  graph := &unitGraph{a.Ent.level, a.Ent}
+  graph := &unitGraph{a.Level, a.Ent}
   vertex_to_boardpos := func(v interface{}) interface{} {
-    return a.Ent.level.MakeBoardPosFromVertex(v.(int))
+    return a.Level.MakeBoardPosFromVertex(v.(int))
   }
-  for _,ent := range a.Ent.level.Entities {
+  for _,ent := range a.Level.Entities {
     if ent.Side == a.Ent.Side { continue }
     if base.MaxNormi(a.Ent.Pos.Xi(), a.Ent.Pos.Yi(), ent.Pos.Xi(), ent.Pos.Yi()) <= 2 {
       continue
@@ -42,10 +42,10 @@ func (a *ActionCharge) Prep() bool {
         dsts = append(dsts, ent.level.toVertex(x, y))
       }
     }
-    ap, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Ent.level)}, dsts)
+    ap, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Level)}, dsts)
     if int(ap) > a.Ent.CurAp() { continue }
     a.valid_marks = append(a.valid_marks, ent.Pos)
-    a.pos_to_path[ent.Pos.Vertex(a.Ent.level)] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
+    a.pos_to_path[ent.Pos.Vertex(a.Level)] = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
   }
   if len(a.valid_marks) == 0 {
     return false
@@ -53,7 +53,7 @@ func (a *ActionCharge) Prep() bool {
 
   for _,mark := range a.valid_marks {
     fmt.Printf("Mark: %v\n", mark)
-    a.Ent.level.GetCellAtPos(mark).highlight |= Attackable
+    a.Level.GetCellAtPos(mark).highlight |= Attackable
   }
   return true
 }
@@ -61,27 +61,27 @@ func (a *ActionCharge) Prep() bool {
 func (a *ActionCharge) Cancel() {
   a.valid_marks = nil
   a.pos_to_path = nil
-  a.Ent.level.clearCache(Attackable | Reachable)
+  a.Level.clearCache(Attackable | Reachable)
 }
 
 func (a *ActionCharge) MouseOver(bx,by float64) {
   // TODO: Might want to highlight the specific path that would be taken if
   // the user clicked here
   if len(a.valid_marks) == 0 { return }
-  a.Ent.level.clearCache(Reachable)
-  for _,bp := range a.pos_to_path[a.Ent.level.toVertex(int(bx), int(by))] {
-    a.Ent.level.GetCellAtPos(bp).highlight |= Reachable
+  a.Level.clearCache(Reachable)
+  for _,bp := range a.pos_to_path[a.Level.toVertex(int(bx), int(by))] {
+    a.Level.GetCellAtPos(bp).highlight |= Reachable
   }
 }
 
 func (a *ActionCharge) MouseClick(bx,by float64) ActionCommit {
-  path,ok := a.pos_to_path[a.Ent.level.toVertex(int(bx), int(by))]
+  path,ok := a.pos_to_path[a.Level.toVertex(int(bx), int(by))]
   if !ok { return NoAction }
   a.path = path
 
   var mark *Entity
   mark_cell := MakeBoardPos(int(bx), int(by))
-  for _,mark = range a.Ent.level.Entities {
+  for _,mark = range a.Level.Entities {
     if mark.Pos.IntEquals(mark_cell) {
       a.mark = mark
       return StandardAction

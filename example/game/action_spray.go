@@ -4,10 +4,10 @@ func init() {
   registerActionType("spray attack", &ActionSpray{})
 }
 type ActionSpray struct {
+  basicAction
   basicIcon
   nonInterrupt
   uninterruptable
-  Ent    *Entity
   Cost   int
   Power  int
   Melee  int
@@ -25,7 +25,7 @@ func (a *ActionSpray) Prep() bool {
 }
 
 func (a *ActionSpray) Cancel() {
-  a.Ent.level.clearCache(Targeted)
+  a.Level.clearCache(Targeted)
   a.cells = nil
   a.dir = MakeBoardPos(0, 0)
 }
@@ -53,7 +53,7 @@ func (a *ActionSpray) MouseOver(bx,by float64) {
   if dir.IntEquals(a.dir) {
     return
   }
-  a.Ent.level.clearCache(Targeted)
+  a.Level.clearCache(Targeted)
   a.dir = dir
   a.cells = nil
   side := MakeBoardPos(a.dir.Yi(), a.dir.Xi())
@@ -68,8 +68,8 @@ func (a *ActionSpray) MouseOver(bx,by float64) {
     }
     row := pos.Add(side.Scale(-width))
     for j := 0; j < width*2 + 1; j++ {
-      if row.Valid(a.Ent.level) {
-        a.Ent.level.GetCellAtPos(row).highlight |= Targeted
+      if row.Valid(a.Level) {
+        a.Level.GetCellAtPos(row).highlight |= Targeted
       }
       a.cells = append(a.cells, row)
       row = row.Add(side)
@@ -89,7 +89,7 @@ func (a *ActionSpray) Maintain(dt int64) MaintenanceStatus {
     a.Ent.s.Command("ranged")
   }
   for _,cell := range a.cells {
-    mark := a.Ent.level.GetCellAtPos(cell).ent
+    mark := a.Level.GetCellAtPos(cell).ent
     if mark == nil { continue }
     attack := a.Power + a.Ent.CurAttack() + ((Dice("5d5") - 2) / 3 - 4)
     defense := mark.CurDefense()

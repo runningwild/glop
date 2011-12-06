@@ -20,6 +20,11 @@ func (icon basicIcon) IconPath() string {
   return string(icon)
 }
 
+type basicAction struct {
+  Ent   *Entity
+  Level *Level
+}
+
 type nonInterrupt struct {}
 func (nonInterrupt) Interrupt() bool { return false }
 
@@ -109,12 +114,13 @@ func registerActionType(name string, action Action) {
   action_type_registry[name] = reflect.TypeOf(action).Elem()
 }
 
-func assignParams(spec_name string, action_val reflect.Value, ent *Entity, icon_path string, effects []string, int_params map[string]int) {
-  ent_field := reflect.Indirect(action_val).FieldByName("Ent")
-  if ent_field.Kind() == reflect.Invalid {
-    panic(fmt.Sprintf("Action '%s' has no Entity field.", spec_name))
+func assignParams(spec_name string, action_val reflect.Value, ent *Entity, level *Level, icon_path string, effects []string, int_params map[string]int) {
+  basic_action_field := reflect.Indirect(action_val).FieldByName("basicAction")
+  if basic_action_field.Kind() == reflect.ValueOf(&basicAction{}).Kind() {
+    panic(fmt.Sprintf("Action '%s' did no embed basicAction.", spec_name))
   }
-  ent_field.Set(reflect.ValueOf(ent))
+  basic_action_field.FieldByName("Ent").Set(reflect.ValueOf(ent))
+  basic_action_field.FieldByName("Level").Set(reflect.ValueOf(level))
 
   icon_field := reflect.Indirect(action_val).FieldByName("basicIcon")
   if icon_field.Kind() == reflect.Invalid {
@@ -173,16 +179,16 @@ func registerActionSpec(spec ActionSpec) {
 
   // Test to make sure this thing can really make an action without panicing,
   // this way we fail fast.
-  MakeAction(spec.Name, nil)
+  MakeAction(spec.Name, nil, nil)
 }
 
-func MakeAction(spec_name string, ent *Entity) Action {
+func MakeAction(spec_name string, ent *Entity, level *Level) Action {
   spec,ok := action_spec_registry[spec_name]
   if !ok {
     panic(fmt.Sprintf("Tried to load an unknown ActionSpec '%s'.", spec_name))
   }
   action := reflect.New(action_type_registry[spec.Type])
-  assignParams(spec_name, action, ent, spec.Icon_path, spec.Effects, spec.Int_params)
+  assignParams(spec_name, action, ent, level, spec.Icon_path, spec.Effects, spec.Int_params)
   return action.Interface().(Action)
 }
 

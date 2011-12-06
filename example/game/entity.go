@@ -228,9 +228,9 @@ func (e *Entity) fill(level *Level, units map[string]*UnitType) error {
   e.cmds = make(chan func() bool)
   e.cont = make(chan aiEvalSignal)
 
-  e.actions = append(e.actions, MakeAction("move", e))
+  e.actions = append(e.actions, MakeAction("move", e, e.level))
   for _, name := range unit.Weapons {
-    e.actions = append(e.actions, MakeAction(name, e))
+    e.actions = append(e.actions, MakeAction(name, e, e.level))
   }
   return nil
 }

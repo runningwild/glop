@@ -4,10 +4,11 @@ func init() {
   registerActionType("multistrike", &ActionMultiStrike{})
 }
 type ActionMultiStrike struct {
+  basicAction
   basicIcon
   nonInterrupt
   uninterruptable
-  Ent     *Entity
+
   Power   int
   Cost    int
   Range   int
@@ -23,7 +24,7 @@ func (a *ActionMultiStrike) Prep() bool {
     return false
   }
 
-  targets := getEntsWithinRange(a.Ent, a.Range, a.Ent.level)
+  targets := getEntsWithinRange(a.Ent, a.Range, a.Level)
   if len(targets) == 0 {
     return false
   }
@@ -32,7 +33,7 @@ func (a *ActionMultiStrike) Prep() bool {
   a.marks = make(map[*Entity]bool, a.Count)
   for _,target := range targets {
     a.targets[target] = true
-    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
+    a.Level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -40,14 +41,14 @@ func (a *ActionMultiStrike) Prep() bool {
 func (a *ActionMultiStrike) Cancel() {
   a.marks = nil
   a.targets = nil
-  a.Ent.level.clearCache(Attackable | Targeted)
+  a.Level.clearCache(Attackable | Targeted)
 }
 
 func (a *ActionMultiStrike) MouseOver(bx,by float64) {
 }
 
 func (a *ActionMultiStrike) MouseClick(bx,by float64) ActionCommit {
-  if findMultipleUniqueTargets(bx, by, a.Ent.level, &a.targets, &a.marks, a.Count) {
+  if findMultipleUniqueTargets(bx, by, a.Level, &a.targets, &a.marks, a.Count) {
     return StandardAction
   }
   return NoAction

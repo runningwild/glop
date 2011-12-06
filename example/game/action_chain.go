@@ -4,9 +4,9 @@ func init() {
   registerActionType("chain attack", &ActionChainAttack{})
 }
 type ActionChainAttack struct {
+  basicAction
   basicIcon
   nonInterrupt
-  Ent   *Entity
 
   Power int
   Cost  int
@@ -23,7 +23,7 @@ func (a *ActionChainAttack) Prep() bool {
     return false
   }
 
-  targets := getEntsWithinRange(a.Ent, a.Range, a.Ent.level)
+  targets := getEntsWithinRange(a.Ent, a.Range, a.Level)
   if len(targets) == 0 {
     return false
   }
@@ -32,7 +32,7 @@ func (a *ActionChainAttack) Prep() bool {
   a.marks = nil
   for _,target := range targets {
     a.targets[target] = true
-    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
+    a.Level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -40,16 +40,16 @@ func (a *ActionChainAttack) Prep() bool {
 func (a *ActionChainAttack) Cancel() {
   a.marks = nil
   a.targets = nil
-  a.Ent.level.clearCache(Attackable | Targeted)
+  a.Level.clearCache(Attackable | Targeted)
 }
 
 func (a *ActionChainAttack) MouseOver(bx,by float64) {
 }
 
 func (a *ActionChainAttack) MouseClick(bx,by float64) ActionCommit {
-  t := findTargetOnClick(bx, by, a.Ent.level, a.targets)
+  t := findTargetOnClick(bx, by, a.Level, a.targets)
   if t == nil { return NoAction }
-  a.Ent.level.GetCellAtPos(t.Pos).highlight |= Targeted
+  a.Level.GetCellAtPos(t.Pos).highlight |= Targeted
   a.marks = append(a.marks, t)
 
   if len(a.marks) == a.Adds {

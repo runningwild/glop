@@ -4,10 +4,10 @@ func init() {
   registerActionType("basic attack", &ActionBasicAttack{})
 }
 type ActionBasicAttack struct {
+  basicAction
   basicIcon
   nonInterrupt
   uninterruptable
-  Ent     *Entity
   Power   int
   Cost    int
   Range   int
@@ -22,13 +22,13 @@ func (a *ActionBasicAttack) Prep() bool {
     return false
   }
 
-  a.targets = getEntsWithinRange(a.Ent, a.Range, a.Ent.level)
+  a.targets = getEntsWithinRange(a.Ent, a.Range, a.Level)
   if len(a.targets) == 0 {
     return false
   }
 
   for _,target := range a.targets {
-    a.Ent.level.GetCellAtPos(target.Pos).highlight |= Attackable
+    a.Level.GetCellAtPos(target.Pos).highlight |= Attackable
   }
   return true
 }
@@ -36,7 +36,7 @@ func (a *ActionBasicAttack) Prep() bool {
 func (a *ActionBasicAttack) Cancel() {
   a.mark = nil
   a.targets = nil
-  a.Ent.level.clearCache(Attackable)
+  a.Level.clearCache(Attackable)
 }
 
 func (a *ActionBasicAttack) MouseOver(bx,by float64) {

@@ -6,10 +6,10 @@ func init() {
   registerActionType("aoe", &ActionAoe{})
 }
 type ActionAoe struct {
+  basicAction
   basicIcon
   nonInterrupt
   uninterruptable
-  Ent     *Entity
   Cost    int
   Range   int
   Size    int
@@ -27,8 +27,8 @@ func (a *ActionAoe) Prep() bool {
     for dx := -a.Size; dx <= a.Size; dx++ {
       for dy := -a.Size; dy <= a.Size; dy++ {
         t := a.Ent.Pos.Add(MakeBoardPos(dx, dy))
-        if t.Valid(a.Ent.level) {
-          a.Ent.level.GetCellAtPos(t).highlight |= Attackable
+        if t.Valid(a.Level) {
+          a.Level.GetCellAtPos(t).highlight |= Attackable
         }
       }
     }
@@ -39,7 +39,7 @@ func (a *ActionAoe) Prep() bool {
 }
 
 func (a *ActionAoe) Cancel() {
-  a.Ent.level.clearCache(Attackable)
+  a.Level.clearCache(Attackable)
 }
 
 func (a *ActionAoe) MouseOver(bx,by float64) {
@@ -55,8 +55,8 @@ func (a *ActionAoe) Maintain(dt int64) MaintenanceStatus {
     for dx := -a.Size; dx <= a.Size; dx++ {
       for dy := -a.Size; dy <= a.Size; dy++ {
         t := a.Ent.Pos.Add(MakeBoardPos(dx, dy))
-        if !t.Valid(a.Ent.level) { continue }
-        ent := a.Ent.level.GetCellAtPos(t).ent
+        if !t.Valid(a.Level) { continue }
+        ent := a.Level.GetCellAtPos(t).ent
         if ent == nil { continue }
         ent.s.Command("defend")
         ent.s.Command("undamaged")

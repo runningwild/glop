@@ -4,9 +4,10 @@ func init() {
   registerActionType("counter attack", &ActionCounterAttack{})
 }
 type ActionCounterAttack struct {
+  basicAction
   basicIcon
   uninterruptable
-  Ent     *Entity
+
   Power   int
   Cost    int
   Range   int
@@ -38,8 +39,8 @@ func (a *ActionCounterAttack) Interrupt() bool {
   for dx := -a.Range; dx <= a.Range; dx++ {
     for dy := -a.Range; dy <= a.Range; dy++ {
       t := a.Ent.Pos.Add(MakeBoardPos(dx, dy))
-      if t.Valid(a.Ent.level) {
-        mark := a.Ent.level.GetCellAtPos(t).ent
+      if t.Valid(a.Level) {
+        mark := a.Level.GetCellAtPos(t).ent
         if mark != nil && mark.Side != a.Ent.Side {
           a.mark = mark
           return true

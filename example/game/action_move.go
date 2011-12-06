@@ -6,16 +6,16 @@ func init() {
   registerActionType("move", &ActionMove{})
 }
 type ActionMove struct {
+  basicAction
   basicIcon
   nonInterrupt
-  Ent       *Entity
 
   reachable []BoardPos
   path      []BoardPos
 }
 
 func (a *ActionMove) Prep() bool {
-  level := a.Ent.level
+  level := a.Level
   bx := int(a.Ent.Pos.X)
   by := int(a.Ent.Pos.Y)
   graph := &unitGraph{level, a.Ent}
@@ -43,7 +43,7 @@ func (a *ActionMove) Prep() bool {
 func (a *ActionMove) Cancel() {
   a.reachable = nil
   a.path = nil
-  a.Ent.level.clearCache(Reachable)
+  a.Level.clearCache(Reachable)
 }
 
 func (a *ActionMove) MouseOver(bx,by float64) {
@@ -56,26 +56,26 @@ func (a *ActionMove) aiMoveToWithin(tx,ty,rnge int) bool {
   for x := tx - rnge; x <= tx + rnge; x++ {
     for y := ty - rnge; y <= ty + rnge; y++ {
       if x == tx && y == ty { continue }
-      dsts = append(dsts, a.Ent.level.toVertex(x, y))
+      dsts = append(dsts, a.Level.toVertex(x, y))
     }
   }
-  graph := &unitGraph{a.Ent.level, a.Ent}
-  _, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Ent.level)}, dsts)
+  graph := &unitGraph{a.Level, a.Ent}
+  _, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Level)}, dsts)
   if path == nil {
     return false
   }
-  if len(path) <= 1 || !canPayForMove(a.Ent, a.Ent.level.MakeBoardPosFromVertex(path[1])) {
+  if len(path) <= 1 || !canPayForMove(a.Ent, a.Level.MakeBoardPosFromVertex(path[1])) {
     return false
   }
   vertex_to_boardpos := func(v interface{}) interface{} {
-    return a.Ent.level.MakeBoardPosFromVertex(v.(int))
+    return a.Level.MakeBoardPosFromVertex(v.(int))
   }
   a.path = algorithm.Map(path[1:], []BoardPos{}, vertex_to_boardpos).([]BoardPos)
   return true
 }
 
 func (a *ActionMove) MouseClick(bx,by float64) ActionCommit {
-  level := a.Ent.level
+  level := a.Level
   dst := MakeBoardPos(int(bx), int(by))
   found := false
   for _,v := range a.reachable {
@@ -87,7 +87,7 @@ func (a *ActionMove) MouseClick(bx,by float64) ActionCommit {
   if !found { return NoAction }
 
   graph := &unitGraph{level, a.Ent}
-  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Ent.level)}, []int{dst.Vertex(a.Ent.level)})
+  ap, path := algorithm.Dijkstra(graph, []int{a.Ent.Pos.Vertex(a.Level)}, []int{dst.Vertex(a.Level)})
   if len(path) <= 1 || int(ap) > a.Ent.CurAp() {
     return NoAction
   }
