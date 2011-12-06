@@ -8,8 +8,8 @@ type ActionCounterAttack struct {
   basicIcon
   uninterruptable
 
-  Power   int
   Cost    int
+  Power   int
   Range   int
   Melee   int
 

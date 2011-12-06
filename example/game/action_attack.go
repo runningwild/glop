@@ -8,10 +8,11 @@ type ActionBasicAttack struct {
   basicIcon
   nonInterrupt
   uninterruptable
-  Power   int
-  Cost    int
-  Range   int
-  Melee   int
+
+  Cost  int
+  Power int
+  Range int
+  Melee int
 
   targets []*Entity
   mark    *Entity

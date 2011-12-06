@@ -9,17 +9,10 @@ type ActionLinearShift struct {
   nonInterrupt
   uninterruptable
 
-  // Duh
   Cost  int
-
-  // The maximum distance a unit can be and be affected by this ability
   Range int
-
-  // The distance a unit can be pulled by this ability
-  Pull  int
-
-  // The distance a unit can be pushed by this ability
-  Push  int
+  Pull  int  // The distance a unit can be pulled by this ability
+  Push  int  // The distance a unit can be pushed by this ability
 
   // Entitys that can be targeted by this ability
   targets   []*Entity

@@ -8,11 +8,11 @@ type ActionChainAttack struct {
   basicIcon
   nonInterrupt
 
-  Power int
   Cost  int
+  Power int
   Range int
   Melee int
-  Adds  int
+  Adds  int  // Number of *additional* targets that can be chosen
 
   targets map[*Entity]bool
   marks   []*Entity

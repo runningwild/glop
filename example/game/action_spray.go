@@ -8,12 +8,13 @@ type ActionSpray struct {
   basicIcon
   nonInterrupt
   uninterruptable
+
   Cost   int
   Power  int
   Melee  int
-  Length int
-  Start  int
-  End    int
+  Length int  // How many cells long the spray region is
+  Start  int  // width = 2*start - 1  at the start of the spray
+  End    int  // width = 2*end - 1 at the end of the spray
 
   dir   BoardPos
   cells []BoardPos

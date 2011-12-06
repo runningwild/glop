@@ -13,7 +13,9 @@ type ActionCharge struct {
   basicAction
   basicIcon
   nonInterrupt
-  Power     int
+
+  // Cost to charge is the same as the cost to move that distance
+  Power int
 
   valid_marks  []BoardPos
   pos_to_path  map[int][]BoardPos

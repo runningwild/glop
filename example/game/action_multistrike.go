@@ -9,11 +9,11 @@ type ActionMultiStrike struct {
   nonInterrupt
   uninterruptable
 
-  Power   int
   Cost    int
+  Power   int
   Range   int
   Melee   int
-  Count   int
+  Count   int  // Number of possible targets
 
   targets map[*Entity]bool
   marks   map[*Entity]bool
