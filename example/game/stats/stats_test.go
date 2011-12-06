@@ -74,6 +74,14 @@ func init() {
         }
       },
       {
+        "Type" : "static effect",
+        "Name" : "Fast",
+        "Int_params" : {
+          "TimedEffect" : 2,
+          "MoveCost" : -2
+        }
+      },
+      {
         "Type" : "shield",
         "Name" : "Shield2",
         "Int_params" : {
@@ -109,6 +117,11 @@ func EffectsSpec(c gospec.Context) {
     stat.AddEffect(stats.MakeEffect("Slow"), false)
     c.Expect(stat.MoveCost("grass"), Equals, 2)
     c.Expect(stat.MoveCost("hills"), Equals, 4)
+  })
+  c.Specify("Movement cannot drop below 1", func() {
+    stat.AddEffect(stats.MakeEffect("Fast"), false)
+    c.Expect(stat.MoveCost("grass"), Equals, 1)
+    c.Expect(stat.MoveCost("hills"), Equals, 1)
   })
 }
 

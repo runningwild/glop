@@ -126,6 +126,9 @@ func (s *stats) CurLosDist(t base.Terrain) int {
   for _, effect := range s.Effects {
     los = effect.ModifyLos(t, los)
   }
+  if los < 1 {
+    los = 1
+  }
   return los
 }
 func (s *stats) SpendAp(amt int) bool {
@@ -163,6 +166,9 @@ func (s *stats) MoveCost(t base.Terrain) int {
   move += processAttributes(s.Base.Atts).MoveMods[t]
   for _, effect := range s.Effects {
     move = effect.ModifyMovement(t, move)
+  }
+  if move < 1 {
+    move = 1
   }
   return move
 }
