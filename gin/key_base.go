@@ -183,7 +183,6 @@ func (wa *wheelAggregator) Think(ms int64) (bool, float64) {
       wa.event_received = false
       return true, wa.CurPressAmt()
     } else {
-      fmt.Printf("falsecakes!\n")
       return true, 0
     }
   }

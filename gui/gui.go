@@ -46,6 +46,24 @@ func (r Region) Add(p Point) Region {
   }
 }
 
+func (r Region) Isect(s Region) Region {
+  if r.X < s.X {
+    r.Dx -= s.X - r.X
+    r.X = s.X
+  }
+  if r.Y < s.Y {
+    r.Dy -= s.Y - r.Y
+    r.Y = s.Y
+  }
+  if r.X + r.Dx > s.X + s.Dx {
+    r.Dx -= (r.X + r.Dx) - (s.X + s.Dx)
+  }
+  if r.Y + r.Dy > s.Y + s.Dy {
+    r.Dy -= (r.Y + r.Dy) - (s.Y + s.Dy)
+  }
+  return r
+}
+
 // Need a global stack of regions because opengl only handles pushing/popping
 // the state of the enable bits for each clip plane, not the planes themselves
 var clippers []Region
@@ -61,15 +79,19 @@ func (r Region) setClipPlanes() {
   gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
   gl.ClipPlane(gl.CLIP_PLANE3, &eqs[3][0])
 }
+
 func (r Region) PushClipPlanes() {
   if len(clippers) == 0 {
     gl.Enable(gl.CLIP_PLANE0)
     gl.Enable(gl.CLIP_PLANE1)
     gl.Enable(gl.CLIP_PLANE2)
     gl.Enable(gl.CLIP_PLANE3)
+    r.setClipPlanes()
+    clippers = append(clippers, r)
+  } else {
+    cur := clippers[len(clippers)-1]
+    clippers = append(clippers, r.Isect(cur))
   }
-  r.setClipPlanes()
-  clippers = append(clippers, r)
 }
 func (r Region) PopClipPlanes() {
   clippers = clippers[0 : len(clippers)-1]

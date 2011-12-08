@@ -428,11 +428,9 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
   for _, key := range input.all_keys {
     gen,amt := key.Think(t)
     if !gen { continue }
-    fmt.Printf("Here!\n")
     group := EventGroup{ Timestamp: t }
     input.pressKey(key, amt, Event{}, &group)
     if len(group.Events) > 0 {
-      fmt.Printf("Generated some shizle: %f\n", amt)
       groups = append(groups, group)
       for _, listener := range input.listeners {
         listener.HandleEventGroup(group)
