@@ -18,7 +18,14 @@ type Key interface {
   // Returns the Cursor associated with this key, or nil if it has no such association.
   Cursor() Cursor
 
-  Think(ms int64)
+  // A very select set of keys should always send events when their press amt is
+  // non-zero.  These are typically not your ordinary keys, mouse wheels, mouse
+  // pointers, etc...
+  SendAllNonZero() bool
+
+  // A Key may return true, amt from Think() to indicate that a fake event
+  // should be generated to set its press amount to amt
+  Think(ms int64) (bool, float64)
 
   subAggregator
 }
@@ -36,8 +43,9 @@ type subAggregator interface {
 }
 type aggregator interface {
   subAggregator
-  Think(ms int64)
+  Think(ms int64) (bool, float64)
   SetPressAmt(amt float64, ms int64, event_type EventType)
+  SendAllNonZero() bool
 }
 // Simple struct that aggregates presses and press_amts during a frame so they can be viewed
 // between Think()s
@@ -88,6 +96,9 @@ func (a *baseAggregator) handleEventType(event_type EventType) {
     a.this.release_count++
   }
 }
+func (a *baseAggregator) SendAllNonZero() bool {
+  return false
+}
 
 // the standardAggregator's sum is an integral of the press_amt over time
 type standardAggregator struct {
@@ -105,7 +116,7 @@ func (sa *standardAggregator) SetPressAmt(amt float64, ms int64, event_type Even
   sa.last_press = ms
   sa.handleEventType(event_type)
 }
-func (sa *standardAggregator) Think(ms int64) {
+func (sa *standardAggregator) Think(ms int64) (bool, float64) {
   sa.this.press_sum += sa.this.press_amt * float64(ms-sa.last_press)
   sa.this.press_avg = sa.this.press_sum / float64(ms-sa.last_think)
   sa.prev = sa.this
@@ -114,6 +125,7 @@ func (sa *standardAggregator) Think(ms int64) {
   }
   sa.last_press = ms
   sa.last_think = ms
+  return false, 0
 }
 
 // The axisAggregator's sum is the sum of all press amounts specified by SetPressAmt()
@@ -134,13 +146,48 @@ func (aa *axisAggregator) SetPressAmt(amt float64, ms int64, event_type EventTyp
   }
   aa.handleEventType(event_type)
 }
-func (aa *axisAggregator) Think(ms int64) {
+func (aa *axisAggregator) Think(ms int64) (bool, float64) {
   aa.prev = aa.this
   aa.this = keyStats{}
   if aa.prev.press_amt == 0 {
     aa.is_down = false
   }
   aa.prev.press_avg = aa.prev.press_sum
+  return false, 0
+}
+
+// A wheelAggregator is just like a standardAggregator except for two things:
+// - It sends Adjust events for *all* non-zero press amounts
+// - If a frame goes by without it receiving any input it creates a Release
+// event
+type wheelAggregator struct {
+  standardAggregator
+  event_received bool
+}
+
+func (wa *wheelAggregator) SendAllNonZero() bool {
+  return true
+}
+
+func (wa *wheelAggregator) SetPressAmt(amt float64, ms int64, event_type EventType) {
+  wa.event_received = wa.last_press < wa.last_think
+  wa.standardAggregator.SetPressAmt(amt, ms, event_type)
+}
+
+func (wa *wheelAggregator) Think(ms int64) (bool, float64) {
+  if b,_ := wa.standardAggregator.Think(ms); b {
+    panic("standardAggregator should not generate an event on Think()")
+  }
+  if wa.CurPressAmt() != 0 {
+    if wa.event_received {
+      wa.event_received = false
+      return true, wa.CurPressAmt()
+    } else {
+      fmt.Printf("falsecakes!\n")
+      return true, 0
+    }
+  }
+  return false, 0
 }
 
 type KeyId int
@@ -150,6 +197,7 @@ type keyState struct {
   id     KeyId   // Unique id among all keys ever
   name   string  // Human readable name for the key, 'Right Shift', 'q', 'Space Bar', etc...
   cursor *cursor // cursor associated with this key, or nil if it has no cursor association
+
   aggregator
 }
 
@@ -183,6 +231,8 @@ func (ks *keyState) SetPressAmt(amt float64, ms int64, cause Event) (event Event
     }
   } else {
     if ks.CurPressAmt() != 0 && ks.CurPressAmt() != amt {
+      event.Type = Adjust
+    } else if ks.SendAllNonZero() {
       event.Type = Adjust
     }
   }

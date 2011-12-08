@@ -252,6 +252,22 @@ int* getInputStateVal(int flag) {
         AddEvent(&key_event);
       }
     }
+  } else if ([event type] == NSScrollWheel) {
+    NSPoint cursor_pos = [event locationInWindow];
+    NSWindow* window = [event window];
+    if (window != nil) {
+      NSRect rect;
+      cursor_pos = [window convertBaseToScreen:cursor_pos];
+    }
+    inputState.mouse_x = cursor_pos.x;
+    inputState.mouse_y = cursor_pos.y;
+    KeyEvent scroll_event;
+    ClearEvent(&scroll_event, event);
+    scroll_event.press_amt = [event deltaY];
+    scroll_event.index = kMouseWheelVertical;
+    if (scroll_event.press_amt != 0) {
+      AddEvent(&scroll_event);
+    }
   } else if ([event type] == NSMouseMoved ||
              [event type] == NSLeftMouseDragged ||
              [event type] == NSRightMouseDragged ||

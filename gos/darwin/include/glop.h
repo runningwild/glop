@@ -72,13 +72,13 @@
 #define kKeyPageUp  194
 #define kKeyPageDown  195
 
-#define kMouseXAxis  300
-#define kMouseYAxis  301
-#define kMouseWheelUp  302
-#define kMouseWheelDown  303
-#define kMouseLButton  304
-#define kMouseRButton  305
-#define kMouseMButton  306
+#define kMouseXAxis           300
+#define kMouseYAxis           301
+#define kMouseWheelVertical   302
+#define kMouseWheelHorizontal 303
+#define kMouseLButton         304
+#define kMouseRButton         305
+#define kMouseMButton         306
 
 
 

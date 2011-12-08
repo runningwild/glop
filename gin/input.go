@@ -64,8 +64,8 @@ const (
   KeyPageDown    = 195
   MouseXAxis     = 300
   MouseYAxis     = 301
-  MouseWheelUp   = 302
-  MouseWheelDown = 303
+  MouseWheelVertical   = 302
+  MouseWheelHorizontal = 303
   MouseLButton   = 304
   MouseRButton   = 305
   MouseMButton   = 306
@@ -226,8 +226,7 @@ func Make() *Input {
   input.registerCursor("Mouse")
   input.registerCursorAxisKey(MouseXAxis, "MouseXAxis", "Mouse")
   input.registerCursorAxisKey(MouseYAxis, "MouseYAxis", "Mouse")
-  input.registerCursorKey(MouseWheelUp, "MouseWheelUp", "Mouse")
-  input.registerCursorKey(MouseWheelDown, "MouseWheelDown", "Mouse")
+  input.registerCursorWheelKey(MouseWheelVertical, "MouseWheelVertical", "Mouse")
   input.registerCursorKey(MouseLButton, "MouseLButton", "Mouse")
   input.registerCursorKey(MouseRButton, "MouseRButton", "Mouse")
   input.registerCursorKey(MouseMButton, "MouseMButton", "Mouse")
@@ -239,10 +238,10 @@ func Make() *Input {
 type EventType int
 
 const (
-  Press EventType = iota
+  NoEvent EventType = iota
+  Press
   Release
   Adjust // The key was and is down, but the value of it has changed
-  NoEvent
 )
 
 func (event EventType) String() string {
@@ -326,6 +325,10 @@ func (input *Input) registerCursorAxisKey(id KeyId, name string, cursor_name str
   input.registerKey(&keyState{id: id, name: name, aggregator: &axisAggregator{}, cursor: input.cursors[cursor_name]}, id, cursor_name)
 }
 
+func (input *Input) registerCursorWheelKey(id KeyId, name string, cursor_name string) {
+  input.registerKey(&keyState{id: id, name: name, aggregator: &wheelAggregator{}, cursor: input.cursors[cursor_name]}, id, cursor_name)
+}
+
 func (input *Input) GetCursor(name string) Cursor {
   cursor, ok := input.cursors[name]
   if !ok {
@@ -343,16 +346,20 @@ func (input *Input) GetKey(id KeyId) Key {
   return key
 }
 
-func (input *Input) pressKey(k Key, amt float64, t int64, cause Event, group *EventGroup) {
-  event := k.SetPressAmt(amt, t, cause)
-  deps := input.dep_map[k.Id()]
+func (input *Input) informDeps(event Event, group *EventGroup) {
+  deps := input.dep_map[event.Key.Id()]
 
   for _, dep := range deps {
-    input.pressKey(dep, dep.CurPressAmt(), t, event, group)
+    input.pressKey(dep, dep.CurPressAmt(), event, group)
   }
   if event.Type != NoEvent {
     group.Events = append(group.Events, event)
   }
+}
+
+func (input *Input) pressKey(k Key, amt float64, cause Event, group *EventGroup) {
+  event := k.SetPressAmt(amt, group.Timestamp, cause)
+  input.informDeps(event, group)
 }
 
 // The Input object can have a single Listener registered with it.  This object will receive
@@ -393,7 +400,6 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
     input.pressKey(
       input.GetKey(os_event.KeyId),
       os_event.Press_amt,
-      os_event.Timestamp,
       Event{},
       &group)
 
@@ -420,7 +426,18 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
   }
 
   for _, key := range input.all_keys {
-    key.Think(t)
+    gen,amt := key.Think(t)
+    if !gen { continue }
+    fmt.Printf("Here!\n")
+    group := EventGroup{ Timestamp: t }
+    input.pressKey(key, amt, Event{}, &group)
+    if len(group.Events) > 0 {
+      fmt.Printf("Generated some shizle: %f\n", amt)
+      groups = append(groups, group)
+      for _, listener := range input.listeners {
+        listener.HandleEventGroup(group)
+      }
+    }
   }
 
   for _, listener := range input.listeners {
