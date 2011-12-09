@@ -12,6 +12,13 @@ import (
   "io/ioutil"
 )
 
+type guiError struct {
+  ErrorString string
+}
+func (g *guiError) Error() string {
+  return g.ErrorString
+}
+
 func MustLoadFontAs(path, name string) {
   if _, ok := basic_fonts[name]; ok {
     panic(fmt.Sprintf("Cannot load two fonts with the same name: '%s'.", name))
@@ -25,6 +32,22 @@ func MustLoadFontAs(path, name string) {
     panic(err.Error())
   }
   basic_fonts[name] = font
+}
+
+func LoadFontAs(path, name string) error {
+  if _, ok := basic_fonts[name]; ok {
+    return &guiError{ fmt.Sprintf("Cannot load two fonts with the same name: '%s'.", name) }
+  }
+  data, err := ioutil.ReadFile(path)
+  if err != nil {
+    return err
+  }
+  font, err := freetype.ParseFont(data)
+  if err != nil {
+    return err
+  }
+  basic_fonts[name] = font
+  return nil
 }
 
 func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba *image.RGBA, text string) (int, int) {

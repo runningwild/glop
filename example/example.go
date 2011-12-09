@@ -65,15 +65,16 @@ func actualMain() {
 
   // TODO: Loading weapon specs should be done automatically - it just needs the datadir
 
-  gui.MustLoadFontAs(filepath.Join(basedir, *font_path), "standard")
-
   factor := 1.0
   wdx := int(factor * float64(1024))
   wdy := int(factor * float64(768))
 
   sys.CreateWindow(0, 0, wdx, wdy)
   _, _, wdx, wdy = sys.GetWindowDims()
-  ui := gui.Make(gin.In(), gui.Dims{wdx, wdy})
+  ui,err := gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(basedir, *font_path))
+  if err != nil {
+    panic(err.Error())
+  }
   //  table := gui.MakeVerticalTable()
   //  ui.AddChild(table)
 
@@ -84,7 +85,7 @@ func actualMain() {
   game.RegisterAllSpecsInDir(actions_dir)
 
   level := game.MakeLevel(basedir, "bosworth.json")
-  err := level.Fill()
+  err = level.Fill()
   if err != nil {
     panic(err.Error())
   }

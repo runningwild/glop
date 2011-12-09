@@ -355,13 +355,17 @@ type Gui struct {
   focus []Widget
 }
 
-func Make(dispatcher gin.EventDispatcher, dims Dims) *Gui {
+func Make(dispatcher gin.EventDispatcher, dims Dims, font_path string) (*Gui, error) {
+  err := LoadFontAs(font_path, "standard")
+  if err != nil {
+    return nil, err
+  }
   var g Gui
   g.root.EmbeddedWidget = &BasicWidget{CoreWidget: &g.root}
   g.root.Request_dims = dims
   g.root.Render_region.Dims = dims
   dispatcher.RegisterEventListener(&g)
-  return &g
+  return &g, nil
 }
 
 func (g *Gui) Draw() {
