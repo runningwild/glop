@@ -64,6 +64,10 @@ func (r Region) Isect(s Region) Region {
   return r
 }
 
+func (r Region) Size() int {
+  return r.Dx * r.Dy
+}
+
 // Need a global stack of regions because opengl only handles pushing/popping
 // the state of the enable bits for each clip plane, not the planes themselves
 var clippers []Region
@@ -197,7 +201,7 @@ func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
   }
 
   kids := w.GetChildren()
-  for i := range kids {
+  for i := len(kids) - 1; i >= 0; i-- {
     if kids[i].Respond(gui, event_group) {
       return true
     }

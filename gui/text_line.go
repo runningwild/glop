@@ -199,6 +199,7 @@ func (w *TextLine) Draw(region Region) {
 }
 
 func (w *TextLine) coreDraw(region Region) {
+  if region.Size() == 0 { return }
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   req := w.Request_dims

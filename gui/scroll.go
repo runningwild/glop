@@ -8,6 +8,7 @@ import (
 type ScrollFrame struct {
   EmbeddedWidget
   NonFocuser
+  NonThinker
   BasicZone
   StandardParent
   amt float64
@@ -26,21 +27,31 @@ func MakeScrollFrame(w Widget, dx,dy int) *ScrollFrame {
 func (w *ScrollFrame) String() string {
   return "scroll frame"
 }
-func (w *ScrollFrame) DoRespond(group EventGroup) (bool, bool) {
+func (w *ScrollFrame) DoRespond(group EventGroup) (consume, take_focus bool) {
   if found, event := group.FindEvent(gin.MouseWheelVertical); found {
-    w.amt += 2 * event.Key.FramePressAmt()
+    inc := 2 * event.Key.FramePressAmt()
+    w.amt += inc
+    consume = true
+  } else {
+    return
   }
   if w.amt < 0 {
     w.amt = 0
+    consume = false
   }
   if w.amt > w.max {
     w.amt = w.max
+    consume = false
   }
-  return false, false
-}
-func (w *ScrollFrame) DoThink(dt int64, has_focus bool) {
+  return
 }
 func (w *ScrollFrame) Draw(region Region) {
+  if region.Dx > w.Request_dims.Dx {
+    region.Dx = w.Request_dims.Dx
+  }
+  if region.Dy > w.Request_dims.Dy {
+    region.Dy = w.Request_dims.Dy
+  }
   if region.Dy >= w.Children[0].Requested().Dy {
     w.Children[0].Draw(region)
     w.Render_region = w.Children[0].Rendered()
