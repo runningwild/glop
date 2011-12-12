@@ -77,7 +77,6 @@ var (
 
 func init() {
   runtime.LockOSThread()
-  gui.MustLoadFontAs("/Users/runningwild/code/go-glop/example/data/fonts/skia.ttf", "standard")
 }
 
 func main() {
@@ -87,41 +86,28 @@ func main() {
   wdy := 600
   sys.CreateWindow(10, 10, wdx, wdy)
   sys.EnableVSync(true)
-  ui := gui.Make(gin.In(), gui.Dims{ wdx, wdy })
+  ui,_ := gui.Make(gin.In(), gui.Dims{ wdx, wdy }, "/Users/runningwild/code/go-glop/example/data/fonts/skia.ttf")
 
   vtable := gui.MakeVerticalTable()
-//  vtable.AddChild(gui.MakeComboTextBox([]string{"foo", "bar", "wing", "ding"}, 300))
-  combo := gui.MakeComboTextBox([]string{"aaaaaaaa", "bbbbbbbbbbb", "ccccccccc", "ddddddddd", "Eeeeeeeee", "fffffffff", "bbbbbbbbbbb" , "Eeeeeeeee", "fffffffff", "bbbbbbbbbbb" , "Eeeeeeeee", "fffffffff", "bbbbbbbbbbb" , "Eeeeeeeee", "fffffffff", "bbbbbbbbbbb" }, 300)
-  for i := 0; i < 1; i++ {
-    vtable.AddChild(MakeColorBoxWidget(450, 250, 0.3, 0.3, 0.3, 0.3))
-    vtable.AddChild(MakeColorBoxWidget(450, 250, 0.3, 0, 0, 0.3))
-//    vtable.AddChild(MakeColorBoxWidget(450, 250, 0, 0.3, 0, 1))
-//    vtable.AddChild(MakeColorBoxWidget(450, 250, 0, 0, 0.3, 1))
+  for i := 0; i < 2; i++ {
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 0, 0, 1))
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 1, 0, 1))
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
   }
-  vtable.AddChild(combo)
-  for i := 0; i < 1; i++ {
-    vtable.AddChild(MakeColorBoxWidget(450, 250, 0.3, 0.3, 0.3, 0.3))
-    vtable.AddChild(MakeColorBoxWidget(450, 250, 0.3, 0, 0, 0.3))
-//    vtable.AddChild(MakeColorBoxWidget(450, 250, 0, 1, 0, 1))
-//    vtable.AddChild(MakeColorBoxWidget(450, 250, 0, 0, 1, 1))
+  scroll := gui.MakeScrollFrame(vtable, 300, 500)
+  fmt.Printf("")
+  vtable.AddChild(gui.MakeFileWidget("/Users/runningwild", ui))
+  for i := 0; i < 2; i++ {
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 0, 0, 1))
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 1, 0, 1))
+    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
   }
-  scroll := gui.MakeScrollFrame(vtable, 400, 500)
   v2 := gui.MakeVerticalTable()
   v2.AddChild(scroll)
-//  ui.AddChild(v2)
-//  anch := gui.MakeAnchorBox(gui.Dims{800, 600})
-//  anch.AddChild(combo, gui.Anchor{ 0.5, 0.5, 0.5, 0.5 })
-  fmt.Printf("asdf\n")
-  // anch.AddChild(gui.MakeFileChooser("/Users/runningwild/", func(w gui.Widget, n string, err error) {
-  //   if err == nil {
-  //     fmt.Printf("Got %s\n", n)
-  //   } else {
-  //     fmt.Printf("Err: %s\n", err.Error())
-  //   }
-  //   ui.RemoveChild(anch)
-  // }), gui.Anchor{ 0.5, 0.5, 0.5, 0.5 })
   ui.AddChild(v2)
-  //ui.AddChild(anch)
+
 
   for gin.In().GetKey('q').FramePressCount() == 0 {
     ui.Draw()

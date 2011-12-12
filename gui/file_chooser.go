@@ -5,6 +5,43 @@ import (
   "os"
 )
 
+type FileWidget struct {
+  *Button
+  path string
+}
+
+// If path represents a directory, returns path
+// If path represents a file, returns the directory containing path
+// The path is always cleaned before it is returned
+// If there is an error stating path, "/" is returned
+func pathToDir(path string) string {
+  info,err := os.Stat(path)
+  if err != nil {
+    return "/"
+  }
+  if info.IsDir() {
+    return filepath.Clean(path)
+  }
+  return filepath.Clean(filepath.Join(path, ".."))
+}
+
+func MakeFileWidget(path string, gui *Gui) *FileWidget {
+  var fw FileWidget
+  fw.path = path
+  fw.Button = MakeButton("standard", pathToDir(fw.path), 250, 1, 1, 1, 1, func(int64) {
+    anchor := MakeAnchorBox(gui.root.Render_region.Dims)
+    choose := MakeFileChooser(pathToDir(fw.path), func(f string, err error) {
+      defer gui.RemoveChild(anchor)
+      if err != nil { return }
+      fw.path = f
+      fw.Button.SetText(filepath.Base(fw.path))
+    })
+    anchor.AddChild(choose, Anchor{ 0.5, 0.5, 0.5, 0.5 })
+    gui.AddChild(anchor)
+  })
+  return &fw
+}
+
 type FileChooser struct {
   *VerticalTable
   filename    *TextLine
@@ -12,19 +49,19 @@ type FileChooser struct {
   list_scroll *ScrollFrame
   list        *SelectBox
   choose      *Button
-  callback    func(Widget, string, error)
+  callback    func(string, error)
 }
 
 func (fc *FileChooser) setList() {
   f,err := os.Open(fc.filename.GetText())
   if err != nil {
-    fc.callback(nil, "", err)
+    fc.callback("", err)
     return
   }
   defer f.Close()
   names,err := f.Readdirnames(0)
   if err != nil {
-    fc.callback(nil, "", err)
+    fc.callback("", err)
     return
   }
   nlist := MakeSelectTextBox(names, 300)
@@ -42,7 +79,7 @@ func (fc *FileChooser) up() {
   fc.setList()
 }
 
-func MakeFileChooser(dir string, callback func(Widget, string, error)) *FileChooser {
+func MakeFileChooser(dir string, callback func(string, error)) *FileChooser {
   var fc FileChooser
   fc.callback = callback
   fc.filename = MakeTextLine("standard", dir, 300, 1, 1, 1, 1)
@@ -54,14 +91,14 @@ func MakeFileChooser(dir string, callback func(Widget, string, error)) *FileChoo
     next := filepath.Join(fc.filename.GetText(), fc.list.GetSelectedOption().(string))
     f,err := os.Stat(next)
     if err != nil {
-      callback(nil, "", err)
+      callback("", err)
       return
     }
     if f.IsDir() {
       fc.filename.SetText(next)
       fc.setList()
     } else {
-      callback(&fc, next, nil)
+      callback(next, nil)
     }
   })
   fc.list_scroll = MakeScrollFrame(fc.list, 300, 300)
