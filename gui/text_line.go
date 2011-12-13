@@ -60,7 +60,9 @@ func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba 
   c.SetClip(rgba.Bounds())
   // height is the fraction of the font that is above the line, 1.0 would mean
   // that the font never falls below the line
-  height := 0.75
+  // TODO: wtf - this is all wrong!
+  // fix fonts - we can't change the font size easily
+  height := 1.3
   pt := freetype.Pt(0, int(float64(c.FUnitToPixelRU(font.UnitsPerEm()))*height))
   adv, _ := c.DrawString(text, pt)
   pt.X += adv.X
@@ -83,7 +85,6 @@ type TextLine struct {
   text      string
   changed   bool
   rdims     Dims
-  psize     int
   font      *truetype.Font
   context   *freetype.Context
   glyph_buf *truetype.GlyphBuf
@@ -114,7 +115,6 @@ func (w *TextLine) figureDims() {
   // Always draw the text as white on a transparent background so that we can change
   // the color easily through opengl
   w.rdims.Dx, w.rdims.Dy = drawText(w.font, w.context, color.RGBA{255, 255, 255, 255}, image.NewRGBA(image.Rect(0, 0, 1, 1)), w.text)
-
   texture_dims := Dims{
     Dx: int(nextPowerOf2(uint32(w.rdims.Dx))),
     Dy: int(nextPowerOf2(uint32(w.rdims.Dy))),
@@ -156,14 +156,13 @@ func MakeTextLine(font_name, text string, width int, r, g, b, a float64) *TextLi
   w.font = font
   w.glyph_buf = truetype.NewGlyphBuf()
   w.text = text
-  w.psize = 72
   w.context = freetype.NewContext()
   w.context.SetDPI(132)
-  w.context.SetFontSize(18)
+  w.context.SetFontSize(12)
   w.texture = gl.GenTexture()
   w.SetColor(r, g, b, a)
   w.figureDims()
-  w.Request_dims = Dims{width, 50}
+  w.Request_dims = Dims{width, 35}
   return &w
 }
 
