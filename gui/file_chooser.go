@@ -16,6 +16,9 @@ type FileWidget struct {
   // grab this on Think.
   ui   *Gui
 }
+func (fw *FileWidget) GetPath() string {
+  return fw.path
+}
 func (fw *FileWidget) Think(ui *Gui, t int64) {
   fw.ui = ui
   fw.Button.Think(ui, t)

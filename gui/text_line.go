@@ -197,6 +197,14 @@ func (w *TextLine) DoThink(int64, bool) {
 func (w *TextLine) preDraw(region Region) {
   gl.PushMatrix()
 
+  gl.Color3d(0, 0, 0)
+  gl.Begin(gl.QUADS)
+    gl.Vertex2i(region.X, region.Y)
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+    gl.Vertex2i(region.X + region.Dx, region.Y + region.Dy)
+    gl.Vertex2i(region.X + region.Dx, region.Y)
+  gl.End()
+
   gl.PushAttrib(gl.TEXTURE_BIT)
   gl.Enable(gl.TEXTURE_2D)
   w.texture.Bind(gl.TEXTURE_2D)
