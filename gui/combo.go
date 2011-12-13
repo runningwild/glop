@@ -68,16 +68,15 @@ func (cb *ComboBox) Respond(gui *Gui, group EventGroup) bool {
   }
   if cb.clicked { return false }
   if group.Focus {
-    return cb.scroll.Respond(gui, group)
+    cb.scroll.Respond(gui, group)
   }
   if !cb.open {
     if found,event := group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
       gui.TakeFocus(cb)
       cb.open = true
-      return true
     }
   }
-  return false
+  return cursor != nil
 }
 
 func MakeComboBox(options []SelectableWidget, width int) *ComboBox {

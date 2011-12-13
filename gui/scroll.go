@@ -52,6 +52,8 @@ func (w *ScrollFrame) Draw(region Region) {
   if region.Dy > w.Request_dims.Dy {
     region.Dy = w.Request_dims.Dy
   }
+  region.PushClipPlanes()
+  defer region.PopClipPlanes()
   if region.Dy >= w.Children[0].Requested().Dy {
     w.Children[0].Draw(region)
     w.Render_region = w.Children[0].Rendered()
@@ -62,7 +64,5 @@ func (w *ScrollFrame) Draw(region Region) {
   if w.amt > w.max {
     w.amt = w.max
   }
-  region.PushClipPlanes()
   w.Children[0].Draw(Region{ region.Point, w.Children[0].Requested() }.Add(Point{0, -int(w.amt) }))
-  region.PopClipPlanes()
 }

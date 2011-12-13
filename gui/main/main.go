@@ -89,20 +89,16 @@ func main() {
   ui,_ := gui.Make(gin.In(), gui.Dims{ wdx, wdy }, "/Users/runningwild/code/go-glop/example/data/fonts/skia.ttf")
 
   vtable := gui.MakeVerticalTable()
-  for i := 0; i < 2; i++ {
+  for i := 0; i < 1; i++ {
     vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 0, 0, 1))
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 1, 0, 1))
     vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
   }
   scroll := gui.MakeScrollFrame(vtable, 300, 500)
   fmt.Printf("")
   vtable.AddChild(gui.MakeComboTextBox([]string{"asdf","qwer","zxcv"}, 240))
   vtable.AddChild(gui.MakeFileWidget("/Users/runningwild/"))
-  for i := 0; i < 2; i++ {
+  for i := 0; i < 1; i++ {
     vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 0, 0, 1))
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 1, 0, 1))
     vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
   }
   v2 := gui.MakeVerticalTable()
