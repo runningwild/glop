@@ -168,6 +168,7 @@ type Widget interface {
 
   Draw(Region)
   DrawFocused(Region)
+  String() string
 }
 type CoreWidget interface {
   DoThink(int64, bool)
@@ -199,6 +200,7 @@ func (w *BasicWidget) Think(gui *Gui, t int64) {
   w.DoThink(t, w == gui.FocusWidget())
 }
 func (w *BasicWidget) Respond(gui *Gui, event_group EventGroup) bool {
+  println("Responding: ", w.String())
   cursor := event_group.Events[0].Key.Cursor()
   if cursor != nil {
     var p Point
