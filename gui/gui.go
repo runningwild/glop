@@ -46,6 +46,27 @@ func (r Region) Add(p Point) Region {
   }
 }
 
+// Returns a region that is no larger than r that fits inside t.  The region
+// will be located as closely as possible to r.
+func (r Region) Fit(t Region) Region {
+  if r.Dx > t.Dx {
+    r.Dx = t.Dx
+  }
+  if r.Dy > t.Dy {
+    r.Dy = t.Dy
+  }
+  if r.X < t.X {
+    r.X = t.X
+  }
+  if r.X + r.Dx > t.X + t.Dx {
+    r.X -= (r.X + r.Dx) - (t.X + t.Dx)
+  }
+  if r.Y + r.Dy > t.Y + t.Dy {
+    r.Y -= (r.Y + r.Dy) - (t.Y + t.Dy)
+  }
+  return r
+}
+
 func (r Region) Isect(s Region) Region {
   if r.X < s.X {
     r.Dx -= s.X - r.X

@@ -19,6 +19,7 @@ func (cb *ComboBox) Think(gui *Gui, t int64) {
   if cb.clicked {
     cb.clicked = false
     cb.open = false
+    cb.opened_region = Region{}
   }
   cb.scroll.Think(gui, t)
   if f,ok := gui.FocusWidget().(*ComboBox); ok && f == cb {
@@ -45,11 +46,26 @@ func (cb *ComboBox) DrawFocused(region Region) {
     cb.opened_region = cb.table.GetChildren()[cb.selected].Rendered()
   }
   r := cb.opened_region
-  r.Dims = region.Dims
-  cb.scroll.Draw(r)
+  r.Y -= (cb.table.Requested().Dy - cb.opened_region.Dy) / 2
+  r.Dy = cb.table.Requested().Dy
+  cb.scroll.Draw(r.Fit(region))
   cb.Render_region = cb.scroll.Rendered()
 }
 func (cb *ComboBox) Respond(gui *Gui, group EventGroup) bool {
+  if cb.open {
+    if found,event := group.FindEvent(gin.Escape); found && event.Type == gin.Press {
+      cb.clicked = true
+      return true
+    }
+  }
+  cursor := group.Events[0].Key.Cursor()
+  if cursor != nil {
+    var p Point
+    p.X, p.Y = cursor.Point()
+    if !p.Inside(cb.Rendered()) {
+      return false
+    }
+  }
   if cb.clicked { return false }
   if group.Focus {
     return cb.scroll.Respond(gui, group)

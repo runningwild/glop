@@ -97,7 +97,8 @@ func main() {
   }
   scroll := gui.MakeScrollFrame(vtable, 300, 500)
   fmt.Printf("")
-  vtable.AddChild(gui.MakeFileWidget("/Users/runningwild", ui))
+  vtable.AddChild(gui.MakeComboTextBox([]string{"asdf","qwer","zxcv"}, 240))
+  vtable.AddChild(gui.MakeFileWidget("/Users/runningwild/"))
   for i := 0; i < 2; i++ {
     vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
     vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 0, 0, 1))

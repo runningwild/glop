@@ -1,13 +1,33 @@
 package gui
 
 import (
+  "glop/gin"
   "path/filepath"
   "os"
 )
 
 type FileWidget struct {
   *Button
-  path string
+  path  string
+  popup Widget
+
+  // Need to have a reference to the ui so that we can create a pop-up.  We can
+  // grab this on Think.
+  ui   *Gui
+}
+func (fw *FileWidget) Think(ui *Gui, t int64) {
+  fw.ui = ui
+  fw.Button.Think(ui, t)
+}
+func (fw *FileWidget) Respond(ui *Gui, group EventGroup) bool {
+  if found,event := group.FindEvent(gin.Escape); found && event.Type == gin.Press {
+    if fw.popup != nil {
+      fw.ui.RemoveChild(fw.popup)
+      fw.popup = nil
+      return true
+    }
+  }
+  return fw.Button.Respond(ui, group)
 }
 
 // If path represents a directory, returns path
@@ -25,19 +45,20 @@ func pathToDir(path string) string {
   return filepath.Clean(filepath.Join(path, ".."))
 }
 
-func MakeFileWidget(path string, gui *Gui) *FileWidget {
+func MakeFileWidget(path string) *FileWidget {
   var fw FileWidget
   fw.path = path
   fw.Button = MakeButton("standard", pathToDir(fw.path), 250, 1, 1, 1, 1, func(int64) {
-    anchor := MakeAnchorBox(gui.root.Render_region.Dims)
+    anchor := MakeAnchorBox(fw.ui.root.Render_region.Dims)
     choose := MakeFileChooser(pathToDir(fw.path), func(f string, err error) {
-      defer gui.RemoveChild(anchor)
+      defer fw.ui.RemoveChild(anchor)
       if err != nil { return }
       fw.path = f
       fw.Button.SetText(filepath.Base(fw.path))
     })
     anchor.AddChild(choose, Anchor{ 0.5, 0.5, 0.5, 0.5 })
-    gui.AddChild(anchor)
+    fw.ui.AddChild(anchor)
+    fw.popup = anchor
   })
   return &fw
 }
