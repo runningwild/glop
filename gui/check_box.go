@@ -69,8 +69,7 @@ func makeCheckRow(w Widget) *checkRow {
   return &cr
 }
 func (cr *checkRow) DoRespond(group EventGroup) (consume, change_focus bool) {
-  println("check rw event")
-  if found,event := group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
+    if found,event := group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
     cr.check_box.Click()
     consume = true
     return
@@ -82,7 +81,6 @@ type CheckBoxes struct {
   *VerticalTable
 }
 func (cb *CheckBoxes) DoRespond(group EventGroup) (consume, change_focus bool) {
-  println("check boxes event")
   return false, false
 }
 func MakeCheckBoxes(options []Widget, width int) *CheckBoxes {

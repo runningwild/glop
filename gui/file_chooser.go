@@ -68,19 +68,20 @@ func pathToDir(path string) string {
   return filepath.Clean(filepath.Join(path, ".."))
 }
 
-func MakeFileWidget(path string) *FileWidget {
+func MakeFileWidget(path string, filter func(string, bool) bool) *FileWidget {
   var fw FileWidget
   fw.path = path
   fw.Button = MakeButton("standard", pathToDir(fw.path), 250, 1, 1, 1, 1, func(int64) {
     anchor := MakeAnchorBox(fw.ui.root.Render_region.Dims)
-    fw.choose = MakeFileChooser(pathToDir(fw.path), func(f string, err error) {
+    callback := func(f string, err error) {
       defer fw.ui.RemoveChild(anchor)
       defer fw.ui.DropFocus()
       fw.popup = nil
       if err != nil { return }
       fw.path = f
       fw.Button.SetText(filepath.Base(fw.path))
-    })
+    }
+    fw.choose = MakeFileChooser(pathToDir(fw.path), callback, filter)
     anchor.AddChild(fw.choose, Anchor{ 0.5, 0.5, 0.5, 0.5 })
     fw.popup = anchor
     fw.ui.AddChild(fw.popup)
@@ -97,6 +98,7 @@ type FileChooser struct {
   list        *SelectBox
   choose      *Button
   callback    func(string, error)
+  filter      func(string, bool) bool
 }
 
 func (fc *FileChooser) setList() {
@@ -106,10 +108,16 @@ func (fc *FileChooser) setList() {
     return
   }
   defer f.Close()
-  names,err := f.Readdirnames(0)
+  infos,err := f.Readdir(0)
   if err != nil {
     fc.callback("", err)
     return
+  }
+  var names []string
+  for _,info := range infos {
+    if fc.filter(info.Name(), info.IsDir()) {
+      names = append(names, info.Name())
+    }
   }
   nlist := MakeSelectTextBox(names, 300)
   fc.list_scroll.ReplaceChild(fc.list, nlist)
@@ -126,9 +134,10 @@ func (fc *FileChooser) up() {
   fc.setList()
 }
 
-func MakeFileChooser(dir string, callback func(string, error)) *FileChooser {
+func MakeFileChooser(dir string, callback func(string, error), filter func(string, bool) bool) *FileChooser {
   var fc FileChooser
   fc.callback = callback
+  fc.filter = filter
   fc.filename = MakeTextLine("standard", dir, 300, 1, 1, 1, 1)
   fc.up_button = MakeButton("standard", "Go up a directory", 200, 1, 1, 1, 1, func(int64) { 
     fc.up()
