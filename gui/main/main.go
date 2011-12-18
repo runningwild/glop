@@ -8,6 +8,7 @@ import (
   "glop/gui"
   "glop/system"
   "runtime"
+  "glop/render"
 )
 
 type BoxWidget struct {
@@ -86,6 +87,7 @@ func main() {
   wdy := 600
   sys.CreateWindow(10, 10, wdx, wdy)
   sys.EnableVSync(true)
+  render.Init()
   ui,_ := gui.Make(gin.In(), gui.Dims{ wdx, wdy }, "/Users/runningwild/code/go-glop/example/data/fonts/skia.ttf")
 
   vtable := gui.MakeVerticalTable()
@@ -120,10 +122,13 @@ func main() {
 
   for gin.In().GetKey('q').FramePressCount() == 0 {
     fmt.Printf("map: %v\n", opts)
-    ui.Draw()
+    render.Queue(func() {
+      gl.ClearColor(0, 0, 0, 1)
+      gl.Clear(gl.COLOR_BUFFER_BIT)
+      ui.Draw()
+    })
+    render.Purge()
     sys.SwapBuffers()
     sys.Think()
-    gl.ClearColor(0, 0, 0, 1)
-    gl.Clear(gl.COLOR_BUFFER_BIT)
   }
 }
