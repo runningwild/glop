@@ -3,6 +3,7 @@ package gui
 import (
   "glop/gin"
   "gl"
+  "reflect"
 )
 
 type checkBox struct {
@@ -54,50 +55,73 @@ func (cb *checkBox) Draw(region Region) {
 type checkRow struct {
   EmbeddedWidget
   *HorizontalTable
-  check_box *checkBox
+  check_box    *checkBox
+  target,index reflect.Value
 }
 func (cb *checkRow) String() string {
   return "check row"
 }
-func makeCheckRow(w Widget) *checkRow {
+func makeCheckRow(w Widget, target,index reflect.Value) *checkRow {
   var cr checkRow
   cr.EmbeddedWidget = &BasicWidget{CoreWidget: &cr}
   cr.HorizontalTable = MakeHorizontalTable()
   cr.check_box = makeCheckBox()
+  cr.target = target
+  cr.index = index
   cr.AddChild(cr.check_box)
   cr.AddChild(w)
   return &cr
 }
 func (cr *checkRow) DoRespond(group EventGroup) (consume, change_focus bool) {
-    if found,event := group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
+  if found,event := group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
     cr.check_box.Click()
+    var selected reflect.Value
+    if cr.check_box.selected {
+      selected = reflect.ValueOf(cr.check_box.selected)
+    }
+    cr.target.SetMapIndex(cr.index, selected)
     consume = true
     return
   }
   return
 }
+func (cr *checkRow) DoThink(t int64, focus bool) {
+  val := cr.target.MapIndex(cr.index)
+  if val.IsValid() {
+    cr.check_box.selected = val.Bool()
+  } else {
+    cr.check_box.selected = false
+  }
+  cr.HorizontalTable.DoThink(t, focus)
+}
 
 type CheckBoxes struct {
   *VerticalTable
+  target reflect.Value
 }
 func (cb *CheckBoxes) DoRespond(group EventGroup) (consume, change_focus bool) {
   return false, false
 }
-func MakeCheckBoxes(options []Widget, width int) *CheckBoxes {
+
+// target = reflect.ValueOf(&map[<option_type>]bool)
+func MakeCheckBoxes(options []Widget, indexes []reflect.Value, width int, target reflect.Value) *CheckBoxes {
   var cb CheckBoxes
   cb.VerticalTable = MakeVerticalTable()
-  for _,w := range options {
-    cb.VerticalTable.AddChild(makeCheckRow(w))
+  cb.target = target
+  for i := range options {
+    cb.VerticalTable.AddChild(makeCheckRow(options[i], target, indexes[i]))
   }
   return &cb
 }
 
-func MakeCheckTextBox(text_options []string, width int) *CheckBoxes {
+func MakeCheckTextBox(text_options []string, width int, target map[string]bool) *CheckBoxes {
   options := make([]Widget, len(text_options))
+  indexes := make([]reflect.Value, len(text_options))
   for i := range options {
     options[i] = MakeTextLine("standard", text_options[i], width, 1, 1, 1, 1)
+    indexes[i] = reflect.ValueOf(text_options[i])
   }
-  return MakeCheckBoxes(options, width)
+  return MakeCheckBoxes(options, indexes, width, reflect.ValueOf(target))
 }
 
 func (cb *CheckBoxes) String() string {

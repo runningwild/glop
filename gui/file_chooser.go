@@ -4,6 +4,7 @@ import (
   "glop/gin"
   "path/filepath"
   "os"
+  "strings"
 )
 
 type FileWidget struct {
@@ -18,6 +19,10 @@ type FileWidget struct {
 }
 func (fw *FileWidget) GetPath() string {
   return fw.path
+}
+func (fw *FileWidget) SetPath(path string) {
+  fw.path = path
+  fw.Button.SetText(filepath.Base(fw.path))
 }
 func (fw *FileWidget) Think(ui *Gui, t int64) {
   fw.ui = ui
@@ -78,8 +83,7 @@ func MakeFileWidget(path string, filter func(string, bool) bool) *FileWidget {
       defer fw.ui.DropFocus()
       fw.popup = nil
       if err != nil { return }
-      fw.path = f
-      fw.Button.SetText(filepath.Base(fw.path))
+      fw.SetPath(f)
     }
     fw.choose = MakeFileChooser(pathToDir(fw.path), callback, filter)
     anchor.AddChild(fw.choose, Anchor{ 0.5, 0.5, 0.5, 0.5 })
@@ -87,6 +91,7 @@ func MakeFileWidget(path string, filter func(string, bool) bool) *FileWidget {
     fw.ui.AddChild(fw.popup)
     fw.ui.TakeFocus(&fw)
   })
+  fw.SetPath(path)
   return &fw
 }
 
@@ -99,6 +104,22 @@ type FileChooser struct {
   choose      *Button
   callback    func(string, error)
   filter      func(string, bool) bool
+  terminate   bool
+}
+
+func (fc *FileChooser) Respond(gui *Gui, group EventGroup) bool {
+  fc.VerticalTable.Respond(gui, group)
+  if found,event := group.FindEvent(gin.Escape); found && event.Type == gin.Press {
+    fc.terminate = true
+  }
+  return true
+}
+
+func (fc *FileChooser) Think(gui *Gui, t int64) {
+  fc.VerticalTable.Think(gui, t)
+  if fc.terminate {
+    fc.callback("", nil)
+  }
 }
 
 func (fc *FileChooser) setList() {
@@ -132,6 +153,15 @@ func (fc *FileChooser) up() {
   }
   fc.filename.SetText(dir)
   fc.setList()
+}
+
+type FileFilter func(string, bool) bool
+
+func MakeFileFilter(ext string) FileFilter {
+  return func(path string, is_dir bool) bool {
+    if is_dir { return true }
+    return strings.HasSuffix(path, ext)
+  }
 }
 
 func MakeFileChooser(dir string, callback func(string, error), filter func(string, bool) bool) *FileChooser {

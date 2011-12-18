@@ -100,7 +100,7 @@ func main() {
   scroll := gui.MakeScrollFrame(vtable, 300, 500)
   fmt.Printf("")
   vtable.AddChild(gui.MakeComboTextBox([]string{"asdf","qwer","zxcv"}, 240))
-  vtable.AddChild(gui.MakeFileWidget("/Users/runningwild/"))
+  vtable.AddChild(gui.MakeFileWidget("/Users/runningwild/", func(path string, isdir bool) bool { return isdir || (len(path) > 4 && path[len(path)-4:] == ".png") }))
   for i := 0; i < 1; i++ {
     vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
     vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
@@ -109,14 +109,17 @@ func main() {
   v2.AddChild(scroll)
 
 
-  v2 = gui.MakeVerticalTable()
-  v2.AddChild(gui.MakeCheckTextBox([]string{"foo", "bar", "wing", "ding"}, 300))
-  v2.AddChild(MakeExpandoBox(50, 50, 1, 1, 1, 1))
-  ui.AddChild(v2)
+  opts := make(map[string]bool)
+  cbox := gui.MakeCheckTextBox([]string{"foo","bar","wing","ding"}, 300, opts)
+  anchor := gui.MakeAnchorBox(gui.Dims{800,600})
+  anchor.AddChild(cbox, gui.Anchor{ 0.5, 0.5, 0.5, 0.5 })
+//  v2.AddChild(cbox)
+  ui.AddChild(anchor)
 //  ui.AddChild(v2)
 
 
   for gin.In().GetKey('q').FramePressCount() == 0 {
+    fmt.Printf("map: %v\n", opts)
     ui.Draw()
     sys.SwapBuffers()
     sys.Think()

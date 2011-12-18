@@ -133,14 +133,5 @@ func (w *ComboBox) SetSelectedOption(option interface{}) {
 }
 
 func (w *ComboBox) selectIndex(index int) {
-  children := w.GetChildren()
-  if w.selected >= 0 && w.selected < len(children) {
-    children[w.selected].(SelectableWidget).SetSelected(false)
-  }
-  if index < 0 || index >= len(children) {
-    index = -1
-  } else {
-    children[index].(SelectableWidget).SetSelected(true)
-  }
   w.selected = index
 }
