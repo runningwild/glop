@@ -26,22 +26,24 @@ func Purge() {
 }
 
 func Init() {
-  runtime.LockOSThread()
-  for {
-    select {
-      case f := <-render_funcs:
-        f()
-      case <-purge:
-        for {
-          select {
-            case f := <-render_funcs:
-              f()
-            default:
-            goto purged
+  go func() {
+    runtime.LockOSThread()
+    for {
+      select {
+        case f := <-render_funcs:
+          f()
+        case <-purge:
+          for {
+            select {
+              case f := <-render_funcs:
+                f()
+              default:
+              goto purged
+            }
           }
-        }
-        purged:
-        purge <- true
+          purged:
+          purge <- true
+      }
     }
-  }
+  } ()
 }

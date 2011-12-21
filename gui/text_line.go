@@ -83,7 +83,8 @@ type TextLine struct {
   NonFocuser
   BasicZone
   text      string
-  changed   bool
+  next_text string
+  initted   bool
   rdims     Dims
   font      *truetype.Font
   context   *freetype.Context
@@ -155,13 +156,11 @@ func MakeTextLine(font_name, text string, width int, r, g, b, a float64) *TextLi
   }
   w.font = font
   w.glyph_buf = truetype.NewGlyphBuf()
-  w.text = text
+  w.next_text = text
   w.context = freetype.NewContext()
   w.context.SetDPI(132)
   w.context.SetFontSize(12)
-  w.texture = gl.GenTexture()
   w.SetColor(r, g, b, a)
-  w.figureDims()
   w.Request_dims = Dims{width, 35}
   return &w
 }
@@ -176,25 +175,30 @@ func (w *TextLine) SetColor(r, g, b, a float64) {
 }
 
 func (w *TextLine) GetText() string {
-  return w.text
+  return w.next_text
 }
 
 func (w *TextLine) SetText(str string) {
   if w.text != str {
-    w.text = str
-    w.changed = true
+    w.next_text = str
   }
 }
 
 func (w *TextLine) DoThink(int64, bool) {
-  if !w.changed {
-    return
-  }
-  w.changed = false
-  w.figureDims()
 }
 
 func (w *TextLine) preDraw(region Region) {
+  if !w.initted {
+    w.initted = true
+    w.texture = gl.GenTexture()
+    w.text = w.next_text
+    w.figureDims()
+  }
+  if w.text != w.next_text {
+    w.text = w.next_text
+    w.figureDims()
+  }
+
   gl.PushMatrix()
 
   gl.Color3d(0, 0, 0)

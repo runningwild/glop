@@ -64,7 +64,7 @@ func (w *TextEditLine) findOffsetAtIndex(index int) float64 {
 }
 
 func (w *TextEditLine) DoThink(t int64, focus bool) {
-  changed := w.changed
+  changed := w.text != w.next_text
   w.TextLine.DoThink(t, false)
   if focus && w.cursor.start == 0 {
     w.cursor.start = t
@@ -104,13 +104,11 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus 
           post = w.text[w.cursor.index:]
         }
         w.SetText(pre + post)
-        w.changed = true
         w.cursor.index--
         w.cursor.moved = true
       }
     } else if key_id > 0 && key_id <= 127 && event.Type == gin.Press {
       w.SetText(w.text[0:w.cursor.index] + string([]byte{byte(key_id)}) + w.text[w.cursor.index:])
-      w.changed = true
       w.cursor.index++
       w.cursor.moved = true
     } else if key_id == gin.MouseLButton {
