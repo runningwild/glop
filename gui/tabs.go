@@ -42,10 +42,17 @@ func (w *TabFrame) Respond(gui *Gui, group EventGroup) bool {
 }
 
 func (w *TabFrame) Think(gui *Gui, t int64) {
+  w.Request_dims = Dims{}
   for i := range w.Children {
     w.Children[i].Think(gui, t)
+    dims := w.Children[i].Requested()
+    if dims.Dx > w.Request_dims.Dx {
+      w.Request_dims.Dx = dims.Dx
+    }
+    if dims.Dy > w.Request_dims.Dy {
+      w.Request_dims.Dy = dims.Dy
+    }
   }
-  w.Request_dims = w.Children[w.active].Requested()
 }
 
 func (w *TabFrame) Draw(region Region) {
