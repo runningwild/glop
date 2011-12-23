@@ -146,7 +146,7 @@ func ParseXMLEdge(section Section) (Edge, error) {
     }
     switch strings.ToLower(a[1]) {
     case "weight":
-      weight, err := strconv.Atof64(a[2])
+      weight, err := strconv.ParseFloat(a[2], 64)
       if err != nil {
         return edge, errors.New(fmt.Sprintf("Error reading weight for anim edge with name '%s'", label))
       }

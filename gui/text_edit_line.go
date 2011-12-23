@@ -2,7 +2,7 @@ package gui
 
 import (
   "glop/gin"
-  "freetype-go.googlecode.com/hg/freetype"
+  "code.google.com/p/freetype-go/freetype"
   "gl"
 )
 
