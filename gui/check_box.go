@@ -6,6 +6,13 @@ import (
   "reflect"
 )
 
+type checkBoxSelection int
+const (
+  checkBoxSelected checkBoxSelection = iota
+  checkBoxUnselected
+  checkBoxUnknown
+)
+
 type checkBox struct {
   EmbeddedWidget
   Childless
@@ -13,7 +20,7 @@ type checkBox struct {
   NonResponder
   NonThinker
   BasicZone
-  selected bool
+  selected checkBoxSelection
   disabled bool
 }
 func makeCheckBox() *checkBox {
@@ -28,7 +35,14 @@ func (cb *checkBox) String() string {
 }
 func (cb *checkBox) Click() {
   if cb.disabled { return }
-  cb.selected = !cb.selected
+  switch cb.selected {
+    case checkBoxSelected:
+      cb.selected = checkBoxUnselected
+    case checkBoxUnselected:
+      cb.selected = checkBoxSelected
+    case checkBoxUnknown:
+      cb.selected = checkBoxSelected
+  }
 }
 func (cb *checkBox) Draw(region Region) {
   cb.Render_region = region
@@ -42,12 +56,18 @@ func (cb *checkBox) Draw(region Region) {
     gl.Vertex2i(region.X, region.Y + region.Dy)
     gl.Vertex2i(region.X + region.Dx, region.Y + region.Dy)
     gl.Vertex2i(region.X + region.Dx, region.Y)
-    if !cb.selected && region.Dx >= 4 && region.Dy >= 4 {
-      gl.Color3d(0, 0, 0)
-      gl.Vertex2i(region.X + 2, region.Y + 2)
-      gl.Vertex2i(region.X + 2, region.Y + region.Dy - 2)
-      gl.Vertex2i(region.X + region.Dx - 2, region.Y + region.Dy - 2)
-      gl.Vertex2i(region.X + region.Dx - 2, region.Y + 2)
+    if cb.selected == checkBoxUnknown || cb.selected == checkBoxUnselected {
+      if cb.selected == checkBoxUnknown {
+        gl.Color3d(0.4, 0.4, 0.4)
+      } else {
+        gl.Color3d(0, 0, 0)
+      }
+      if region.Dx >= 4 && region.Dy >= 4 {
+        gl.Vertex2i(region.X + 2, region.Y + 2)
+        gl.Vertex2i(region.X + 2, region.Y + region.Dy - 2)
+        gl.Vertex2i(region.X + region.Dx - 2, region.Y + region.Dy - 2)
+        gl.Vertex2i(region.X + region.Dx - 2, region.Y + 2)
+      }
     }
   gl.End()
 }
@@ -76,8 +96,10 @@ func (cr *checkRow) DoRespond(group EventGroup) (consume, change_focus bool) {
   if found,event := group.FindEvent(gin.MouseLButton); found && event.Type == gin.Press {
     cr.check_box.Click()
     var selected reflect.Value
-    if cr.check_box.selected {
-      selected = reflect.ValueOf(cr.check_box.selected)
+    if cr.check_box.selected == checkBoxSelected {
+      selected = reflect.ValueOf(true)
+    } else {
+      selected = reflect.ValueOf(false)
     }
     cr.target.SetMapIndex(cr.index, selected)
     consume = true
@@ -88,9 +110,13 @@ func (cr *checkRow) DoRespond(group EventGroup) (consume, change_focus bool) {
 func (cr *checkRow) DoThink(t int64, focus bool) {
   val := cr.target.MapIndex(cr.index)
   if val.IsValid() {
-    cr.check_box.selected = val.Bool()
+    if val.Bool() {
+      cr.check_box.selected = checkBoxSelected
+    } else {
+      cr.check_box.selected = checkBoxUnselected
+    }
   } else {
-    cr.check_box.selected = false
+    cr.check_box.selected = checkBoxUnknown
   }
   cr.HorizontalTable.DoThink(t, focus)
 }
@@ -131,7 +157,7 @@ func (cb *CheckBoxes) String() string {
 func (cb *CheckBoxes) GetSelectedIndexes() []int {
   var indexes []int
   for i,w := range cb.VerticalTable.GetChildren() {
-    if w.(*checkRow).check_box.selected {
+    if w.(*checkRow).check_box.selected == checkBoxSelected {
       indexes = append(indexes, i)
     }
   }

@@ -1,7 +1,6 @@
 package main
 
 import (
-  "fmt"
   "gl"
   "glop/gos"
   "glop/gin"
@@ -85,43 +84,34 @@ func main() {
   sys.Startup()
   wdx := 800
   wdy := 600
-  sys.CreateWindow(10, 10, wdx, wdy)
-  sys.EnableVSync(true)
   render.Init()
-  ui,_ := gui.Make(gin.In(), gui.Dims{ wdx, wdy }, "/Users/runningwild/code/go-glop/example/data/fonts/skia.ttf")
+  var ui *gui.Gui
+  render.Queue(func() {
+    sys.CreateWindow(10, 10, wdx, wdy)
+    sys.EnableVSync(true)
+    ui,_ = gui.Make(gin.In(), gui.Dims{ wdx, wdy }, "/Users/runningwild/code/go-glop/example/data/fonts/skia.ttf")
+  })
+  render.Purge()
 
-  vtable := gui.MakeVerticalTable()
-  vtable.AddChild(gui.MakeTextEditLine("standard", "foo", 300, 1, 1, 1, 1))
-  vtable.AddChild(gui.MakeTextEditLine("standard", "foo", 300, 1, 1, 1, 1))
-  vtable.AddChild(gui.MakeTextEditLine("standard", "foo", 300, 1, 1, 1, 1))
-  vtable.AddChild(gui.MakeTextEditLine("standard", "foo", 300, 1, 1, 1, 1))
-  for i := 0; i < 1; i++ {
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
-  }
-  scroll := gui.MakeScrollFrame(vtable, 300, 500)
-  fmt.Printf("")
-  vtable.AddChild(gui.MakeComboTextBox([]string{"asdf","qwer","zxcv"}, 240))
-  vtable.AddChild(gui.MakeFileWidget("/Users/runningwild/", func(path string, isdir bool) bool { return isdir || (len(path) > 4 && path[len(path)-4:] == ".png") }))
-  for i := 0; i < 1; i++ {
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 1, 1, 1, 1))
-    vtable.AddChild(MakeColorBoxWidget(250, 250, 0, 0, 1, 1))
-  }
-  v2 := gui.MakeVerticalTable()
-  v2.AddChild(scroll)
+  var ws []gui.Widget
+  options := []string{ "foo", "ding", "bar" }
+  target := make(map[string]bool)
+  target["foo"] = true
+  cb :=  gui.MakeCheckTextBox(options, 300, target)
 
+  tabs := gui.MakeTabFrame(ws)
 
-  opts := make(map[string]bool)
-  cbox := gui.MakeCheckTextBox([]string{"foo","bar","wing","ding"}, 300, opts)
-  anchor := gui.MakeAnchorBox(gui.Dims{800,600})
-  anchor.AddChild(cbox, gui.Anchor{ 0.5, 0.5, 0.5, 0.5 })
-//  v2.AddChild(cbox)
-  ui.AddChild(anchor)
+  ui.AddChild(cb)
 //  ui.AddChild(v2)
-
-
+  count := 0
   for gin.In().GetKey('q').FramePressCount() == 0 {
-    fmt.Printf("map: %v\n", opts)
+    count++
+    if count % 300 == 0 {
+      delete(target, "foo")
+    }
+    if count % 300 == 150 {
+      target["bar"] = false
+    }
     render.Queue(func() {
       gl.ClearColor(0, 0, 0, 1)
       gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -130,5 +120,17 @@ func main() {
     render.Purge()
     sys.SwapBuffers()
     sys.Think()
+    if gin.In().GetKey('1').FramePressCount() > 0 {
+      tabs.SelectTab(0)
+    }
+    if gin.In().GetKey('2').FramePressCount() > 0 {
+      tabs.SelectTab(1)
+    }
+    if gin.In().GetKey('3').FramePressCount() > 0 {
+      tabs.SelectTab(2)
+    }
+    if gin.In().GetKey('4').FramePressCount() > 0 {
+      tabs.SelectTab(3)
+    }
   }
 }
