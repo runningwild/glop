@@ -82,6 +82,8 @@ func (r Region) Isect(s Region) Region {
   if r.Y + r.Dy > s.Y + s.Dy {
     r.Dy -= (r.Y + r.Dy) - (s.Y + s.Dy)
   }
+  if r.Dx < 0 { r.Dx = 0 }
+  if r.Dy < 0 { r.Dy = 0 }
   return r
 }
 
@@ -116,6 +118,7 @@ func (r Region) PushClipPlanes() {
   } else {
     cur := clippers[len(clippers)-1]
     clippers = append(clippers, r.Isect(cur))
+    clippers[len(clippers)-1].setClipPlanes()
   }
 }
 func (r Region) PopClipPlanes() {
