@@ -19,6 +19,10 @@ type System interface {
   // corner of the window
   GetCursorPos() (x, y int)
 
+  // Hides/Unhides the cursor.  A hidden cursor is invisible and its position is
+  // locked.  It should still generate mouse move events.
+  HideCursor(bool)
+
   GetWindowDims() (x, y, dx, dy int)
 
   SwapBuffers()
@@ -54,6 +58,10 @@ type Os interface {
   // Gets the cursor position in window coordinates with the cursor at the bottom left
   // corner of the window
   GetCursorPos() (x, y int)
+
+  // Hides/Unhides the cursor.  A hidden cursor is invisible and its position is
+  // locked.  It should still generate mouse move events.
+  HideCursor(bool)
 
   GetWindowDims() (x, y, dx, dy int)
 
@@ -104,6 +112,9 @@ func (sys *sysObj) CreateWindow(x, y, width, height int) {
 }
 func (sys *sysObj) GetCursorPos() (int, int) {
   return sys.os.GetCursorPos()
+}
+func (sys *sysObj) HideCursor(hide bool) {
+  sys.os.HideCursor(hide)
 }
 func (sys *sysObj) GetWindowDims() (int, int, int, int) {
   return sys.os.GetWindowDims()

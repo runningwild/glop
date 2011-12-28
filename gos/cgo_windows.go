@@ -39,7 +39,7 @@ func (win32 *win32SystemObject) CreateWindow(x,y,width,height int) {
   title = append(title, 0)
   win32.window = uintptr(unsafe.Pointer(C.GlopCreateWindow(
     unsafe.Pointer(&title[0]),
-    C.int(x), C.int(y), C.int(width), C.int(height), 0, 0, 0)))
+    C.int(x), C.int(y), C.int(width), C.int(height), 0, 8, 0)))
 }
 
 func (win32 *win32SystemObject) SwapBuffers() {

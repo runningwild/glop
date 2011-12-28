@@ -4,6 +4,8 @@
 #import <mach/mach_time.h>
 #import <stdio.h>
 
+#include <ApplicationServices/ApplicationServices.h>
+
 // TODO: This requires OSX 10.6 or higher, just for getting uptime.
 // if we bother to fix linking on osx such that 10.5 is acceptable we 
 // should change this
@@ -55,6 +57,7 @@ NSAutoreleasePool* pool;
 NSApplication* glop_app;
 NSEvent* terminator;
 NSTimeInterval osx_horizon;
+CGPoint lock_mouse;
 
 // These structures provide a way to allow threads to write events to a buffer
 // and then grab the events as a batch in a synchronously.
@@ -121,6 +124,7 @@ void Init() {
   event_buffer_2.length = 0;
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];
   pthread_mutex_init(&event_group_mutex, NULL);
+  lock_mouse.x = -1;
   [glop_app finishLaunching];
 }
 
@@ -385,6 +389,9 @@ int Think() {
     return 0;
   }
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];
+  if (lock_mouse.x >= 0) {
+    CGWarpMouseCursorPosition(lock_mouse);
+  }
   return 1;
 }
 
@@ -412,6 +419,7 @@ void CreateWindow(void** _window, void** _context, int x, int y, int width, int 
     NSOpenGLPFAAccelerated,
     NSOpenGLPFAColorSize, 32,
     NSOpenGLPFADepthSize, 32,
+    NSOpenGLPFAStencilSize, 8,
     //    NSOpenGLPFAFullScreen,
     0,
   };
@@ -449,6 +457,23 @@ void GetMousePos(int* x, int* y) {
   *y = (int)point.y;
 }
 
+void LockCursor(int lock) {
+  if (lock) {
+    CGEventRef dummy = CGEventCreate(NULL);
+    lock_mouse = CGEventGetLocation(dummy);
+  } else {
+    lock_mouse.x = -1;
+  }
+}
+
+void HideCursor(int hide) {
+  if (hide) {
+    CGDisplayHideCursor(kCGDirectMainDisplay);
+  } else {
+    CGDisplayShowCursor(kCGDirectMainDisplay);
+  }
+}
+
 void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy) {
   NSWindow* window = (NSWindow*)_window;
   NSRect view = [[window contentView] frame];
@@ -464,3 +489,4 @@ void EnableVSync(void* _context, int set_vsync) {
   GLint swapInt = set_vsync;
   [context setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
 }
+

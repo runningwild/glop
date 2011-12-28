@@ -87,6 +87,16 @@ func (osx *osxSystemObject) GetCursorPos() (int, int) {
   return osx.rawCursorToWindowCoords(int(x), int(y))
 }
 
+func (osx *osxSystemObject) HideCursor(hide bool) {
+  if hide {
+    C.LockCursor(1)
+    C.HideCursor(1)
+  } else {
+    C.LockCursor(0)
+    C.HideCursor(0)
+  }
+}
+
 func (osx *osxSystemObject) GetWindowDims() (int, int, int, int) {
   var x, y, dx, dy C.int
   C.GetWindowDims(unsafe.Pointer(osx.window), &x, &y, &dx, &dy)

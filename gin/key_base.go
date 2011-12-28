@@ -157,7 +157,6 @@ func (aa *axisAggregator) Think(ms int64) (bool, float64) {
   if aa.prev.press_amt == 0 {
     aa.is_down = false
     if was_down {
-      fmt.Printf("Genned event\n")
       return true, 0
     }
   }

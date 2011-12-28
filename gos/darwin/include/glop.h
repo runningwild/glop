@@ -106,6 +106,8 @@ int Think();
 void Quit();
 
 void GetMousePos(int*, int*);
+void LockCursor(int);
+void HideCursor(int);
 void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy);
 void EnableVSync(void* _context, int set_vsync);
 
