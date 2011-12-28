@@ -351,6 +351,14 @@ func (input *Input) GetKey(id KeyId) Key {
   }
   return key
 }
+func (input *Input) GetKeyByName(name string) Key {
+  for _,key := range input.key_map {
+    if key.Name() == name {
+      return key
+    }
+  }
+  return nil
+}
 
 func (input *Input) informDeps(event Event, group *EventGroup) {
   deps := input.dep_map[event.Key.Id()]

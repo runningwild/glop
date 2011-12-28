@@ -8,6 +8,9 @@ type Key interface {
   // Human readable name
   String() string
 
+  // Raw name, usable for lookup by GetKeyByName()
+  Name() string
+
   // Unique Id
   Id() KeyId
 
@@ -147,12 +150,17 @@ func (aa *axisAggregator) SetPressAmt(amt float64, ms int64, event_type EventTyp
   aa.handleEventType(event_type)
 }
 func (aa *axisAggregator) Think(ms int64) (bool, float64) {
+  was_down := aa.prev.press_amt != 0
   aa.prev = aa.this
   aa.this = keyStats{}
+  aa.prev.press_avg = aa.prev.press_sum
   if aa.prev.press_amt == 0 {
     aa.is_down = false
+    if was_down {
+      fmt.Printf("Genned event\n")
+      return true, 0
+    }
   }
-  aa.prev.press_avg = aa.prev.press_sum
   return false, 0
 }
 
@@ -202,6 +210,10 @@ type keyState struct {
 
 func (ks *keyState) String() string {
   return fmt.Sprintf("%d: %s", ks.id, ks.name)
+}
+
+func (ks *keyState) Name() string {
+  return ks.name
 }
 
 func (ks *keyState) Id() KeyId {
