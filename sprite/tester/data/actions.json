@@ -1,0 +1,13 @@
+{
+  "turn_left"  : "o",
+  "turn_right" : "p",
+  "defend"     : "d",
+  "damaged"    : "g",
+  "undamaged"  : "f",
+  "killed"     : "k",
+  "ranged"     : "r",
+  "melee"      : "m",
+  "move"       : "w",
+  "stop"       : "s",
+  "reset"      : "gui+r"
+}

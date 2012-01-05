@@ -1,0 +1,6 @@
+{
+  "load"      : "gui+l",
+  "quit"      : "gui+q",
+  "slow down" : "Down",
+  "speed up"  : "Up"
+}
