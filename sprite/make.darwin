@@ -1,0 +1,10 @@
+gb -mi
+
+rm -rf tester.app
+mkdir -p tester.app/Contents/MacOS
+mkdir -p tester.app/Contents/lib
+
+cp tester/tester tester.app/Contents/MacOS/tester
+cp ../gos/darwin/lib/libglop.so tester.app/Contents/lib/
+cp -r tester/data/* tester.app/Contents
+
