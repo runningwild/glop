@@ -62,6 +62,38 @@ func SetStoreVal(key,val string) {
   SaveJson(path, store)
 }
 
+type spriteBox struct {
+  gui.EmbeddedWidget
+  gui.BasicZone
+  gui.NonThinker
+  gui.NonResponder
+  gui.NonFocuser
+  gui.Childless
+  s *sprite.Sprite
+}
+func makeSpriteBox(s *sprite.Sprite) *spriteBox {
+  var sb spriteBox
+  sb.EmbeddedWidget = &gui.BasicWidget{ CoreWidget: &sb }
+  sb.Request_dims = gui.Dims{ 300, 300 }
+  return &sb
+}
+func (sb *spriteBox) String() string {
+  return "sprite box"
+}
+func (sb *spriteBox) Draw(region gui.Region) {
+  if sb.s != nil {
+    gl.Color4f(0.2, 0.1, 0.0, 1)
+    gl.Begin(gl.QUADS)
+    gl.Vertex2i(region.X, region.Y)
+    gl.Vertex2i(region.X, region.Y + region.Dy)
+    gl.Vertex2i(region.X + region.Dx, region.Y + region.Dy)
+    gl.Vertex2i(region.X + region.Dx, region.Y)
+    gl.End()
+    sb.s.Render(float32(region.X + region.Dx / 2), float32(region.Y), 0, 1)
+  }
+}
+
+
 func main() {
   sys = system.Make(gos.GetSystemInterface())
   sys.Startup()
@@ -98,16 +130,22 @@ func main() {
     keyname_list.AddChild(gui.MakeTextLine("standard", action_map[action].Name(), 50, 1, 1, 1, 1))
   }
 
+  current_anim := gui.MakeTextLine("standard", "", 300, 1, 1, 1, 1)
   current_state := gui.MakeTextLine("standard", "", 300, 1, 1, 1, 1)
-  anchor.AddChild(current_state, gui.Anchor{ 0.5,1, 0.25,1 })
+  frame_data := gui.MakeVerticalTable()
+  frame_data.AddChild(current_anim)
+  frame_data.AddChild(current_state)
+  anchor.AddChild(frame_data, gui.Anchor{ 0,1, 0,1 })
 
   speed := 100
   speed_text := gui.MakeTextLine("standard", "Speed: 100%", 150, 1, 1, 1, 1)
   anchor.AddChild(speed_text, gui.Anchor{ 0,0, 0,0 })
 
+  sprite_box := makeSpriteBox(nil)
+  anchor.AddChild(sprite_box, gui.Anchor{ 0.5,0.5, 0.25, 0.5 })
+
   var chooser gui.Widget
   curdir := GetStoreVal("curdir")
-  var anim *sprite.Sprite
   if curdir == "" {
     curdir = datadir
   } else {
@@ -128,34 +166,25 @@ func main() {
     case load := <-loaded:
       if load.err != nil {
         error_msg.SetText(load.err.Error())
-        current_state.SetText("")
+        current_anim.SetText("")
       } else {
-        anim = load.anim
+        sprite_box.s = load.anim
         error_msg.SetText("")
       }
     default:
     }
-    if anim != nil {
-      anim.Think(int64(float64(dt) * float64(speed) / 100))
-      current_state.SetText(anim.CurAnim())
+    if sprite_box.s != nil {
+      sprite_box.s.Think(int64(float64(dt) * float64(speed) / 100))
+      current_anim.SetText(sprite_box.s.CurAnim())
+      current_state.SetText(sprite_box.s.CurState())
     }
     render.Queue(func() {
       gl.ClearColor(0, 0, 0, 1)
       gl.Clear(gl.COLOR_BUFFER_BIT)
       ui.Draw()
-      if anim != nil {
-        gl.Color4f(0.2, 0.1, 0.0, 1)
-        gl.Begin(gl.QUADS)
-        gl.Vertex2i(75, 150)
-        gl.Vertex2i(75, 375)
-        gl.Vertex2i(225, 375)
-        gl.Vertex2i(225, 150)
-        gl.End()
-        anim.Render(150, float32(wdy) * 2 / 5, 0, 1)
-      }
     })
 
-    if anim != nil {
+    if sprite_box.s != nil {
       if action_map["reset"].FramePressCount() > 0 {
         go func() {
           anim, err := sprite.LoadSprite(curdir)
@@ -164,7 +193,7 @@ func main() {
       } else {
         for k,v := range action_map {
           for i := 0; i < v.FramePressCount(); i++ {
-            anim.Command(k)
+            sprite_box.s.Command(k)
           }
         }
       }
@@ -206,6 +235,5 @@ func main() {
       }
       speed_text.SetText(fmt.Sprintf("Speed: %d%%", speed))
     }
-
   }
 }

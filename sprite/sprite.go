@@ -13,6 +13,7 @@ import (
   "gl/glu"
   "sort"
   "github.com/arbaal/mathgl"
+  "image/color"
 )
 
 type zArray struct {
@@ -152,6 +153,17 @@ func (sl *spriteLevel) Unload() {
   sl.load_count <- -1
 }
 
+type grossPlaceholder struct{}
+func (gp grossPlaceholder) ColorModel() color.Model {
+  return color.NRGBAModel
+}
+func (gp grossPlaceholder) Bounds() image.Rectangle {
+  return image.Rect(0, 0, 100, 150)
+}
+func (gp grossPlaceholder) At(x,y int) color.Color {
+  return color.NRGBA{255,0,255,255}
+}
+
 // TODO: Might want to have the load part happen in a separate go-routine so we don't block
 // here if we're loading a lot of textures.  In that case we should have a default sprite or
 // something that displays if a spriteLevel isn't available yet.
@@ -163,14 +175,16 @@ func (sl *spriteLevel) load() {
     filename := sl.filenames[i]
     file, err := os.Open(filename)
     if err != nil {
-      panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.Error()))
-      return
+      // panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.Error()))
+      images = append(images, grossPlaceholder{})
+      continue
     }
     im, _, err := image.Decode(file)
     file.Close()
     if err != nil {
-      panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.Error()))
-      return
+      // panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.Error()))
+      images = append(images, grossPlaceholder{})
+      continue
     }
     images = append(images, im)
   }
@@ -557,14 +571,37 @@ func (sm *SpriteManager) LoadSprite(path string) (*Sprite, error) {
 }
 
 func (s *Sprite) CurAnim() string {
-  return s.cur_frame.State
-  return fmt.Sprintf("%d: %s -> %v", s.anim_facing, s.cur_frame.Name, s.pending_cmds)
+  f := frameIndex{
+    facing:  uint8(s.anim_facing),
+    anim_id: uint16(s.cur_frame.Id),
+  }
+  var filename string
+  var sl *spriteLevel
+  if _, ok := s.connection.rects[f.Int()]; ok {
+    sl = s.connection
+  } else {
+    sl = s.facings[s.anim_facing]
+  }
+  for i := range sl.indexes {
+    if sl.indexes[i] == f {
+      _,filename = filepath.Split(sl.filenames[i])
+    }
+  }
+  return fmt.Sprintf("%d: %s", s.anim_facing, filename)
 }
 func (s *Sprite) CurState() string {
-  return s.cur_state.Name
+  return s.cur_frame.State
+  // return s.cur_state.Name
 }
 func (s *Sprite) NumPendingCommands() int {
   return len(s.pending_cmds)
+}
+func (s *Sprite) GetPendingCommands() []string {
+  var cmds []string
+  for _,cmd := range s.pending_cmds {
+    cmds = append(cmds, cmd)
+  }
+  return cmds
 }
 
 func (s *Sprite) Command(cmd string) {
