@@ -9,11 +9,12 @@ import (
   "path/filepath"
   "image"
   _ "image/png"
+  "image/draw"
+  "image/color"
   "gl"
   "gl/glu"
   "sort"
   "github.com/arbaal/mathgl"
-  "image/color"
 )
 
 type zArray struct {
@@ -206,16 +207,8 @@ func (sl *spriteLevel) load() {
   for i := range images {
     // blit the image onto the sheet
     bounds := images[i].Bounds()
-    for y := 0; y < bounds.Dy(); y++ {
-      for x := 0; x < bounds.Dx(); x++ {
-        r, g, b, a := images[i].At(x, y).RGBA()
-        base := 4*(x+cx) + sheet.Stride*y
-        sheet.Pix[base] = uint8(r)
-        sheet.Pix[base+1] = uint8(g)
-        sheet.Pix[base+2] = uint8(b)
-        sheet.Pix[base+3] = uint8(a)
-      }
-    }
+    target := bounds.Add(image.Point{cx, 0})
+    draw.Draw(sheet, target, images[i], image.Point{0,0}, draw.Src)
     rect := spriteRect{
       x:      float32(cx) / float32(pdx),
       y:      0,
