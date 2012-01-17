@@ -11,5 +11,6 @@ func TestAllSpecs(t *testing.T) {
   r.AddSpec(ReachableSpec)
   r.AddSpec(ChooserSpec)
   r.AddSpec(MapperSpec)
+  r.AddSpec(TopoSpec)
   gospec.MainGoTest(r, t)
 }

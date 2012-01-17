@@ -6,11 +6,6 @@ import (
   "glop/util/algorithm"
 )
 
-type Graph interface {
-  NumVertex() int
-  Adjacent(int) ([]int, []float64)
-}
-
 type board [][]int
 
 func (b board) NumVertex() int {
@@ -84,3 +79,122 @@ func ReachableSpec(c gospec.Context) {
     c.Expect(reach, ContainsInOrder, []int{13, 14, 15, 20, 21, 22, 23, 25, 26, 27})
   })
 }
+
+type adag [][]int
+func (a adag) NumVertex() int {
+  return len(a)
+}
+func (a adag) Successors(n int) []int {
+  return a[n]
+}
+func (a adag) allSuccessorsHelper(n int, m map[int]bool) {
+  for _,s := range a[n] {
+    m[s] = true
+    a.allSuccessorsHelper(s, m)
+  }
+}
+func (a adag) AllSuccessors(n int) map[int]bool {
+  if len(a[n]) == 0 { return nil }
+  m := make(map[int]bool)
+  a.allSuccessorsHelper(n, m)
+  return m
+}
+func checkOrder(c gospec.Context, a adag, order []int) {
+  c.Expect(len(a), Equals, len(order))
+  c.Specify("Ordering contains all vertices exactly once", func() {
+    all := make(map[int]bool)
+    for _,v := range order {
+      all[v] = true
+    }
+    c.Expect(len(all), Equals, len(order))
+    for i := 0; i < len(a); i++ {
+      c.Expect(all[i], Equals, true)
+    }
+  })
+  c.Specify("Successors of a vertex always occur later in the ordering", func() {
+    for i := 0; i < len(order); i++ {
+      all := a.AllSuccessors(order[i])
+      for j := range order {
+        if i == j { continue }
+        succ,ok := all[order[j]]
+        if j < i {
+          c.Expect(!ok, Equals, true)
+        } else {
+          c.Expect(!ok || succ, Equals, true)
+        }
+      }
+    }
+  })
+}
+func TopoSpec(c gospec.Context) {
+  c.Specify("Check toposort on linked list", func() {
+    a := adag{
+      []int{ 1 },
+      []int{ 2 },
+      []int{ 3 },
+      []int{ 4 },
+      []int{ 5 },
+      []int{ 6 },
+      []int{ },
+    }
+    order := algorithm.TopoSort(a)
+    checkOrder(c, a, order)
+  })
+
+  c.Specify("Check toposort on a more complicated digraph", func() {
+    a := adag{
+      []int{ 8, 7, 4 },  // 0
+      []int{ 5 },
+      []int{ 0 },
+      []int{ 9 },
+      []int{ 14 },
+      []int{ 15 },  // 5
+      []int{ 1 },
+      []int{  },
+      []int{  },
+      []int{ 13 },
+      []int{ 3 },  // 10
+      []int{ 12 },
+      []int{ 18 },
+      []int{ 16 },
+      []int{  },
+      []int{ 14 },  // 15
+      []int{  },
+      []int{  },
+      []int{  },
+      []int{  },
+      []int{  },
+    }
+    order := algorithm.TopoSort(a)
+    checkOrder(c, a, order)
+  })
+
+  c.Specify("A cyclic digraph returns nil", func() {
+    a := adag{
+      []int{ 8, 7, 4 },  // 0
+      []int{ 5 },
+      []int{ 0 },
+      []int{ 9 },
+      []int{ 14 },
+      []int{ 15 },  // 5
+      []int{ 1 },
+      []int{  },
+      []int{ 20 },
+      []int{ 13 },
+      []int{ 3 },  // 10
+      []int{ 12 },
+      []int{ 18 },
+      []int{ 16 },
+      []int{ 2 },
+      []int{ 14 },  // 15
+      []int{ 6 },
+      []int{  },
+      []int{  },
+      []int{  },
+      []int{  },
+    }
+    order := algorithm.TopoSort(a)
+    c.Expect(len(order), Equals, 0)
+  })
+}
+

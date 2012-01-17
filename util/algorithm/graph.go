@@ -120,3 +120,52 @@ func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
   }
   return -1, nil
 }
+
+type DiGraph interface {
+  NumVertex() int
+  Successors(int) []int
+}
+
+type topoVisitState int
+const (
+  topoUnvisited topoVisitState = iota
+  topoIn
+  topoOut
+)
+
+func topoHelper(dag DiGraph, vertex int, state []topoVisitState, ordering *[]int) {
+  state[vertex] = topoIn
+  for _,succ := range dag.Successors(vertex) {
+    if state[succ] == topoUnvisited {
+      topoHelper(dag, succ, state, ordering)
+    }
+    if state[succ] == topoIn {
+      // This is an error - returning without setting topoOut will allow the error
+      // to propogate up
+      return
+    }
+  }
+  *ordering = append(*ordering, vertex)
+  state[vertex] = topoOut
+}
+
+// Given an acyclic DiGraph returns an ordering of the vertices such that no
+// vertex occurs later in the ordering that one of its successors
+// nil will be returned if a cyclic dag is given as input
+func TopoSort(dag DiGraph) []int {
+  var ordering []int
+  state := make([]topoVisitState, dag.NumVertex())
+  for i := 0; i < dag.NumVertex(); i++ {
+    if state[i] == topoUnvisited {
+      topoHelper(dag, i, state, &ordering)
+    }
+    if state[i] == topoIn {
+      return nil
+    }
+  }
+  for i := 0; i < len(ordering) / 2; i++ {
+    opp := len(ordering) - i - 1
+    ordering[i], ordering[opp] = ordering[opp], ordering[i]
+  }
+  return ordering
+}
