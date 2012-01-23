@@ -63,7 +63,7 @@ func TermSpec(c gospec.Context) {
     term := true
     dist_func := func() int {
       if nearest == 6 && term {
-        aig.Term()
+        aig.Term() <- nil
       }
       return dist
     }

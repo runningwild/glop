@@ -43,15 +43,17 @@ func (aig *AiGraph) subEval(node *yed.Node) error {
 
     default:
   }
-  res, err := aig.Context.Eval(node.Label)
+  res, err := aig.Context.Eval(node.Label())
   if err != nil {
     return err
   }
   var red,green,black []*yed.Edge
-  for _,edge := range node.Outputs {
-    if edge.R > 200 && edge.G < 100 && edge.B < 100 {
+  for i := 0; i < node.NumOutputs(); i++ {
+    edge := node.Output(i)
+    r,g,b,_ := edge.RGBA()
+    if r > 200 && g < 100 && b < 100 {
       red = append(red, edge)
-    } else if edge.G > 200 && edge.R < 100 && edge.B < 100 {
+    } else if g > 200 && r < 100 && b < 100 {
       green = append(green, edge)
     } else {
       black = append(black, edge)
@@ -87,13 +89,14 @@ func (aig *AiGraph) subEval(node *yed.Node) error {
     return nil
   }
   follow := edges[rand.Intn(len(edges))]
-  return aig.subEval(aig.Graph.Nodes[follow.Dst])
+  return aig.subEval(follow.Dst())
 }
 
 func (aig *AiGraph) Eval() error {
-  for _,node := range aig.Graph.Nodes {
-    if node.Label == "start" {
-      err := aig.subEval(aig.Graph.Nodes[node.Outputs[0].Dst])
+  for i := 0; i < aig.Graph.NumNodes(); i++ {
+    node := aig.Graph.Node(i)
+    if node.Label() == "start" {
+      err := aig.subEval(node.Output(0).Dst())
       if err != nil {
         return err
       }
