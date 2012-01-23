@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="MacRoman"?>
 <section name="xgml">
 	<attribute key="Creator" type="String">yFiles</attribute>
 	<attribute key="Version" type="String">2.8</attribute>
@@ -89,7 +89,8 @@ time:200</attribute>
 		</section>
 		<section name="node">
 			<attribute key="id" type="int">4</attribute>
-			<attribute key="label" type="String">prepare_ranged_01</attribute>
+			<attribute key="label" type="String">prepare_ranged_01
+time:80</attribute>
 			<section name="graphics">
 				<attribute key="x" type="double">28.0</attribute>
 				<attribute key="y" type="double">33.1669921875</attribute>
@@ -100,7 +101,8 @@ time:200</attribute>
 				<attribute key="outline" type="String">#000000</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">prepare_ranged_01</attribute>
+				<attribute key="text" type="String">prepare_ranged_01
+time:80</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="anchor" type="String">c</attribute>

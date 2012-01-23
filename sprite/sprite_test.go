@@ -1,15 +1,47 @@
 package gin_test
 
 import (
+  "fmt"
+  "glop/sprite2"
   . "gospec"
   "gospec"
 )
 
 func LoadSpriteSpec(c gospec.Context) {
   c.Specify("Sample sprite loads correctly", func() {
-    //    sprite,err := sprite.LoadSprite("test_sprite")
-    //    c.Expect(err, Equals, nil)
-    //    fmt.Printf("%v\n", sprite)
-    c.Expect(0, Equals, 0)
+    s,err := sprite.LoadSprite("hunter")
+    c.Expect(err, Equals, nil)
+    for i := 0; i < 2000; i++ {
+      s.Think(50)
+      fmt.Printf("%s\n", s.Anim())
+    }
+    fmt.Printf("Commanding\n")
+    s.Command("defend")
+    s.Command("undamaged")
+    s.Command("defend")
+    s.Command("undamaged")
+    for i := 0; i < 3000; i++ {
+      s.Think(50)
+      fmt.Printf("%s\n", s.Anim())
+    }
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_left")
+    s.Command("turn_left")
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_right")
+    s.Command("turn_left")
+    s.Command("turn_left")
+    fmt.Printf("Facing: %d\n", s.Facing())
+    for i := 0; i < 3000; i++ {
+      s.Think(50)
+      fmt.Printf("%s\n", s.Anim())
+    fmt.Printf("Facing: %d\n", s.Facing())
+    }
   })
 }

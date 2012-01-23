@@ -141,6 +141,15 @@ func TopoSpec(c gospec.Context) {
     checkOrder(c, a, order)
   })
 
+  c.Specify("multi-edges don't mess up toposort", func() {
+    a := adag{
+      []int{ 1, 1, 1 },
+      []int{ },
+    }
+    order := algorithm.TopoSort(a)
+    checkOrder(c, a, order)
+  })
+
   c.Specify("Check toposort on a more complicated digraph", func() {
     a := adag{
       []int{ 8, 7, 4 },  // 0

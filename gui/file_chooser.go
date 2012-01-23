@@ -2,6 +2,7 @@ package gui
 
 import (
   "glop/gin"
+  "fmt"
   "path/filepath"
   "os"
   "strings"
@@ -169,6 +170,7 @@ func MakeFileChooser(dir string, callback func(string, error), filter func(strin
   fc.callback = callback
   fc.filter = filter
   fc.filename = MakeTextLine("standard", dir, 300, 1, 1, 1, 1)
+  fmt.Printf("dir: %s\nother: %s\n", dir, fc.filename.GetText())
   fc.up_button = MakeButton("standard", "Go up a directory", 200, 1, 1, 1, 1, func(int64) { 
     fc.up()
   })

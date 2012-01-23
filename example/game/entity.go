@@ -1,6 +1,7 @@
 package game
 
 import (
+  "glop/render"
   "glop/ai"
   "yed"
   "polish"
@@ -219,11 +220,9 @@ func (e *Entity) fill(level *Level, units map[string]*UnitType) error {
   if !ok {
     return &gameError{ fmt.Sprintf("Unknown unit type '%s'", e.Name) }
   }
-  var err error
-  e.s, err = sprite.LoadSprite(filepath.Join(level.Directory, "sprites", unit.Sprite))
-  if err != nil {
-    return err
-  }
+  render.Queue(func() {
+    e.s, _ = sprite.LoadSprite(filepath.Join(level.Directory, "sprites", unit.Sprite))
+  })
   e.level = level
   e.cmds = make(chan func() bool)
   e.cont = make(chan aiEvalSignal)

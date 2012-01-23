@@ -1043,7 +1043,7 @@ func (l *Level) Fill() error {
   }
   l.bg_path = ldc.Level.Image
   bg_path := filepath.Join(filepath.Clean(l.Directory), "maps", l.bg_path)
-  terrain, err := gui.MakeTerrain(bg_path, 100, dx, dy, 65)
+  terrain, err := gui.MakeTerrain(bg_path, 50, dx, dy, 65)
   if err != nil {
     return err
   }

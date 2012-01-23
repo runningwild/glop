@@ -5,6 +5,7 @@ import (
   "glop/gin"
   "glop/gui"
   "glop/system"
+  "glop/render"
   "game"
   "game/stats"
   "runtime"
@@ -69,7 +70,12 @@ func actualMain() {
   wdx := int(factor * float64(1024))
   wdy := int(factor * float64(768))
 
-  sys.CreateWindow(0, 0, wdx, wdy)
+  render.Init()
+  render.Queue(func() {
+    sys.CreateWindow(0, 0, wdx, wdy)
+    sys.EnableVSync(true)
+    })
+  render.Purge()
   _, _, wdx, wdy = sys.GetWindowDims()
   ui,err := gui.Make(gin.In(), gui.Dims{wdx, wdy}, filepath.Join(basedir, *font_path))
   if err != nil {
@@ -85,10 +91,13 @@ func actualMain() {
   game.RegisterAllSpecsInDir(actions_dir)
 
   level := game.MakeLevel(basedir, "bosworth.json")
-  err = level.Fill()
-  if err != nil {
-    panic(err.Error())
-  }
+  render.Queue(func() {
+    err = level.Fill()
+    if err != nil {
+      panic(err.Error())
+    }
+  })
+  render.Purge()
   ui.AddChild(level.GetGui())
   //  level.Terrain.Move(10,10)
 
@@ -98,7 +107,6 @@ func actualMain() {
 
   // TODO: Would be better to only be vsynced, but apparently it can turn itself off
   // when the window disappears, so we need a safety net to slow it down if necessary
-  sys.EnableVSync(true)
   ticker := time.Tick(1e7)
 
   level.Setup()
@@ -114,7 +122,9 @@ func actualMain() {
 
     sys.Think()
     level.Think(dt)
-    ui.Draw()
+    render.Queue(func() {
+      ui.Draw()
+    })
     sys.SwapBuffers()
     <-ticker
     if gin.In().GetKey('q').FramePressCount() > 0 {

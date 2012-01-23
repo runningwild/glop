@@ -9,5 +9,6 @@
   "melee"      : "m",
   "move"       : "w",
   "stop"       : "s",
+  "summon"     : "n",
   "reset"      : "gui+r"
 }

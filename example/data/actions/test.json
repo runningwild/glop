@@ -142,5 +142,74 @@
     "Power" : 3,
     "Melee" : 1
   }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Dire Curse",
+  "Icon_path" : "weapons/thrown_spear.png",
+  "Int_params" : {
+    "Power" : 3,
+    "Cost" : 3,
+    "Range" : 10,
+    "Melee" : 0
+  }
+},
+{
+  "Type" : "aoe",
+  "Name" : "Abjuration",
+  "Icon_path" : "weapons/gorilla.png",
+  "Effects" : [
+    "Poison"
+  ],
+  "Int_params" : {
+    "Cost" : 1,
+    "Range" : 0,
+    "Size" : 2,
+    "Allies" : 1,
+    "Enemies" : 0
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Exorcise",
+  "Icon_path" : "weapons/thrown_spear.png",
+  "Int_params" : {
+    "Power" : 6,
+    "Cost" : 5,
+    "Range" : 10,
+    "Melee" : 0
+  }
+},
+{
+  "Type" : "basic attack",
+  "Name" : "Psychometric Disruptor",
+  "Icon_path" : "weapons/bite.png",
+  "Int_params" : {
+    "Power" : 4,
+    "Cost" : 3,
+    "Range" : 1,
+    "Melee" : 1
+  }
+},
+{
+  "Type" : "spray attack",
+  "Name" : "Paramagnetic Pulse",
+  "Icon_path" : "weapons/spray.png",
+  "Int_params" : {
+    "Cost" : 3,
+    "Power" : 3,
+    "Melee" : 0,
+    "Length" : 6,
+    "Start" : 1,
+    "End" : 3
+  }
+},
+{
+  "Type" : "charge attack",
+  "Name" : "Intrepid Charge",
+  "Icon_path" : "weapons/bite.png",
+  "Int_params" : {
+    "Power" : 3
+  }
 }
 ]

@@ -2,11 +2,13 @@ package render
 
 import (
   "runtime"
+  "sync"
 )
 
 var (
   render_funcs chan func()
   purge chan bool
+  init_once sync.Once
 )
 
 func init() {
@@ -26,24 +28,26 @@ func Purge() {
 }
 
 func Init() {
-  go func() {
-    runtime.LockOSThread()
-    for {
-      select {
-        case f := <-render_funcs:
-          f()
-        case <-purge:
-          for {
-            select {
-              case f := <-render_funcs:
-                f()
-              default:
-              goto purged
+  init_once.Do(func() {
+    go func() {
+      runtime.LockOSThread()
+      for {
+        select {
+          case f := <-render_funcs:
+            f()
+          case <-purge:
+            for {
+              select {
+                case f := <-render_funcs:
+                  f()
+                default:
+                goto purged
+              }
             }
-          }
-          purged:
-          purge <- true
+            purged:
+            purge <- true
+        }
       }
-    }
-  } ()
+    } ()
+  })
 }

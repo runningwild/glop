@@ -1,235 +1,378 @@
 package sprite
 
 import (
-  "errors"
-  "os"
   "fmt"
   "strconv"
-  "glop/util/algorithm"
+  "yed"
+  "os"
   "path/filepath"
+  "strings"
+  "sort"
   "image"
   _ "image/png"
   "image/draw"
-  "image/color"
+  "glop/util/algorithm"
+  "glop/render"
   "gl"
   "gl/glu"
-  "sort"
-  "github.com/arbaal/mathgl"
+  "sync"
+  "math/rand"
 )
 
-type zArray struct {
-  vs        []mathgl.Vec3
-  drawables []ZDrawable
+const (
+  defaultFrameTime = 100
+)
+
+type spriteError struct {
+  Msg string
+}
+func (e *spriteError) Error() string {
+  return e.Msg
 }
 
-func (za *zArray) Len() int {
-  return len(za.vs)
-}
-func (za *zArray) Swap(i, j int) {
-  za.vs[i], za.vs[j] = za.vs[j], za.vs[i]
-  za.drawables[i], za.drawables[j] = za.drawables[j], za.drawables[i]
-}
-func (za *zArray) Less(i, j int) bool {
-  return za.vs[i].Z > za.vs[j].Z
+// attempt to make a relative path, otherwise leaves it alone
+func tryRelPath(base,path string) string {
+  rel,err := filepath.Rel(base, path)
+  if err == nil {
+    return rel
+  }
+  return path
 }
 
-// Convenience function that sorts the elements in drawables and vs by decreasing
-// order of the Z component of the vectors in vs
-func ZSort(vs []mathgl.Vec3, drawables []ZDrawable) {
-  sort.Sort(&zArray{vs, drawables})
+// utility function since we need to find the start node on any graph we use
+func getStartNode(g *yed.Graph) *yed.Node {
+  for i := 0; i < g.NumNodes(); i++ {
+    if g.Node(i).Tag("mark") == "start" {
+      return g.Node(i)
+    }
+  }
+  return nil
 }
 
-// A ZDrawable is anything that can draw itself on an XY plane at a particular
-// value for Z.
-type ZDrawable interface {
-  // Renders the drawable on the XY plane specified by z.  The values x and y
-  // indicate an anchor point the the drawable can render itself relative to.
-  Render(x, y, z, scale float32)
-}
+// Valid state and anim graphs have the following properties:
+// * All nodes are labeled
+// * It has exactly one node that has the tag "mark" : "start"
+// * All nodes in the graph can be reached by starting at the start node
+// * All nodes and edges have only the specified tags
+func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
+  valid_node_tags := make(map[string]bool)
+  for _,tag := range node_tags {
+    valid_node_tags[tag] = true
+  }
 
-// frameIndexes are used so that we can have maps that are keyed on the pair
-// of facing and anim_id
-type frameIndex struct {
-  facing  uint8
-  anim_id uint16
-}
+  valid_edge_tags := make(map[string]bool)
+  for _,tag := range edge_tags {
+    valid_edge_tags[tag] = true
+  }
 
-func (f frameIndex) Int() int {
-  n := int(f.anim_id)
-  n = n | (int(f.facing) << 16)
-  return n
-}
-func makeFrameIndex(facing, anim_id int) frameIndex {
-  return frameIndex{facing: uint8(facing), anim_id: uint16(anim_id)}
-}
+  // Check that all nodes have labels
+  for i := 0; i < graph.NumNodes(); i++ {
+    node := graph.Node(i)
+    if node.NumLines() == 0 || strings.Contains(node.Line(0), ":") {
+      return &spriteError{ "contains an unlabeled node" }
+    }
+  }
 
-// Texture coordinates of a frame in a sprite sheet, as well as the anchor point
-// for that frame.
-type spriteRect struct {
-  x, y, x2, y2   float32
-  anch_x, anch_y float32
+  // Check that there is exactly one start node
+  var start *yed.Node
+  for i := 0; i < graph.NumNodes(); i++ {
+    if graph.Node(i).Tag("mark") == "start" {
+      if start == nil {
+        start = graph.Node(i)
+      } else {
+        return &spriteError{ "more than one node is marked as the start node" }
+      }
+    }
+  }
+  if start == nil {
+    return &spriteError{ "no start node was found" }
+  }
 
-  // width and height of the rect in pixels
-  dx, dy float32
-}
-type renderParams struct {
-  index          frameIndex
-  x, y, z, scale float32
-}
-
-func (rp renderParams) params() (index frameIndex, x, y, z, scale float32) {
-  return rp.index, rp.x, rp.y, rp.z, rp.scale
-}
-
-type spriteLevel struct {
-  // indexes[i] is the frame of animation the corresponds to the image from filenames[i]
-  indexes   []frameIndex
-  filenames []string
-
-  // when the spriteLevel is loaded a sprite sheet is generated using all of the images
-  // listed in filenames.  rects is a map from the frameIndexes in indexes to the region
-  // in the sprite sheet corresponding to that frameIndex.
-  rects map[int]spriteRect
-
-  // Texture that holds the sprite sheet when this spriteLevel is loaded
-  texture gl.Texture
-
-  // number of Load() calls - number of Unload() calls.  When this reaches
-  // zero it will free its data
-  count int
-
-  // channels used to manage the loading/unloading/rendering in a safe way
-  load_count chan int
-  render     chan renderParams
-
-  // Loaded when load() is called, but not actually bound to a texture until the
-  // first time it is rendered.
-  sheet *image.RGBA
-}
-
-// TODO: runtime.SetFinalizer()!!
-func makeSpriteLevel(indexes []frameIndex, filenames []string) *spriteLevel {
-  var sl spriteLevel
-  sl.indexes = make([]frameIndex, len(indexes))
-  copy(sl.indexes, indexes)
-  sl.filenames = make([]string, len(filenames))
-  copy(sl.filenames, filenames)
-  sl.load_count = make(chan int)
-  sl.render = make(chan renderParams)
-  go sl.routine()
-  return &sl
-}
-
-// all sprite level commands go through here so that we can call a load early and check
-// back later for the results in a nice thread-safe fashion
-func (sl *spriteLevel) routine() {
-  for {
-    select {
-    case count := <-sl.load_count:
-      prev := sl.count
-      sl.count += count
-      if (prev == 0) != (sl.count == 0) {
-        if sl.count == 0 {
-          sl.unload()
-        } else {
-          sl.load()
+  // Check that all nodes can be reached by the start node
+  used := make(map[*yed.Node]bool)
+  next := make(map[*yed.Node]bool)
+  next[start] = true
+  for len(next) > 0 {
+    var nodes []*yed.Node
+    for node := range next {
+      nodes = append(nodes, node)
+    }
+    for _,node := range nodes {
+      delete(next, node)
+      used[node] = true
+    }
+    for _,node := range nodes {
+      // Traverse the parent
+      if node.Group() != nil && !used[node.Group()] {
+        next[node.Group()] = true
+      }
+      // Traverse all the children
+      for i := 0; i < node.NumChildren(); i++ {
+        if !used[node.Child(i)] {
+          next[node.Child(i)] = true
         }
       }
-      if sl.count < 0 {
-        panic("Cannot unload a sprite level more times than it is loaded.")
+      // Traverse all outputs
+      for i := 0; i < node.NumOutputs(); i++ {
+        adj := node.Output(i).Dst()
+        if !used[adj] {
+          next[adj] = true
+        }
+      }
+    }
+  }
+  if len(used) != graph.NumNodes() {
+    return &spriteError{ "not all nodes are reachable from the start node" }
+  }
+
+  // Check that nodes only have the specified tags
+  for i := 0; i < graph.NumNodes(); i++ {
+    node := graph.Node(i)
+    for _,tag := range node.TagKeys() {
+      if !(valid_node_tags[tag] || (node == start && tag == "mark")){
+        return &spriteError{ fmt.Sprintf("a node has an unknown tag (%s)", tag) }
+      }
+    }
+  }
+
+  // Check that edges only have the specified tags
+  for i := 0; i < graph.NumEdges(); i++ {
+    edge := graph.Edge(i)
+    for _,tag := range edge.TagKeys() {
+      if !valid_edge_tags[tag] {
+        return &spriteError{ fmt.Sprintf("an edge has an unknown tag (%s)", tag) }
+      }
+    }
+  }
+
+  return nil
+}
+
+// A valid state graph has the following properties in addition to those
+// specified in verifyAnyGraph():
+// * All output edges from the start node have labels
+// * No node has more than one unlabeled output edge
+// * There are no tags on any nodes except for the start node
+// * There are no groups
+func verifyStateGraph(graph *yed.Graph) error {
+  err := verifyAnyGraph(graph, []string{}, []string{"facing"})
+  if err != nil { return &spriteError{ fmt.Sprintf("State graph: %v", err) } }
+
+  start := getStartNode(graph)
+
+  // Check that all output edges from the start node have labels
+  for i := 0; i < start.NumOutputs(); i++ {
+    edge := start.Output(i)
+    if edge.NumLines() == 0 || strings.Contains(edge.Line(0), ":") {
+      return &spriteError{ "State graph: The start node has an unlabeled output edge" }
+    }
+  }
+
+  // Check that no node has more than one unlabeled output edge
+  for i := 0; i < graph.NumNodes(); i++ {
+    node := graph.Node(i)
+    num_labels := 0
+    for j := 0; j < node.NumOutputs(); j++ {
+      edge := node.Output(j)
+      if edge.NumLines() > 0 && !strings.Contains(edge.Line(0), ":") {
+        num_labels++
+      }
+    }
+    if num_labels < node.NumOutputs() - 1 {
+      return &spriteError{ fmt.Sprintf("State graph: Found more than one unlabeled output edge on node '%s'", node.Line(0)) }
+    }
+  }
+
+  // Check that no nodes are groups
+  for i := 0; i < graph.NumNodes(); i++ {
+    node := graph.Node(i)
+    if node.NumChildren() > 0 {
+      return &spriteError{ "State graph: cannot contain groups" }
+    }
+  }
+
+  return nil
+}
+
+// A valid anim graph has the properties specified in verifyAnyGraph()
+func verifyAnimGraph(graph *yed.Graph) error {
+  err := verifyAnyGraph(graph, []string{"time"}, []string{"facing", "weight"})
+  if err != nil { return &spriteError{ fmt.Sprintf("Anim graph: %v", err) } }
+
+  return nil
+}
+
+// Traverse the directory and do the following things:
+// * There are n > 0 directories
+// * There is at most 1 other file immediately within path - a thumb.png
+// * All of the directories have names that are integers 0 - (n-1)
+// * No image is present in any facing that isn't present in the anim graph
+func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, filenames []string, err error) {
+  filepath.Walk(path, func(cpath string, info os.FileInfo, _err error) error {
+    if _err != nil {
+      err = _err
+      return err
+    }
+    if cpath == path {
+      return nil
+    }
+
+    // skip hidden files
+    if _,file := filepath.Split(cpath); file[0] == '.' {
+      return nil
+    }
+
+    if info.IsDir() {
+      num_facings++
+      return filepath.SkipDir
+    } else {
+      switch info.Name() {
+        case "anim.xgml":
+        case "state.xgml":
+        case "thumb.png":
+        default:
+          err = &spriteError{ fmt.Sprintf("Unexpected file found in sprite directory, %s", tryRelPath(path, cpath)) }
+          return err
+      }
+    }
+    return nil
+  })
+  if err != nil { return }
+  if num_facings == 0 {
+    err = &spriteError{ "Found no facings in the sprite directory" }
+    return
+  }
+
+  // Create a set of valid png filenames.  If a .png shows up that is not in
+  // this set then we raise an error.  Non-png files are allowed and are
+  // ignored.
+  valid_names := make(map[string]bool)
+  for i := 0; i < graph.NumNodes(); i++ {
+    valid_names[graph.Node(i).Line(0) + ".png"] = true
+  }
+
+  filenames_map := make(map[string]bool)
+  for facing := 0; facing < num_facings; facing++ {
+    cur := filepath.Join(path, fmt.Sprintf("%d", facing))
+    filepath.Walk(cur, func(cpath string, info os.FileInfo, _err error) error {
+      if _err != nil {
+        err = _err
+        return err
+      }
+      if cpath == cur {
+        return nil
       }
 
-    case data := <-sl.render:
-      sl.renderToQuad(data.params())
-      sl.render <- renderParams{}
+      // skip hidden files
+      if _,file := filepath.Split(cpath); file[0] == '.' {
+        return nil
+      }
+
+      if info.IsDir() {
+        err = &spriteError{ fmt.Sprintf("Found a directory inside facing directory %d, %s", facing, tryRelPath(path, cpath)) }
+        return err
+      }
+      if filepath.Ext(cpath) == ".png" {
+        base := filepath.Base(cpath)
+        if valid_names[base] {
+          filenames_map[base] = true
+        } else {
+          err = &spriteError{ fmt.Sprintf("Found an unused .png file: %s", tryRelPath(path, cpath))}
+        }
+        return err
+      }
+      return nil
+    })
+  }
+
+  for filename := range filenames_map {
+    filenames = append(filenames, filename)
+  }
+  sort.Strings(filenames)
+
+  return
+}
+
+// Used to determine what frames to keep permanently in texture memory, and
+// which ones to unload when not needed
+type animAlgoGraph struct {
+  anim *yed.Graph
+}
+func (cg *animAlgoGraph) NumVertex() int {
+  return cg.anim.NumNodes()
+}
+func (cg *animAlgoGraph) Adjacent(n int) (adj []int, cost []float64) {
+  node := cg.anim.Node(n)
+
+  var delay float64 = defaultFrameTime
+  if node.Tag("time") != "" {
+    t,err := strconv.ParseFloat(node.Tag("time"), 64)
+    if err == nil {
+      delay = t
+    } else {
+      // TODO: Should log this as a warning or something
     }
   }
-}
+  for i := 0; i < node.NumGroupOutputs(); i++ {
+    edge := node.GroupOutput(i)
+    adj = append(adj, edge.Dst().Id())
 
-func (sl *spriteLevel) Load() {
-  sl.load_count <- 1
-}
-
-func (sl *spriteLevel) Unload() {
-  sl.load_count <- -1
-}
-
-type grossPlaceholder struct{}
-func (gp grossPlaceholder) ColorModel() color.Model {
-  return color.NRGBAModel
-}
-func (gp grossPlaceholder) Bounds() image.Rectangle {
-  return image.Rect(0, 0, 100, 150)
-}
-func (gp grossPlaceholder) At(x,y int) color.Color {
-  return color.NRGBA{255,0,255,255}
-}
-
-// TODO: Might want to have the load part happen in a separate go-routine so we don't block
-// here if we're loading a lot of textures.  In that case we should have a default sprite or
-// something that displays if a spriteLevel isn't available yet.
-func (sl *spriteLevel) load() {
-  sl.rects = make(map[int]spriteRect)
-
-  var images []image.Image
-  for i := range sl.indexes {
-    filename := sl.filenames[i]
-    file, err := os.Open(filename)
-    if err != nil {
-      // panic(fmt.Sprintf("Unable to load texture '%s': %s", filename, err.Error()))
-      images = append(images, grossPlaceholder{})
-      continue
+    // frames that are part of groups can be cancelled at any time if the
+    // animation is supposed to proceed out of the group, so if an edge leads
+    // away from the current group we will assume that it has a delay of 0.
+    if node.Group() != nil && edge.Dst().Group() != node.Group() {
+      cost = append(cost, 0)
+    } else {
+      cost = append(cost, delay)
     }
-    im, _, err := image.Decode(file)
+  }
+  return
+}
+
+// An id that specifies a specific frame along with its facing.  This is used
+// to index into sprite sheets.
+type frameId struct {
+  facing int
+  node   int
+}
+
+// A sheet contains a group of frames of animations indexed by frameId
+type sheet struct {
+  rects map[frameId]FrameRect
+  dx,dy int
+  path string
+  anim *yed.Graph
+
+  texture_lock sync.Mutex
+  reference_chan chan int
+  load_chan chan bool
+  references int
+  texture gl.Texture
+  image *image.RGBA
+}
+
+func (s *sheet) Load() {
+  s.reference_chan <- 1
+}
+
+func (s *sheet) Unload() {
+  s.reference_chan <- -1
+}
+
+func (s *sheet) compose() {
+  s.image = image.NewRGBA(image.Rect(0, 0, s.dx, s.dy))
+  for fid,rect := range s.rects {
+    name := s.anim.Node(fid.node).Line(0) + ".png"
+    file,err := os.Open(filepath.Join(s.path, fmt.Sprintf("%d", fid.facing), name))
+    // if a file isn't there that's ok
+    if err != nil { continue }
+
+    im,_,err := image.Decode(file)
     file.Close()
-    if err != nil {
-      // panic(fmt.Sprintf("Unable to decode texture '%s': %s", filename, err.Error()))
-      images = append(images, grossPlaceholder{})
-      continue
-    }
-    images = append(images, im)
+    // if a file can't be read that is *not* ok, TODO: Log an error or something
+    if err != nil { continue }
+    draw.Draw(s.image, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Over)
   }
-
-  dx := 0
-  dy := 0
-  for _, im := range images {
-    bounds := im.Bounds()
-    if bounds.Dy() > dy {
-      dy = bounds.Dy()
-    }
-    dx += bounds.Dx()
-  }
-  pdx := int(nextPowerOf2(uint32(dx)))
-  pdy := int(nextPowerOf2(uint32(dy)))
-
-  sheet := image.NewRGBA(image.Rect(0, 0, pdx, pdy))
-  cx := 0
-  for i := range images {
-    // blit the image onto the sheet
-    bounds := images[i].Bounds()
-    target := bounds.Add(image.Point{cx, 0})
-    draw.Draw(sheet, target, images[i], image.Point{0,0}, draw.Src)
-    rect := spriteRect{
-      x:      float32(cx) / float32(pdx),
-      y:      0,
-      x2:     float32(cx+bounds.Dx()) / float32(pdx),
-      y2:     float32(bounds.Dy()) / float32(pdy),
-      anch_x: 0.5,
-      anch_y: 0.0,
-      dx:     float32(bounds.Dx()),
-      dy:     float32(bounds.Dy()),
-    }
-    sl.rects[sl.indexes[i].Int()] = rect
-    cx += bounds.Dx()
-  }
-
-  // This assignment will be visible in future calls to renderToQuad because
-  // spriteLevel.routine() explicitly synchronizes these calls.
-  sl.sheet = sheet
-}
-func (sl *spriteLevel) unload() {
-  sl.rects = nil
-  sl.texture.Delete()
 }
 
 // TODO: This was copied from the gui package, probably should just have some basic
@@ -246,486 +389,563 @@ func nextPowerOf2(n uint32) uint32 {
   }
   return 0
 }
-func (s *spriteLevel) RenderToQuad(index frameIndex, x, y, z, scale float32) {
-  s.render <- renderParams{index, x, y, z, scale}
-  <-s.render
-}
-func (s *spriteLevel) renderToQuad(index frameIndex, x, y, z, scale float32) {
-  if s.sheet != nil {
-    gl.Enable(gl.TEXTURE_2D)
-    s.texture = gl.GenTexture()
-    s.texture.Bind(gl.TEXTURE_2D)
-    gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-    pdx := int(nextPowerOf2(uint32(s.sheet.Bounds().Dx())))
-    pdy := int(nextPowerOf2(uint32(s.sheet.Bounds().Dy())))
-    glu.Build2DMipmaps(gl.TEXTURE_2D, 4, pdx, pdy, gl.RGBA, s.sheet.Pix)
-    s.sheet = nil
-  }
-  if s.texture == 0 {
-    return
-  }
+
+func (s *sheet) makeTexture() {
   gl.Enable(gl.TEXTURE_2D)
-  gl.Enable(gl.BLEND)
-  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+  s.texture = gl.GenTexture()
   s.texture.Bind(gl.TEXTURE_2D)
-  gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-  gl.Color4d(1.0, 1.0, 1.0, 1.0)
-  rect := s.rects[index.Int()]
-  x1 := x - scale*rect.anch_x*rect.dx
-  x2 := x + scale*(1-rect.anch_x)*rect.dx
-  y1 := y - scale*rect.anch_y*rect.dy
-  y2 := y + scale*(1-rect.anch_y)*rect.dy
-  gl.Begin(gl.QUADS)
-  gl.TexCoord2f(rect.x, rect.y2)
-  gl.Vertex3f(x1, y1, z)
-  gl.TexCoord2f(rect.x, rect.y)
-  gl.Vertex3f(x1, y2, z)
-  gl.TexCoord2f(rect.x2, rect.y)
-  gl.Vertex3f(x2, y2, z)
-  gl.TexCoord2f(rect.x2, rect.y2)
-  gl.Vertex3f(x2, y1, z)
-  gl.End()
-  //  gl.Disable(gl.BLEND)
-  //  gl.Disable(gl.TEXTURE_2D)
+  gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, s.image.Pix)
+  s.image = nil
 }
 
-// Data that can be shared between two different instance of the same Sprite
-// sharedSprite is *NOT* thread-safe.
-type sharedSprite struct {
-  anim, state *Graph
+func (s *sheet) loadRoutine() {
+  ready := make(chan bool, 1)
+  for load := range s.load_chan {
+    if load {
+      go func() {
+        s.compose()
+        render.Queue(func() {
+          s.makeTexture()
+          ready <- true
+        })
+      } ()
+    } else {
+      go func() {
+        <-ready
+        render.Queue(func() {
+          s.texture.Delete()
+          s.texture = 0
+        })
+      } ()
+    }
+  }
+}
 
-  indexes   []frameIndex
-  filenames []string
+// TODO: Need to set up a finalizer on this thing so that we don't keep this
+// texture memory around forever if we forget about it
+func (s *sheet) routine() {
+  go s.loadRoutine()
+  for load := range s.reference_chan {
+    if load < 0 {
+      if s.references == 0 {
+        panic("Tried to unload a sprite sheet more times than it was loaded")
+      }
+      s.references--
+      if s.references == 0 {
+        s.load_chan <- false
+      }
+    } else if load > 0 {
+      if s.references == 0 {
+        s.load_chan <- true
+      }
+      s.references++
+    } else {
+      panic("value of 0 should never be sent along load_chan")
+    }
+  }
+}
 
-  // connection always stays loaded so that we can always transition between facings
-  connection *spriteLevel
+func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
+  s := sheet{ path: path, anim: anim }
 
-  // facing is reloaded whenever the sprite changes facing, it doesn't load anything that is
-  // in connection, though
-  facing *spriteLevel
+  s.rects = make(map[frameId]FrameRect)
+  cy := 0
+  cx := 0
+  cdy := 0
+  tdx := 0
+  max_width := 2048
+  for _,fid := range fids {
+    name := anim.Node(fid.node).Line(0) + ".png"
+    file,err := os.Open(filepath.Join(path, fmt.Sprintf("%d", fid.facing), name))
+    // if a file isn't there that's ok
+    if err != nil { continue }
 
-  // map from facing number to spriteLevel for that facing.  These spriteLevels do not contain
-  // any of the frames that are loaded into connections
-  facings []*spriteLevel
+    config,_,err := image.DecodeConfig(file)
+    file.Close()
+    // if a file can't be read that is *not* ok
+    if err != nil { return nil, err }
 
-  // the number of possible facings
-  num_facings int
+    if cx + config.Width > max_width {
+      cx = 0
+      cy += cdy
+      cdy = 0
+    }
+    if config.Height > cdy {
+      cdy = config.Height
+    }
+    s.rects[fid] = FrameRect{ X: cx, X2: cx + config.Width, Y: cy, Y2: cy + config.Height }
+    cx += config.Width
+    if cx > tdx {
+      tdx = cx
+    }
+  }
+  s.dx = int(nextPowerOf2(uint32(tdx)))
+  s.dy = int(nextPowerOf2(uint32(cy + cdy)))
+  fmt.Printf("Dims: %d %d\n", s.dx, s.dy)
+  s.load_chan = make(chan bool)
+  s.reference_chan = make(chan int)
+  go s.routine()
 
-  // maps a command to the node ids of any node that comes immediately after that command
-  cmd_target map[string][]int
-
-  // Optional thumbnail
-  thumb *Thumbnail
+  return &s, nil
 }
 
 type Sprite struct {
-  *sharedSprite
+  shared *sharedSprite
+  anim_node  *yed.Node
+  state_node *yed.Node
 
-  // the facing number for the animation, always in the range [0, num_facings)
-  anim_facing int
+  // number of times Think() has been called.  This is mostly so that we can
+  // run some code the very first time that Think() is called.
+  thinks int
 
-  // the facing number for the state, always in the range [0, num_facings]
-  state_facing int
+  // current facing - needed to index into the appropriate sheet in shared
+  facing int
 
-  // The current frame of animation that is displayed when Render is called
-  cur_frame *Node
+  // previous facing - tracking this lets us prevent having to load/unload
+  // lots of facings if a sprite changes facings multiple times between thinks
+  prev_facing int
 
-  // The current state based on all commands that have been received so far.  The
-  // current animation frame may lag behind this.
-  cur_state *Node
-
-  // Ms remaining on this frame
+  // Time remaining on the current frame of animation
   togo int64
 
-  // If len(path) == 0 then this is the animation sequence that must be followed.  This is set
-  // whenever a command is given to the sprite so that the command can be followed as quickly as
-  // possible with no chance of doing any idle animations first
-  path []int
+  // If len(path) > 0 then this is the series of animation frames that will be
+  // used next
+  path []*yed.Node
 
+  // commands that have been accepted by the state graph but haven't been
+  // processed by the anim graph.  When path is empty a cmd will be taken from
+  // this list and be used to generate the next path.
   pending_cmds []string
 }
 
-func (s *Sprite) Thumbnail() *Thumbnail {
-  return s.thumb
+func (s *Sprite) State() string {
+  return s.state_node.Line(0)
+}
+func (s *Sprite) Anim() string {
+  return s.anim_node.Line(0)
 }
 
-func (s *Sprite) Render(x, y, z, scale float32) {
-  f := frameIndex{
-    facing:  uint8(s.anim_facing),
-    anim_id: uint16(s.cur_frame.Id),
-  }
-  if _, ok := s.connection.rects[f.Int()]; ok {
-    s.connection.renderToQuad(f, x, y, z, scale)
-  } else {
-    s.facings[s.anim_facing].renderToQuad(f, x, y, z, scale)
-  }
-}
-
-type SpriteManager struct {
-  loaded_sprites map[string]*sharedSprite
-}
-
-var spriteManager *SpriteManager
-
-func init() {
-  spriteManager = MakeSpriteManager()
-}
-
-func MakeSpriteManager() *SpriteManager {
-  sm := new(SpriteManager)
-  sm.loaded_sprites = make(map[string]*sharedSprite)
-  return sm
-}
-
-func LoadSprite(path string) (*Sprite, error) {
-  return spriteManager.LoadSprite(path)
-}
-
-type Thumbnail struct {
-  texture gl.Texture
-  image.Rectangle
-}
-
-func (t *Thumbnail) Texture() gl.Texture {
-  return t.texture
-}
-
-func loadThumbnail(path string) *Thumbnail {
-  in, err := os.Open(path)
-  if err != nil {
-    return nil
-  }
-  img, _, err := image.Decode(in)
-  if err != nil {
-    return nil
+// selects an outgoing edge from node random among those outgoing edges that
+// have cmd listed in cmds.  The random choice is weighted by the weights
+// found in edge_data
+func selectAnEdge(node *yed.Node, edge_data map[*yed.Edge]edgeData, cmds []string) *yed.Edge {
+  cmd_map := make(map[string]bool)
+  for _,cmd := range cmds {
+    cmd_map[cmd] = true
   }
 
-  var thumb Thumbnail
-  thumb.Rectangle = img.Bounds()
-  canvas := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
-  for y := 0; y < canvas.Bounds().Dy(); y++ {
-    for x := 0; x < canvas.Bounds().Dx(); x++ {
-      r, g, b, a := img.At(x, y).RGBA()
-      base := 4*x + canvas.Stride*y
-      canvas.Pix[base] = uint8(r)
-      canvas.Pix[base+1] = uint8(g)
-      canvas.Pix[base+2] = uint8(b)
-      canvas.Pix[base+3] = uint8(a)
-    }
+  total := 0.0
+  for i := 0; i < node.NumOutputs(); i++ {
+    edge := node.Output(i)
+    if _,ok := cmd_map[edge_data[edge].cmd]; !ok { continue }
+    total += edge_data[edge].weight
   }
-
-  thumb.texture = gl.GenTexture()
-  gl.Enable(gl.TEXTURE_2D)
-  thumb.texture.Bind(gl.TEXTURE_2D)
-  gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, img.Bounds().Dx(), img.Bounds().Dy(), gl.RGBA, canvas.Pix)
-  return &thumb
-}
-
-func (sm *SpriteManager) LoadSprite(path string) (*Sprite, error) {
-  if _, ok := sm.loaded_sprites[path]; !ok {
-    ss := new(sharedSprite)
-    anim_path := filepath.Join(path, "anim.xgml")
-    state_path := filepath.Join(path, "state.xgml")
-    anim_graph, err := LoadGraph(anim_path)
-    if err != nil {
-      return nil, err
-    }
-    state_graph, err := LoadGraph(state_path)
-    if err != nil {
-      return nil, err
-    }
-    ss.thumb = loadThumbnail(filepath.Join(path, "thumb.png"))
-
-    ProcessAnimWithState(anim_graph, state_graph)
-    image_names := make(map[string]bool)
-    for _, n := range anim_graph.nodes {
-      image_names[n.Name+".png"] = true
-    }
-
-    ss.anim = anim_graph
-    ss.state = state_graph
-
-    all_facings := make(map[int]bool)
-    err = filepath.Walk(path, func(cur string, info os.FileInfo, err error) error {
-      if cur == path {
-        return nil
-      }
-      if info.IsDir() {
-        _, name := filepath.Split(cur)
-        num, err := strconv.Atoi(name)
-        if err == nil {
-          all_facings[num] = true
-        }
-        return filepath.SkipDir
-      }
-      return nil
-    })
-    if err != nil {
-      return nil, errors.New(fmt.Sprintf("Unable to read sprites directory: %s", err.Error()))
-    }
-    valid := true
-    count := len(all_facings)
-    for i := 0; i < count; i++ {
-      if _, ok := all_facings[i]; !ok {
-        valid = false
+  if total > 0 {
+    pick := rand.Float64() * total
+    total = 0.0
+    for i := 0; i < node.NumOutputs(); i++ {
+      edge := node.Output(i)
+      if _,ok := cmd_map[edge_data[edge].cmd]; !ok { continue }
+      total += edge_data[edge].weight
+      if total >= pick {
+        return edge
       }
     }
-    if !valid || count == 0 {
-      return nil, errors.New("Sprite facing directories not set up properly")
-    }
-    ss.num_facings = count
-
-    for facing := 0; facing < ss.num_facings; facing++ {
-      for _, node := range anim_graph.nodes {
-        fi := frameIndex{
-          facing:  uint8(facing),
-          anim_id: uint16(node.Id),
-        }
-        ss.indexes = append(ss.indexes, fi)
-        full_path := filepath.Join(path, fmt.Sprintf("%d", facing), node.Name+".png")
-        ss.filenames = append(ss.filenames, full_path)
-      }
-    }
-
-    // TODO: Figure out how much should be loaded in connection
-    // Right now we're just taking the frames on either end of a facing change and keeping those
-    // permanently loaded.
-    mids := make(map[int]bool)
-    for _, node := range anim_graph.nodes {
-      for _, edge := range node.Edges {
-        if edge.Facing == 0 {
-          continue
-        }
-        mids[edge.Source] = true
-        mids[edge.Target] = true
-      }
-    }
-    var indexes []frameIndex
-    var filenames []string
-    for i := range ss.indexes {
-      if _, ok := mids[int(ss.indexes[i].anim_id)]; ok {
-        indexes = append(indexes, ss.indexes[i])
-        filenames = append(filenames, ss.filenames[i])
-      }
-    }
-
-    ss.connection = makeSpriteLevel(indexes, filenames)
-    ss.connection.Load()
-
-    ss.facings = make([]*spriteLevel, ss.num_facings)
-    for i := range ss.facings {
-      var indexes []frameIndex
-      var filenames []string
-      for j := range ss.indexes {
-        if int(ss.indexes[j].facing) != i {
-          continue
-        }
-        if _, ok := ss.connection.rects[ss.indexes[j].Int()]; ok {
-          continue
-        }
-        indexes = append(indexes, ss.indexes[j])
-        filenames = append(filenames, ss.filenames[j])
-      }
-      ss.facings[i] = makeSpriteLevel(indexes, filenames)
-    }
-
-    ss.cmd_target = make(map[string][]int)
-    for _, node := range ss.anim.nodes {
-      for _, edge := range node.Edges {
-        if edge.State == "" {
-          continue
-        }
-        if _, ok := ss.cmd_target[edge.State]; !ok {
-          ss.cmd_target[edge.State] = make([]int, 0, 1)
-        }
-        ss.cmd_target[edge.State] = append(ss.cmd_target[edge.State], edge.Target)
-      }
-    }
-    sm.loaded_sprites[path] = ss
   }
-
-  var sprite Sprite
-  sprite.sharedSprite = sm.loaded_sprites[path]
-
-  sprite.facings[0].Load()
-  sprite.cur_frame = sprite.anim.StartNode()
-  sprite.cur_state = sprite.state.StartNode()
-  sprite.togo = sprite.cur_frame.Time
-  return &sprite, nil
+  return nil
 }
 
-func (s *Sprite) CurAnim() string {
-  f := frameIndex{
-    facing:  uint8(s.anim_facing),
-    anim_id: uint16(s.cur_frame.Id),
-  }
-  var filename string
-  var sl *spriteLevel
-  if _, ok := s.connection.rects[f.Int()]; ok {
-    sl = s.connection
-  } else {
-    sl = s.facings[s.anim_facing]
-  }
-  for i := range sl.indexes {
-    if sl.indexes[i] == f {
-      _,filename = filepath.Split(sl.filenames[i])
+// Returns the edge that leads from a, or an ancestor of a, to b, or an
+// ancestor of b
+func edgeTo(a,b *yed.Node) *yed.Edge {
+  for i := 0; i < a.NumGroupOutputs(); i++ {
+    edge := a.GroupOutput(i)
+    for cb := b; cb != nil; cb = cb.Group() {
+      if edge.Dst() == cb {
+        return edge
+      }
     }
   }
-  return fmt.Sprintf("%d: %s", s.anim_facing, filename)
-}
-func (s *Sprite) CurState() string {
-  return s.cur_frame.State
-  // return s.cur_state.Name
-}
-func (s *Sprite) NumPendingCommands() int {
-  return len(s.pending_cmds)
-}
-func (s *Sprite) GetPendingCommands() []string {
-  var cmds []string
-  for _,cmd := range s.pending_cmds {
-    cmds = append(cmds, cmd)
-  }
-  return cmds
+  return nil
 }
 
 func (s *Sprite) Command(cmd string) {
-  edge := s.cur_state.FindEdge(cmd)
-  if edge == nil {
+  state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{cmd})
+  if state_edge == nil { return }
+  s.state_node = state_edge.Dst()
+
+  state_edge = selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
+  for state_edge != nil {
+    s.state_node = state_edge.Dst()
+    state_edge = selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
+  }
+
+  s.pending_cmds = append(s.pending_cmds, cmd)
+}
+
+// This is a specialized wrapper around a yed.Graph that allows for the start
+// node to be differentiated from the ending node in a path in the event that
+// they are the same node in the original graph.  This means that if a path is
+// requested from one node to the same node that the resulting path will not
+// be length 0.
+type pathingGraph struct {
+  graph *yed.Graph
+  start *yed.Node
+}
+func (p pathingGraph) NumVertex() int {
+  return p.graph.NumNodes() + 1
+}
+func (p pathingGraph) Adjacent(n int) (adj []int, cost []float64) {
+  var node *yed.Node
+  if n == p.graph.NumNodes() {
+    node = p.start
+  } else {
+    node = p.graph.Node(n)
+  }
+  for i := 0; i < node.NumGroupOutputs(); i++ {
+    adj = append(adj, node.GroupOutput(i).Dst().Id())
+    cost = append(cost, 1)
+  }
+  return
+}
+
+func (s *Sprite) findPathForNextCmd() {
+  if len(s.pending_cmds) == 0 { return }
+  if len(s.path) > 0 { return }
+  cmd := s.pending_cmds[0]
+  s.pending_cmds = s.pending_cmds[1:]
+  g := pathingGraph{ graph: s.shared.anim, start: s.anim_node }
+  var end []int
+  for i := 0; i < s.shared.anim.NumEdges(); i++ {
+    edge := s.shared.anim.Edge(i)
+    if s.shared.edge_data[edge].cmd == cmd {
+      end = append(end, edge.Dst().Id())
+    }
+  }
+  _, path := algorithm.Dijkstra(g, []int{ s.shared.anim.NumNodes() }, end)
+  for _,id := range path[1:] {
+    s.path = append(s.path, s.shared.anim.Node(id))
+  }
+}
+func (s *Sprite) Bind() (x,y,x2,y2 float64) {
+  var rect FrameRect
+  var sh *sheet
+  var ok bool
+  fid := frameId{ facing: s.facing, node: s.anim_node.Id() }
+  var dx,dy float64
+  if rect,ok = s.shared.connector.rects[fid]; ok {
+    sh = s.shared.connector
+  } else if rect,ok = s.shared.facings[s.facing].rects[fid]; ok {
+    sh = s.shared.facings[s.facing]
+  } else {
+    error_texture.Bind(gl.TEXTURE_2D)
     return
   }
-  s.cur_state = s.state.nodes[edge.Target]
-  if edge.Facing != 0 {
-    s.state_facing = (s.state_facing + edge.Facing + s.num_facings) % s.num_facings
-    s.facings[s.state_facing].Load()
-  }
-  if cmd != "" {
-    s.pending_cmds = append(s.pending_cmds, cmd)
-    s.Command("")
-  }
+  sh.texture.Bind(gl.TEXTURE_2D)
+  dx = float64(sh.dx)
+  dy = float64(sh.dy)
+  x = float64(rect.X) / dx
+  y = float64(rect.Y) / dy
+  x2 = float64(rect.X2) / dx
+  y2 = float64(rect.Y2) / dy
+  return
 }
-
-func (s *Sprite) StateFacing() int {
-  return s.state_facing
+func (s *Sprite) Facing() int {
+  return s.facing
 }
-
-func (s *Sprite) AnimFacing() int {
-  return s.anim_facing
-}
-
-// TODO: WRITE COMMENTS!
 func (s *Sprite) Think(dt int64) {
-  // We might call Think(0) within think just to rerun some logic, but dt < -1 is crazy
+  if s.thinks == 0 {
+    s.shared.facings[0].Load()
+    s.togo = s.shared.node_data[s.anim_node].time
+  }
+  s.thinks++
   if dt < 0 {
     return
-    // TODO: Log a warning?
+    // panic("Can't have dt < 0")
   }
-  if s.togo > dt {
+
+  s.findPathForNextCmd()
+  if len(s.path) > 0 && s.anim_node.Group() != nil {
+    // If the current node is in a group that has an edge to the next node
+    // then we want to follow that edge immediately rather than waiting for
+    // the time for this frame to elapse
+    for i := 0; i < s.anim_node.NumGroupOutputs(); i++ {
+      edge := s.anim_node.GroupOutput(i)
+      if edge.Src() == s.anim_node { continue }
+      if edge.Dst() == s.path[0] {
+        s.togo = 0
+      }
+    }
+  }
+  if s.togo >= dt {
     s.togo -= dt
+    if s.facing != s.prev_facing {
+      s.shared.facings[s.prev_facing].Unload()
+      s.shared.facings[s.facing].Load()
+      s.prev_facing = s.facing
+    }
     return
   }
   dt -= s.togo
-
-  // If we don't have a path layed out but we do have pending commands we should used one
-  // of those to get a new path
-  if len(s.path) == 0 && len(s.pending_cmds) > 0 {
-    cg := &commandGraph{
-      Graph: s.anim,
-      cmd:   s.pending_cmds[0],
-    }
-    for len(s.pending_cmds) > 0 {
-      var t float64
-      t, s.path = algorithm.Dijkstra(cg, []int{s.cur_frame.Id}, s.cmd_target[s.pending_cmds[0]])
-      if t < 0 {
-        // TODO: Log a warning, got a command that we can't actually handle
-        s.pending_cmds = s.pending_cmds[1:]
-      } else {
-        s.pending_cmds = s.pending_cmds[1:]
-        break
-      }
-    }
-    if len(s.path) > 0 {
-      s.path = s.path[1:]
-      if len(s.path) == 0 {
-        s.path = nil
-      } else {
-        // TODO: If we queue a command just after we finished another instance of that same
-        //       command we will *not* try to find a path because the shortest path is just
-        //       to stay still.  Instead we will just wait until we've moved one frame, but
-        //       this means that we will run dijkstra's multiple times for no reason, might
-        //       be worth caching that or something.
-        if len(s.pending_cmds) == 0 {
-          s.pending_cmds = nil
-        }
-      }
-    }
-  }
-
-  // TODO: Can't have self-edges in the animation graph, but *can* have them in the state graph
-  prev := s.cur_frame
+  var next *yed.Node
   if len(s.path) > 0 {
-    s.cur_frame = s.anim.nodes[s.path[0]]
+    next = s.path[0]
     s.path = s.path[1:]
-    s.togo = s.cur_frame.Time
   } else {
-    edge := s.cur_frame.FindEdge("")
+    edge := selectAnEdge(s.anim_node, s.shared.edge_data, []string{""})
     if edge != nil {
-      s.cur_frame = s.anim.nodes[edge.Target]
-      s.togo = s.cur_frame.Time
+      next = edge.Dst()
+    } else {
+      next = s.anim_node
     }
   }
-  for _, edge := range prev.Edges {
-    if edge.Source == prev.Id && edge.Target == s.cur_frame.Id {
-      if edge.Facing != 0 {
-        // We are currently using the connections spriteSheet, so it's ok to unload the facings
-        // spriteSheet
-        //        s.facings[s.anim_facing].Unload()
-        s.anim_facing = (s.anim_facing + edge.Facing + s.num_facings) % s.num_facings
-        //        s.facings[s.anim_facing].Load()
-        break
-      }
+  if next != nil {
+    edge := edgeTo(s.anim_node, next)
+    face := s.shared.edge_data[edge].facing
+    if face != 0 {
+      s.facing = (s.facing + face + len(s.shared.facings)) % len(s.shared.facings)
     }
   }
+  s.anim_node = next
+  s.togo = s.shared.node_data[s.anim_node].time
   s.Think(dt)
 }
 
-func (s *sharedSprite) Stats() {
-  for i := range s.state.nodes {
-    source_state := s.state.nodes[i].Name
-    for j := range s.state.nodes[i].Edges {
-      target_state := s.state.nodes[s.state.nodes[i].Edges[j].Target].Name
-      var source_anim, target_anim []int
-      for i := range s.anim.nodes {
-        if s.anim.nodes[i].State == source_state {
-          source_anim = append(source_anim, i)
-        }
-        if s.anim.nodes[i].State == target_state && s.anim.nodes[i].IsCore() {
-          target_anim = append(target_anim, i)
-        }
+type nodeData struct {
+  time int64
+}
+type edgeData struct {
+  facing int
+  weight float64
+  cmd    string
+}
+type sharedSprite struct {
+  anim,state  *yed.Graph
+  anim_start  *yed.Node
+  state_start *yed.Node
+
+  node_data map[*yed.Node]nodeData
+  edge_data map[*yed.Edge]edgeData
+
+  connector *sheet
+  facings []*sheet
+}
+type Data struct {
+  state *yed.Node
+  anim  *yed.Node
+}
+type FrameRect struct {
+  X,Y,X2,Y2 int
+}
+
+func (ss *sharedSprite) process() {
+  ss.node_data = make(map[*yed.Node]nodeData)
+  for i := 0; i < ss.anim.NumNodes(); i++ {
+    node := ss.anim.Node(i)
+    data := nodeData{ time: defaultFrameTime }
+    t,err := strconv.ParseInt(node.Tag("time"), 10, 32)
+    if err == nil {
+      data.time = t
+    }
+    ss.node_data[node] = data
+  }
+
+  ss.edge_data = make(map[*yed.Edge]edgeData)
+  proc_graph := func(graph *yed.Graph) {
+    for i := 0; i < graph.NumEdges(); i++ {
+      edge := graph.Edge(i)
+      data := edgeData{ weight: 1.0 }
+
+      f,err := strconv.ParseInt(edge.Tag("facing"), 10, 32)
+      if err == nil {
+        data.facing = int(f)
       }
-      var time float64
-      var path []int
-      for _, start := range source_anim {
-        t, p := algorithm.Dijkstra(s.anim, []int{start}, target_anim)
-        if t > time {
-          time = t
-          path = p
-        }
+
+      w,err := strconv.ParseFloat(edge.Tag("weight"), 64)
+      if err == nil {
+        data.weight = w
       }
-      fmt.Printf("%s -> %s\n", source_state, target_state)
-      fmt.Printf("time: %f\n", time)
-      for i := range path {
-        fmt.Printf("%d: %s\n", i, s.anim.nodes[path[i]].Name)
+
+      cmd := edge.Line(0)
+      if !strings.Contains(cmd, ":") {
+        data.cmd = cmd
       }
-      fmt.Printf("\n")
+
+      ss.edge_data[edge] = data
     }
   }
+  proc_graph(ss.anim)
+  proc_graph(ss.state)
+}
+
+// Given the anim graph for a sprite, determines the frames that must always
+// be loaded such that the remaining facings can be loaded only when the
+// sprite facing changes, so long as the facings sprite sheet can be loaded
+// in under limit milliseconds.  A higher value for limit will require more
+// texture memory, but will reduce the chance that there will be any
+// stuttering in the animation because a spritesheet couldn't be loaded in
+// time.
+func figureConnectors(anim *yed.Graph, limit int) []*yed.Node {
+  var facing_edges []int
+  for i := 0; i < anim.NumEdges(); i++ {
+    edge := anim.Edge(i)
+    if edge.Tag("facing") != "" {
+      facing_edges = append(facing_edges, edge.Dst().Id())
+    }
+  }
+
+  reachable := algorithm.ReachableWithinLimit(&animAlgoGraph{anim}, facing_edges, float64(limit))
+  var ret []*yed.Node
+  for _,reach := range reachable {
+    ret = append(ret, anim.Node(reach))
+  }
+  return ret
+}
+
+type Manager struct {
+  shared map[string]*sharedSprite
+  mutex sync.Mutex
+}
+func MakeManager() *Manager {
+  var m Manager
+  m.shared = make(map[string]*sharedSprite)
+  return &m
+}
+var the_manager *Manager
+var error_texture gl.Texture
+var gen_tex_once sync.Once
+func init() {
+  the_manager = MakeManager()
+}
+func LoadSprite(path string) (*Sprite, error) {
+  return the_manager.LoadSprite(path)
+}
+func (m *Manager) loadSharedSprite(path string) error {
+  m.mutex.Lock()
+  defer m.mutex.Unlock()
+  if _,ok := m.shared[path]; ok {
+    return nil
+  }
+  state,err := yed.ParseFromFile(filepath.Join(path, "state.xgml"))
+  if err != nil { return err }
+
+  err = verifyStateGraph(&state.Graph)
+  if err != nil { return err }
+
+  anim,err := yed.ParseFromFile(filepath.Join(path, "anim.xgml"))
+  if err != nil { return err }
+
+  err = verifyAnimGraph(&anim.Graph)
+  if err != nil { return err }
+
+  // TODO: Verify both graphs at the same time - they both need to respond to
+  // the same commands in the same way.
+
+  num_facings, filenames, err := verifyDirectoryStructure(path, &anim.Graph)
+  if err != nil { return err }
+
+  // If we've made it this far then the sprite is probably well formed so we
+  // can start putting all of the data together
+  var ss sharedSprite
+  ss.anim = &anim.Graph
+  ss.state = &state.Graph
+
+  // Read through all of the files and figure out how much space we'll need
+  // to arrange them all into one sprite sheet
+  width := 0
+  height := 0
+  for facing := 0; facing < num_facings; facing++ {
+    for _,filename := range filenames {
+      file,err := os.Open(filepath.Join(path, fmt.Sprintf("%d", facing), filename))
+      // if a file isn't there that's ok
+      if err != nil { continue }
+
+      config,_,err := image.DecodeConfig(file)
+      file.Close()
+      // if a file can't be read that is *not* ok
+      if err != nil { return err }
+
+      if config.Height > height {
+        height = config.Height
+      }
+      width += config.Width
+    }
+  }
+
+  // Connectors are all frames that can be reached within a certain number of
+  // milliseconds of any change in facing
+  conn := figureConnectors(&anim.Graph, 150)
+
+  // Arrange them all into one sprite sheet
+  var fids []frameId
+  for _,con := range conn {
+    for facing := 0; facing < num_facings; facing++ {
+      fids = append(fids, frameId{ facing: facing, node: con.Id() })
+    }
+  }
+  ss.connector,err = makeSheet(path, &anim.Graph, fids)
+  if err != nil { return err }
+
+  // Now we make a sheet for each facing, but don't include any of the frames
+  // that are in the connctor sheet
+  used := make(map[*yed.Node]bool)
+  for _,con := range conn {
+    used[con] = true
+  }
+  for facing := 0; facing < num_facings; facing++ {
+    var facing_fids []frameId
+    for i := 0; i < anim.Graph.NumNodes(); i++ {
+      node := anim.Graph.Node(i)
+      if !used[node] {
+        facing_fids = append(facing_fids, frameId{ facing: facing, node: node.Id() })
+      }
+    }
+    sh,err := makeSheet(path, &anim.Graph, facing_fids)
+    if err != nil { return err }
+    ss.facings = append(ss.facings, sh)
+  }
+
+  ss.connector.Load()
+  ss.anim_start = getStartNode(ss.anim)
+  ss.state_start = getStartNode(ss.state)
+  ss.process()
+  m.shared[path] = &ss
+
+  return nil
+}
+func (m *Manager) LoadSprite(path string) (*Sprite, error) {
+  // We can't run this during an init() function because it will get queued to
+  // run before the opengl context is created, so we just check here and run
+  // it if we haven't run it before.
+  gen_tex_once.Do(func() {
+    render.Queue(func() {
+      gl.Enable(gl.TEXTURE_2D)
+      error_texture = gl.GenTexture()
+      error_texture.Bind(gl.TEXTURE_2D)
+      gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
+      gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+      gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+      gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+      pink := []byte{ 255, 0, 255, 255 }
+      glu.Build2DMipmaps(gl.TEXTURE_2D, 4, 1, 1, gl.RGBA, pink)
+    })
+  })
+
+  path = filepath.Clean(path)
+  fmt.Printf("Loading %s\n", path)
+  err := m.loadSharedSprite(path)
+  if err != nil { return nil, err }
+  var s Sprite
+  m.mutex.Lock()
+  s.shared = m.shared[path]
+  m.mutex.Unlock()
+  s.anim_node = s.shared.anim_start
+  s.state_node = s.shared.state_start
+  return &s, nil
 }
