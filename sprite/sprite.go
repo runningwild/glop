@@ -594,21 +594,30 @@ func (s *Sprite) Command(cmd string) {
 // requested from one node to the same node that the resulting path will not
 // be length 0.
 type pathingGraph struct {
-  graph *yed.Graph
+  shared *sharedSprite
+  // graph *yed.Graph
   start *yed.Node
+
+  // Edges will only be followed if there is no command associated with them,
+  // or if the command associated with them is the same as this command.
+  cmd string
 }
 func (p pathingGraph) NumVertex() int {
-  return p.graph.NumNodes() + 1
+  return p.shared.anim.NumNodes() + 1
 }
 func (p pathingGraph) Adjacent(n int) (adj []int, cost []float64) {
   var node *yed.Node
-  if n == p.graph.NumNodes() {
+  if n == p.shared.anim.NumNodes() {
     node = p.start
   } else {
-    node = p.graph.Node(n)
+    node = p.shared.anim.Node(n)
   }
   for i := 0; i < node.NumGroupOutputs(); i++ {
-    adj = append(adj, node.GroupOutput(i).Dst().Id())
+    edge := node.GroupOutput(i)
+    if p.shared.edge_data[edge].cmd != "" && p.shared.edge_data[edge].cmd != p.cmd {
+      continue
+    }
+    adj = append(adj, edge.Dst().Id())
     cost = append(cost, 1)
   }
   return
@@ -619,7 +628,7 @@ func (s *Sprite) findPathForNextCmd() {
   if len(s.path) > 0 { return }
   cmd := s.pending_cmds[0]
   s.pending_cmds = s.pending_cmds[1:]
-  g := pathingGraph{ graph: s.shared.anim, start: s.anim_node }
+  g := pathingGraph{ shared: s.shared, start: s.anim_node, cmd: cmd }
   var end []int
   for i := 0; i < s.shared.anim.NumEdges(); i++ {
     edge := s.shared.anim.Edge(i)
@@ -628,6 +637,7 @@ func (s *Sprite) findPathForNextCmd() {
     }
   }
   _, path := algorithm.Dijkstra(g, []int{ s.shared.anim.NumNodes() }, end)
+  if len(path) == 0 { return }
   for _,id := range path[1:] {
     s.path = append(s.path, s.shared.anim.Node(id))
   }
