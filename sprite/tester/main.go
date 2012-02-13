@@ -200,7 +200,7 @@ func main() {
     if sprite_box.s != nil {
       sprite_box.s.Think(int64(float64(dt) * float64(speed) / 100))
       current_anim.SetText(fmt.Sprintf("%d: %s", sprite_box.s.Facing(), sprite_box.s.Anim()))
-      current_state.SetText(sprite_box.s.State())
+      current_state.SetText(sprite_box.s.AnimState())
     }
     render.Queue(func() {
       gl.ClearColor(0, 0, 0, 1)

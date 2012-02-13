@@ -521,6 +521,10 @@ type Sprite struct {
   // processed by the anim graph.  When path is empty a cmd will be taken from
   // this list and be used to generate the next path.
   pending_cmds []string
+
+  // Used to keep track of the state that the current frame of animation
+  // represents.
+  anim_states []string
 }
 
 func (s *Sprite) State() string {
@@ -528,6 +532,12 @@ func (s *Sprite) State() string {
 }
 func (s *Sprite) Anim() string {
   return s.anim_node.Line(0)
+}
+func (s *Sprite) AnimState() string {
+  if len(s.anim_states) == 0 {
+    return s.State()
+  }
+  return s.anim_states[0]
 }
 
 // selects an outgoing edge from node random among those outgoing edges that
@@ -577,6 +587,7 @@ func edgeTo(a,b *yed.Node) *yed.Edge {
 func (s *Sprite) Command(cmd string) {
   state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{cmd})
   if state_edge == nil { return }
+  s.anim_states = append(s.anim_states, s.state_node.Line(0))
   s.state_node = state_edge.Dst()
 
   state_edge = selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
@@ -719,6 +730,13 @@ func (s *Sprite) Think(dt int64) {
     face := s.shared.edge_data[edge].facing
     if face != 0 {
       s.facing = (s.facing + face + len(s.shared.facings)) % len(s.shared.facings)
+    }
+    if s.shared.edge_data[edge].cmd != "" {
+      if len(s.anim_states) == 0 {
+        s.anim_states = nil
+      } else {
+        s.anim_states = s.anim_states[1:]
+      }
     }
   }
   s.anim_node = next
@@ -948,7 +966,6 @@ func (m *Manager) LoadSprite(path string) (*Sprite, error) {
   })
 
   path = filepath.Clean(path)
-  fmt.Printf("Loading %s\n", path)
   err := m.loadSharedSprite(path)
   if err != nil { return nil, err }
   var s Sprite
