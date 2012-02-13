@@ -96,10 +96,7 @@ func (aig *AiGraph) Eval() error {
   for i := 0; i < aig.Graph.NumNodes(); i++ {
     node := aig.Graph.Node(i)
     if node.Label() == "start" {
-      err := aig.subEval(node.Output(0).Dst())
-      if err != nil {
-        return err
-      }
+      return aig.subEval(node.Output(0).Dst())
     }
   }
   return StartError
