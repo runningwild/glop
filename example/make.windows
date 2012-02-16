@@ -1,9 +1,0 @@
-gb -m
-
-rm -rf example
-mkdir -p example/openme
-mv example.exe example/openme/example.exe
-cp ../gos/windows/lib/libglop.dll example/openme/libglop.dll
-cp libs/* example/openme/
-cp -r data/* example/
-
