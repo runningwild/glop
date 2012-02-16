@@ -1,10 +1,10 @@
-package gin_test
+package sprite_test
 
 import (
   "fmt"
-  "glop/sprite2"
-  . "gospec"
-  "gospec"
+  "github.com/runningwild/glop/sprite"
+  . "github.com/orfjackal/gospec/src/gospec"
+  "github.com/orfjackal/gospec/src/gospec"
 )
 
 func LoadSpriteSpec(c gospec.Context) {

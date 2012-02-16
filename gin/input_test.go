@@ -1,9 +1,9 @@
 package gin_test
 
 import (
-  . "gospec"
-  "gospec"
-  "glop/gin"
+  . "github.com/orfjackal/gospec/src/gospec"
+  "github.com/orfjackal/gospec/src/gospec"
+  "github.com/runningwild/glop/gin"
   "strings"
 )
 

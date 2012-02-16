@@ -1,7 +1,7 @@
-package gin_test
+package sprite_test
 
 import (
-  "gospec"
+  "github.com/orfjackal/gospec/src/gospec"
   "testing"
 )
 

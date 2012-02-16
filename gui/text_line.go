@@ -7,8 +7,8 @@ import (
   "image/color"
   "code.google.com/p/freetype-go/freetype"
   "code.google.com/p/freetype-go/freetype/truetype"
-  "gl"
-  "gl/glu"
+  "github.com/runningwild/opengl/gl"
+  "github.com/runningwild/opengl/glu"
   "io/ioutil"
 )
 

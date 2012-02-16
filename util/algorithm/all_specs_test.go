@@ -1,7 +1,7 @@
-package algo_test
+package algorithm_test
 
 import (
-  "gospec"
+  "github.com/orfjackal/gospec/src/gospec"
   "testing"
 )
 

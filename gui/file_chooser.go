@@ -1,7 +1,7 @@
 package gui
 
 import (
-  "glop/gin"
+  "github.com/runningwild/glop/gin"
   "fmt"
   "path/filepath"
   "os"

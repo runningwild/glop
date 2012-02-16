@@ -1,7 +1,7 @@
 package gui
 
 import (
-  "glop/gin"
+  "github.com/runningwild/glop/gin"
 )
 
 type ComboBox struct {

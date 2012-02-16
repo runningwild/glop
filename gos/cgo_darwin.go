@@ -1,11 +1,12 @@
 package gos
 
+// #cgo LDFLAGS: -Ldarwin/lib -lglop -framework Cocoa -framework OpenGL -mmacosx-version-min=10.5
 // #include "darwin/include/glop.h"
 import "C"
 
 import (
-  "glop/system"
-  "glop/gin"
+  "github.com/runningwild/glop/system"
+  "github.com/runningwild/glop/gin"
   "unsafe"
 )
 

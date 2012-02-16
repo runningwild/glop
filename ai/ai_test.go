@@ -1,11 +1,11 @@
 package ai_test
 
 import (
-  . "gospec"
-  "gospec"
-  "yed"
-  "polish"
-  "glop/ai"
+  . "github.com/orfjackal/gospec/src/gospec"
+  "github.com/orfjackal/gospec/src/gospec"
+  "github.com/runningwild/yedparse"
+  "github.com/runningwild/polish"
+  "github.com/runningwild/glop/ai"
 )
 
 func AiSpec(c gospec.Context) {

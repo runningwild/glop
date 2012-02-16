@@ -1,8 +1,8 @@
 package ai
 
 import (
-  "yed"
-  "polish"
+  "github.com/runningwild/yedparse"
+  "github.com/runningwild/polish"
   "math/rand"
 )
 

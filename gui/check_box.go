@@ -1,8 +1,8 @@
 package gui
 
 import (
-  "glop/gin"
-  "gl"
+  "github.com/runningwild/glop/gin"
+  "github.com/runningwild/opengl/gl"
   "reflect"
 )
 

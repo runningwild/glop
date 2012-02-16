@@ -5,8 +5,8 @@ import (
   _ "image/png"
   _ "image/jpeg"
   "os"
-  "gl"
-  "gl/glu"
+  "github.com/runningwild/opengl/gl"
+  "github.com/runningwild/opengl/glu"
   "runtime"
 )
 

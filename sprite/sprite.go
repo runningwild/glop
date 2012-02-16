@@ -3,7 +3,7 @@ package sprite
 import (
   "fmt"
   "strconv"
-  "yed"
+  "github.com/runningwild/yedparse"
   "os"
   "path/filepath"
   "strings"
@@ -11,10 +11,10 @@ import (
   "image"
   _ "image/png"
   "image/draw"
-  "glop/util/algorithm"
-  "glop/render"
-  "gl"
-  "gl/glu"
+  "github.com/runningwild/glop/util/algorithm"
+  "github.com/runningwild/glop/render"
+  "github.com/runningwild/opengl/gl"
+  "github.com/runningwild/opengl/glu"
   "sync"
   "math/rand"
 )

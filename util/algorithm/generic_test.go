@@ -1,9 +1,9 @@
-package algo_test
+package algorithm_test
 
 import (
-  . "gospec"
-  "gospec"
-  "glop/util/algorithm"
+  . "github.com/orfjackal/gospec/src/gospec"
+  "github.com/orfjackal/gospec/src/gospec"
+  "github.com/runningwild/glop/util/algorithm"
   "fmt"
 )
 

@@ -1,9 +1,9 @@
 package gui
 
 import (
-  "glop/gin"
+  "github.com/runningwild/glop/gin"
   "code.google.com/p/freetype-go/freetype"
-  "gl"
+  "github.com/runningwild/opengl/gl"
 )
 
 type cursor struct {
