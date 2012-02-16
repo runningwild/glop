@@ -7,4 +7,6 @@ _*
 *.so
 *.o
 *.DS_Store
+*.sublime-project
+*.sublime-workspace
 
