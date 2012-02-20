@@ -384,6 +384,7 @@ void* GlopCreateWindow(void* title, int x, int y, int width, int height) {
     GLX_BLUE_SIZE, 1,
     GLX_DOUBLEBUFFER,
     GLX_DEPTH_SIZE, 1,
+    GLX_STENCIL_SIZE, 8,
     None
   };
   XVisualInfo *vinfo = glXChooseVisual(display, screen, glxcv_params);

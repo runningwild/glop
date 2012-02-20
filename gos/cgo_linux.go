@@ -1,11 +1,12 @@
 package gos
 
+// #cgo LDFLAGS: -Llinux/lib -lglop -lX11 -lGL
 // #include "linux/include/glop.h"
 import "C"
 
 import (
-  "glop/system"
-  "glop/gin"
+  "github.com/runningwild/glop/system"
+  "github.com/runningwild/glop/gin"
   "unsafe"
 )
 
@@ -42,8 +43,9 @@ func (linux *linuxSystemObject) SwapBuffers() {
   C.GlopSwapBuffers()
 }
 
-func (linux *linuxSystemObject) Think() {
+func (linux *linuxSystemObject) Think() bool {
   C.GlopThink()
+  return true
 }
 
 // TODO: Make sure that events are given in sorted order (by timestamp)
@@ -70,6 +72,9 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
     }
   }
   return events, linux.horizon
+}
+
+func (linux *linuxSystemObject) HideCursor(hide bool) {
 }
 
 func (linux *linuxSystemObject) rawCursorToWindowCoords(x,y int) (int,int) {
