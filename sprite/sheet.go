@@ -1,12 +1,14 @@
 package sprite
 
 import (
+  "bytes"
+  "encoding/gob"
   "fmt"
+  "hash/fnv"
   "image"
-  "image/draW"
+  "image/draw"
   "os"
   "path/filepath"
-  "sync"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
@@ -27,10 +29,16 @@ type sheet struct {
   path string
   anim *yed.Graph
 
+  // Unique name that is based on the path of the sprite and the list of
+  // frameIds used to generate this sheet.  This name is used to store the
+  // sheet on disk when not in use.
+  name string
+
   reference_chan chan int
   load_chan chan bool
   references int
   texture gl.Texture
+  pix []byte
   image *image.RGBA
 }
 
@@ -43,7 +51,17 @@ func (s *sheet) Unload() {
 }
 
 func (s *sheet) compose() {
-  s.image = image.NewRGBA(image.Rect(0, 0, s.dx, s.dy))
+  filename := filepath.Join(s.path, s.name)
+  f, err := os.Open(filename)
+  if err == nil {
+    dec := gob.NewDecoder(f)
+    err = dec.Decode(&s.pix)
+    f.Close()
+    if err == nil {
+      return
+    }
+  }
+  canvas := image.NewRGBA(image.Rect(0, 0, s.dx, s.dy))
   for fid,rect := range s.rects {
     name := s.anim.Node(fid.node).Line(0) + ".png"
     file,err := os.Open(filepath.Join(s.path, fmt.Sprintf("%d", fid.facing), name))
@@ -54,7 +72,17 @@ func (s *sheet) compose() {
     file.Close()
     // if a file can't be read that is *not* ok, TODO: Log an error or something
     if err != nil { continue }
-    draw.Draw(s.image, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Over)
+    draw.Draw(canvas, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Over)
+  }
+  s.pix = canvas.Pix
+  f, err = os.Create(filename)
+  if err == nil {
+    enc := gob.NewEncoder(f)
+    err = enc.Encode(s.pix)
+    f.Close()
+    if err != nil {
+      os.Remove(filename)
+    }
   }
 }
 
@@ -82,8 +110,8 @@ func (s *sheet) makeTexture() {
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, s.image.Pix)
-  s.image = nil
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, s.pix)
+  s.pix = nil
 }
 
 func (s *sheet) loadRoutine() {
@@ -133,9 +161,31 @@ func (s *sheet) routine() {
   }
 }
 
-func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
-  s := sheet{ path: path, anim: anim }
+func uniqueName(fids []frameId) (string, error) {
+  buf := bytes.NewBuffer(nil)
+  enc := gob.NewEncoder(buf)
+  for i := range fids {
+    err := enc.Encode(fids[i].facing)
+    if err != nil {
+      return "", err
+    }
+    err = enc.Encode(fids[i].node)
+    if err != nil {
+      return "", err
+    }
+  }
+  h := fnv.New64()
+  h.Write(buf.Bytes())
+  return fmt.Sprintf("%x.gob", h.Sum64()), nil
+}
 
+func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
+  uname, err := uniqueName(fids)
+  if err != nil {
+    return nil, err
+  }
+
+  s := sheet{ path: path, anim: anim, name: uname }
   s.rects = make(map[frameId]FrameRect)
   cy := 0
   cx := 0
@@ -169,7 +219,6 @@ func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
   }
   s.dx = int(nextPowerOf2(uint32(tdx)))
   s.dy = int(nextPowerOf2(uint32(cy + cdy)))
-  fmt.Printf("Dims: %d %d\n", s.dx, s.dy)
   s.load_chan = make(chan bool)
   s.reference_chan = make(chan int)
   go s.routine()

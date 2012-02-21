@@ -223,10 +223,11 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
       num_facings++
       return filepath.SkipDir
     } else {
-      switch info.Name() {
-        case "anim.xgml":
-        case "state.xgml":
-        case "thumb.png":
+      switch {
+        case info.Name() == "anim.xgml":
+        case info.Name() == "state.xgml":
+        case info.Name() == "thumb.png":
+        case strings.HasSuffix(info.Name(), ".gob"):
         default:
           err = &spriteError{ fmt.Sprintf("Unexpected file found in sprite directory, %s", tryRelPath(path, cpath)) }
           return err
@@ -590,30 +591,6 @@ type Data struct {
 }
 type FrameRect struct {
   X,Y,X2,Y2 int
-}
-
-// Given the anim graph for a sprite, determines the frames that must always
-// be loaded such that the remaining facings can be loaded only when the
-// sprite facing changes, so long as the facings sprite sheet can be loaded
-// in under limit milliseconds.  A higher value for limit will require more
-// texture memory, but will reduce the chance that there will be any
-// stuttering in the animation because a spritesheet couldn't be loaded in
-// time.
-func figureConnectors(anim *yed.Graph, limit int) []*yed.Node {
-  var facing_edges []int
-  for i := 0; i < anim.NumEdges(); i++ {
-    edge := anim.Edge(i)
-    if edge.Tag("facing") != "" {
-      facing_edges = append(facing_edges, edge.Dst().Id())
-    }
-  }
-
-  reachable := algorithm.ReachableWithinLimit(&animAlgoGraph{anim}, facing_edges, float64(limit))
-  var ret []*yed.Node
-  for _,reach := range reachable {
-    ret = append(ret, anim.Node(reach))
-  }
-  return ret
 }
 
 type Manager struct {

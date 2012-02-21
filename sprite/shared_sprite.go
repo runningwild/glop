@@ -8,7 +8,8 @@ import (
   "path/filepath"
   "strconv"
   "strings"
-	"github.com/runningwild/yedparse"
+  "github.com/runningwild/glop/util/algorithm"
+  "github.com/runningwild/yedparse"
 )
 
 type sharedSprite struct {
@@ -109,6 +110,30 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
   ss.process()
 
   return &ss, nil
+}
+
+// Given the anim graph for a sprite, determines the frames that must always
+// be loaded such that the remaining facings can be loaded only when the
+// sprite facing changes, so long as the facings sprite sheet can be loaded
+// in under limit milliseconds.  A higher value for limit will require more
+// texture memory, but will reduce the chance that there will be any
+// stuttering in the animation because a spritesheet couldn't be loaded in
+// time.
+func figureConnectors(anim *yed.Graph, limit int) []*yed.Node {
+  var facing_edges []int
+  for i := 0; i < anim.NumEdges(); i++ {
+    edge := anim.Edge(i)
+    if edge.Tag("facing") != "" {
+      facing_edges = append(facing_edges, edge.Dst().Id())
+    }
+  }
+
+  reachable := algorithm.ReachableWithinLimit(&animAlgoGraph{anim}, facing_edges, float64(limit))
+  var ret []*yed.Node
+  for _,reach := range reachable {
+    ret = append(ret, anim.Node(reach))
+  }
+  return ret
 }
 
 func (ss *sharedSprite) process() {
