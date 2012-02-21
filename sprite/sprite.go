@@ -2,21 +2,18 @@ package sprite
 
 import (
   "fmt"
-  "strconv"
   "github.com/runningwild/yedparse"
+  "math/rand"
   "os"
   "path/filepath"
-  "strings"
   "sort"
-  "image"
-  _ "image/png"
-  "image/draw"
+  "strconv"
+  "strings"
+  "sync"
   "github.com/runningwild/glop/util/algorithm"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
-  "sync"
-  "math/rand"
 )
 
 const (
@@ -329,171 +326,6 @@ func (cg *animAlgoGraph) Adjacent(n int) (adj []int, cost []float64) {
   return
 }
 
-// An id that specifies a specific frame along with its facing.  This is used
-// to index into sprite sheets.
-type frameId struct {
-  facing int
-  node   int
-}
-
-// A sheet contains a group of frames of animations indexed by frameId
-type sheet struct {
-  rects map[frameId]FrameRect
-  dx,dy int
-  path string
-  anim *yed.Graph
-
-  texture_lock sync.Mutex
-  reference_chan chan int
-  load_chan chan bool
-  references int
-  texture gl.Texture
-  image *image.RGBA
-}
-
-func (s *sheet) Load() {
-  s.reference_chan <- 1
-}
-
-func (s *sheet) Unload() {
-  s.reference_chan <- -1
-}
-
-func (s *sheet) compose() {
-  s.image = image.NewRGBA(image.Rect(0, 0, s.dx, s.dy))
-  for fid,rect := range s.rects {
-    name := s.anim.Node(fid.node).Line(0) + ".png"
-    file,err := os.Open(filepath.Join(s.path, fmt.Sprintf("%d", fid.facing), name))
-    // if a file isn't there that's ok
-    if err != nil { continue }
-
-    im,_,err := image.Decode(file)
-    file.Close()
-    // if a file can't be read that is *not* ok, TODO: Log an error or something
-    if err != nil { continue }
-    draw.Draw(s.image, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Over)
-  }
-}
-
-// TODO: This was copied from the gui package, probably should just have some basic
-// texture loading utils that do this common stuff
-func nextPowerOf2(n uint32) uint32 {
-  if n == 0 {
-    return 1
-  }
-  for i := uint(0); i < 32; i++ {
-    p := uint32(1) << i
-    if n <= p {
-      return p
-    }
-  }
-  return 0
-}
-
-func (s *sheet) makeTexture() {
-  gl.Enable(gl.TEXTURE_2D)
-  s.texture = gl.GenTexture()
-  s.texture.Bind(gl.TEXTURE_2D)
-  gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-  gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, s.image.Pix)
-  s.image = nil
-}
-
-func (s *sheet) loadRoutine() {
-  ready := make(chan bool, 1)
-  for load := range s.load_chan {
-    if load {
-      go func() {
-        s.compose()
-        render.Queue(func() {
-          s.makeTexture()
-          ready <- true
-        })
-      } ()
-    } else {
-      go func() {
-        <-ready
-        render.Queue(func() {
-          s.texture.Delete()
-          s.texture = 0
-        })
-      } ()
-    }
-  }
-}
-
-// TODO: Need to set up a finalizer on this thing so that we don't keep this
-// texture memory around forever if we forget about it
-func (s *sheet) routine() {
-  go s.loadRoutine()
-  for load := range s.reference_chan {
-    if load < 0 {
-      if s.references == 0 {
-        panic("Tried to unload a sprite sheet more times than it was loaded")
-      }
-      s.references--
-      if s.references == 0 {
-        s.load_chan <- false
-      }
-    } else if load > 0 {
-      if s.references == 0 {
-        s.load_chan <- true
-      }
-      s.references++
-    } else {
-      panic("value of 0 should never be sent along load_chan")
-    }
-  }
-}
-
-func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
-  s := sheet{ path: path, anim: anim }
-
-  s.rects = make(map[frameId]FrameRect)
-  cy := 0
-  cx := 0
-  cdy := 0
-  tdx := 0
-  max_width := 2048
-  for _,fid := range fids {
-    name := anim.Node(fid.node).Line(0) + ".png"
-    file,err := os.Open(filepath.Join(path, fmt.Sprintf("%d", fid.facing), name))
-    // if a file isn't there that's ok
-    if err != nil { continue }
-
-    config,_,err := image.DecodeConfig(file)
-    file.Close()
-    // if a file can't be read that is *not* ok
-    if err != nil { return nil, err }
-
-    if cx + config.Width > max_width {
-      cx = 0
-      cy += cdy
-      cdy = 0
-    }
-    if config.Height > cdy {
-      cdy = config.Height
-    }
-    s.rects[fid] = FrameRect{ X: cx, X2: cx + config.Width, Y: cy, Y2: cy + config.Height }
-    cx += config.Width
-    if cx > tdx {
-      tdx = cx
-    }
-  }
-  s.dx = int(nextPowerOf2(uint32(tdx)))
-  s.dy = int(nextPowerOf2(uint32(cy + cdy)))
-  fmt.Printf("Dims: %d %d\n", s.dx, s.dy)
-  s.load_chan = make(chan bool)
-  s.reference_chan = make(chan int)
-  go s.routine()
-
-  return &s, nil
-}
-
 type Sprite struct {
   shared *sharedSprite
   anim_node  *yed.Node
@@ -752,63 +584,12 @@ type edgeData struct {
   weight float64
   cmd    string
 }
-type sharedSprite struct {
-  anim,state  *yed.Graph
-  anim_start  *yed.Node
-  state_start *yed.Node
-
-  node_data map[*yed.Node]nodeData
-  edge_data map[*yed.Edge]edgeData
-
-  connector *sheet
-  facings []*sheet
-}
 type Data struct {
   state *yed.Node
   anim  *yed.Node
 }
 type FrameRect struct {
   X,Y,X2,Y2 int
-}
-
-func (ss *sharedSprite) process() {
-  ss.node_data = make(map[*yed.Node]nodeData)
-  for i := 0; i < ss.anim.NumNodes(); i++ {
-    node := ss.anim.Node(i)
-    data := nodeData{ time: defaultFrameTime }
-    t,err := strconv.ParseInt(node.Tag("time"), 10, 32)
-    if err == nil {
-      data.time = t
-    }
-    ss.node_data[node] = data
-  }
-
-  ss.edge_data = make(map[*yed.Edge]edgeData)
-  proc_graph := func(graph *yed.Graph) {
-    for i := 0; i < graph.NumEdges(); i++ {
-      edge := graph.Edge(i)
-      data := edgeData{ weight: 1.0 }
-
-      f,err := strconv.ParseInt(edge.Tag("facing"), 10, 32)
-      if err == nil {
-        data.facing = int(f)
-      }
-
-      w,err := strconv.ParseFloat(edge.Tag("weight"), 64)
-      if err == nil {
-        data.weight = w
-      }
-
-      cmd := edge.Line(0)
-      if !strings.Contains(cmd, ":") {
-        data.cmd = cmd
-      }
-
-      ss.edge_data[edge] = data
-    }
-  }
-  proc_graph(ss.anim)
-  proc_graph(ss.state)
 }
 
 // Given the anim graph for a sprite, determines the frames that must always
@@ -859,93 +640,16 @@ func (m *Manager) loadSharedSprite(path string) error {
   if _,ok := m.shared[path]; ok {
     return nil
   }
-  state,err := yed.ParseFromFile(filepath.Join(path, "state.xgml"))
-  if err != nil { return err }
 
-  err = verifyStateGraph(&state.Graph)
-  if err != nil { return err }
+  ss,err := loadSharedSprite(path)
+  m.shared[path] = ss
+  return err
+}
 
-  anim,err := yed.ParseFromFile(filepath.Join(path, "anim.xgml"))
-  if err != nil { return err }
-
-  err = verifyAnimGraph(&anim.Graph)
-  if err != nil { return err }
-
-  // TODO: Verify both graphs at the same time - they both need to respond to
-  // the same commands in the same way.
-
-  num_facings, filenames, err := verifyDirectoryStructure(path, &anim.Graph)
-  if err != nil { return err }
-
-  // If we've made it this far then the sprite is probably well formed so we
-  // can start putting all of the data together
-  var ss sharedSprite
-  ss.anim = &anim.Graph
-  ss.state = &state.Graph
-
-  // Read through all of the files and figure out how much space we'll need
-  // to arrange them all into one sprite sheet
-  width := 0
-  height := 0
-  for facing := 0; facing < num_facings; facing++ {
-    for _,filename := range filenames {
-      file,err := os.Open(filepath.Join(path, fmt.Sprintf("%d", facing), filename))
-      // if a file isn't there that's ok
-      if err != nil { continue }
-
-      config,_,err := image.DecodeConfig(file)
-      file.Close()
-      // if a file can't be read that is *not* ok
-      if err != nil { return err }
-
-      if config.Height > height {
-        height = config.Height
-      }
-      width += config.Width
-    }
-  }
-
-  // Connectors are all frames that can be reached within a certain number of
-  // milliseconds of any change in facing
-  conn := figureConnectors(&anim.Graph, 150)
-
-  // Arrange them all into one sprite sheet
-  var fids []frameId
-  for _,con := range conn {
-    for facing := 0; facing < num_facings; facing++ {
-      fids = append(fids, frameId{ facing: facing, node: con.Id() })
-    }
-  }
-  ss.connector,err = makeSheet(path, &anim.Graph, fids)
-  if err != nil { return err }
-
-  // Now we make a sheet for each facing, but don't include any of the frames
-  // that are in the connctor sheet
-  used := make(map[*yed.Node]bool)
-  for _,con := range conn {
-    used[con] = true
-  }
-  for facing := 0; facing < num_facings; facing++ {
-    var facing_fids []frameId
-    for i := 0; i < anim.Graph.NumNodes(); i++ {
-      node := anim.Graph.Node(i)
-      if !used[node] {
-        facing_fids = append(facing_fids, frameId{ facing: facing, node: node.Id() })
-      }
-    }
-    sh,err := makeSheet(path, &anim.Graph, facing_fids)
-    if err != nil { return err }
-    ss.facings = append(ss.facings, sh)
-  }
-
-  ss.connector.Load()
-  ss.anim_start = getStartNode(ss.anim)
-  ss.state_start = getStartNode(ss.state)
-  ss.process()
-  m.shared[path] = &ss
-
+func (m *Manager) PreprocessSprite(path string) error {
   return nil
 }
+
 func (m *Manager) LoadSprite(path string) (*Sprite, error) {
   // We can't run this during an init() function because it will get queued to
   // run before the opengl context is created, so we just check here and run
