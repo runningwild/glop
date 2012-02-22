@@ -2,7 +2,6 @@ package sprite
 
 import (
   "fmt"
-  "github.com/runningwild/yedparse"
   "math/rand"
   "os"
   "path/filepath"
@@ -10,10 +9,11 @@ import (
   "strconv"
   "strings"
   "sync"
-  "github.com/runningwild/glop/util/algorithm"
   "github.com/runningwild/glop/render"
+  "github.com/runningwild/glop/util/algorithm"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
+  "github.com/runningwild/yedparse"
 )
 
 const (
@@ -621,10 +621,6 @@ func (m *Manager) loadSharedSprite(path string) error {
   ss,err := loadSharedSprite(path)
   m.shared[path] = ss
   return err
-}
-
-func (m *Manager) PreprocessSprite(path string) error {
-  return nil
 }
 
 func (m *Manager) LoadSprite(path string) (*Sprite, error) {
