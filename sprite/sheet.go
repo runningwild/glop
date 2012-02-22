@@ -1,8 +1,7 @@
 package sprite
 
 import (
-  "bytes"
-  "encoding/gob"
+  "encoding/binary"
   "fmt"
   "hash/fnv"
   "image"
@@ -36,10 +35,7 @@ type sheet struct {
 
   reference_chan chan int
   load_chan chan bool
-  references int
   texture gl.Texture
-  pix []byte
-  image *image.RGBA
 }
 
 func (s *sheet) Load() {
@@ -50,15 +46,22 @@ func (s *sheet) Unload() {
   s.reference_chan <- -1
 }
 
-func (s *sheet) compose() {
+func (s *sheet) compose(pixer chan<- []byte) {
   filename := filepath.Join(s.path, s.name)
   f, err := os.Open(filename)
   if err == nil {
-    dec := gob.NewDecoder(f)
-    err = dec.Decode(&s.pix)
-    f.Close()
-    if err == nil {
-      return
+    var length int32
+    err := binary.Read(f, binary.LittleEndian, &length)
+    if err != nil {
+      f.Close()
+    } else {
+      b := make([]byte, length)
+      _, err := f.Read(b)
+      f.Close()
+      if err == nil {
+        pixer <- b
+        return
+      }
     }
   }
   canvas := image.NewRGBA(image.Rect(0, 0, s.dx, s.dy))
@@ -74,16 +77,16 @@ func (s *sheet) compose() {
     if err != nil { continue }
     draw.Draw(canvas, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Over)
   }
-  s.pix = canvas.Pix
   f, err = os.Create(filename)
   if err == nil {
-    enc := gob.NewEncoder(f)
-    err = enc.Encode(s.pix)
+    binary.Write(f, binary.LittleEndian, int32(len(canvas.Pix)))
+    _, err := f.Write(canvas.Pix)
     f.Close()
     if err != nil {
       os.Remove(filename)
     }
   }
+  pixer <- canvas.Pix
 }
 
 // TODO: This was copied from the gui package, probably should just have some basic
@@ -101,7 +104,7 @@ func nextPowerOf2(n uint32) uint32 {
   return 0
 }
 
-func (s *sheet) makeTexture() {
+func (s *sheet) makeTexture(pixer <-chan []byte) {
   gl.Enable(gl.TEXTURE_2D)
   s.texture = gl.GenTexture()
   s.texture.Bind(gl.TEXTURE_2D)
@@ -110,18 +113,18 @@ func (s *sheet) makeTexture() {
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, s.pix)
-  s.pix = nil
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, <-pixer)
 }
 
 func (s *sheet) loadRoutine() {
   ready := make(chan bool, 1)
+  pixer := make(chan []byte)
   for load := range s.load_chan {
     if load {
+      go s.compose(pixer)
       go func() {
-        s.compose()
         render.Queue(func() {
-          s.makeTexture()
+          s.makeTexture(pixer)
           ready <- true
         })
       } ()
@@ -141,51 +144,40 @@ func (s *sheet) loadRoutine() {
 // texture memory around forever if we forget about it
 func (s *sheet) routine() {
   go s.loadRoutine()
+  references := 0
   for load := range s.reference_chan {
     if load < 0 {
-      if s.references == 0 {
+      if references == 0 {
         panic("Tried to unload a sprite sheet more times than it was loaded")
       }
-      s.references--
-      if s.references == 0 {
+      references--
+      if references == 0 {
         s.load_chan <- false
       }
     } else if load > 0 {
-      if s.references == 0 {
+      if references == 0 {
         s.load_chan <- true
       }
-      s.references++
+      references++
     } else {
       panic("value of 0 should never be sent along load_chan")
     }
   }
 }
 
-func uniqueName(fids []frameId) (string, error) {
-  buf := bytes.NewBuffer(nil)
-  enc := gob.NewEncoder(buf)
+func uniqueName(fids []frameId) string {
+  var b []byte
   for i := range fids {
-    err := enc.Encode(fids[i].facing)
-    if err != nil {
-      return "", err
-    }
-    err = enc.Encode(fids[i].node)
-    if err != nil {
-      return "", err
-    }
+    b = append(b, byte(fids[i].facing))
+    b = append(b, byte(fids[i].node))
   }
   h := fnv.New64()
-  h.Write(buf.Bytes())
-  return fmt.Sprintf("%x.gob", h.Sum64()), nil
+  h.Write(b)
+  return fmt.Sprintf("%x.gob", h.Sum64())
 }
 
 func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
-  uname, err := uniqueName(fids)
-  if err != nil {
-    return nil, err
-  }
-
-  s := sheet{ path: path, anim: anim, name: uname }
+  s := sheet{ path: path, anim: anim, name: uniqueName(fids) }
   s.rects = make(map[frameId]FrameRect)
   cy := 0
   cx := 0

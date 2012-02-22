@@ -95,12 +95,16 @@ func (r Region) Size() int {
 // the state of the enable bits for each clip plane, not the planes themselves
 var clippers []Region
 
+// If we just declared this in setClipPlanes it would get allocated on the heap
+// because we have to take the address of it to pass it to opengl.  By having
+// it here we avoid that allocation - it amounts to a lot of someone is calling
+// this every frame.
+var eqs [4][4]float64
 func (r Region) setClipPlanes() {
-  var eqs [][4]float64
-  eqs = append(eqs, [4]float64{1, 0, 0, -float64(r.X)})
-  eqs = append(eqs, [4]float64{-1, 0, 0, float64(r.X + r.Dx)})
-  eqs = append(eqs, [4]float64{0, 1, 0, -float64(r.Y)})
-  eqs = append(eqs, [4]float64{0, -1, 0, float64(r.Y + r.Dy)})
+  eqs[0][0], eqs[0][1], eqs[0][2], eqs[0][3]  =  1,  0,  0, -float64(r.X)
+  eqs[1][0], eqs[1][1], eqs[1][2], eqs[1][3]  = -1,  0,  0,  float64(r.X + r.Dx)
+  eqs[2][0], eqs[2][1], eqs[2][2], eqs[2][3]  =  0,  1,  0, -float64(r.Y)
+  eqs[3][0], eqs[3][1], eqs[3][2], eqs[3][3]  =  0, -1,  0,  float64(r.Y + r.Dy)
   gl.ClipPlane(gl.CLIP_PLANE0, &eqs[0][0])
   gl.ClipPlane(gl.CLIP_PLANE1, &eqs[1][0])
   gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
