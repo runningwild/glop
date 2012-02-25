@@ -50,6 +50,15 @@ func LoadFontAs(path, name string) error {
   return nil
 }
 
+func GetDict(name string) *Dictionary {
+  d,ok := basic_dicts[name]
+  if ok {
+    return d
+  }
+  basic_dicts[name] = MakeDictionary(basic_fonts[name])
+  return basic_dicts[name]
+}
+
 func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba *image.RGBA, text string) (int, int) {
   fg := image.NewUniform(color)
   bg := image.Transparent
@@ -71,9 +80,11 @@ func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba 
 }
 
 var basic_fonts map[string]*truetype.Font
+var basic_dicts map[string]*Dictionary
 
 func init() {
   basic_fonts = make(map[string]*truetype.Font)
+  basic_dicts = make(map[string]*Dictionary)
 }
 
 type TextLine struct {
