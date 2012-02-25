@@ -4,8 +4,6 @@ import (
   "image"
   "image/color"
   "image/draw"
-  "image/png"
-  "os"
   "sort"
   "code.google.com/p/freetype-go/freetype"
   "code.google.com/p/freetype-go/freetype/raster"
@@ -206,6 +204,10 @@ type Dictionary struct {
   Rgba  *image.RGBA
   info  map[rune]runeInfo
 
+  // runeInfo for all r < 256 will be stored here as well as in info so we can
+  // avoid map lookups if possible.
+  ascii_info []runeInfo
+
   // At what vertical value is the line on which text is logically rendered.
   // This is determined by the positioning of the '.' rune.
   baseline int
@@ -218,18 +220,9 @@ type Dictionary struct {
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
 func (d *Dictionary) RenderString(s string, x, y, x2, y2, z float64) {
-  width := 0.0
-  for _,r := range s {
-    info,ok := d.info[r]
-    if !ok {
-      continue
-    }
-    width += info.advance
-  }
   scale := (y2 - y) / float64(d.maxy - d.miny)
 
   gl.PushAttrib(gl.COLOR_BUFFER_BIT)
-  defer gl.PopAttrib()
   gl.Enable(gl.BLEND)  
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
@@ -237,31 +230,40 @@ func (d *Dictionary) RenderString(s string, x, y, x2, y2, z float64) {
   d.texture.Bind(gl.TEXTURE_2D)
   gl.Begin(gl.QUADS)
   x_pos := x
+  image_dx := float64(d.Rgba.Bounds().Dx())
+  image_dy := float64(d.Rgba.Bounds().Dy())
   for _,r := range s {
-    info,ok := d.info[r]
-    if !ok {
-      continue
+    var info runeInfo
+    if r >= 0 && r < 256 {
+      info = d.ascii_info[r]
+    } else {
+      var ok bool
+      info,ok = d.info[r]
+      if !ok {
+        continue
+      }
     }
     xleft := x_pos + float64(info.bounds.Min.X) * scale
     xright := x_pos + float64(info.bounds.Max.X) * scale
     ytop := y + scale * float64(d.maxy - info.bounds.Min.Y)
     ybot := y2 + scale * float64(d.miny - info.bounds.Max.Y)
 
-    gl.TexCoord2d(float64(info.pos.Min.X) / float64(d.Rgba.Bounds().Dx()), float64(info.pos.Max.Y) / float64(d.Rgba.Bounds().Dy()))
+    gl.TexCoord2d(float64(info.pos.Min.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
     gl.Vertex2d(xleft, ybot)
 
-    gl.TexCoord2d(float64(info.pos.Min.X) / float64(d.Rgba.Bounds().Dx()), float64(info.pos.Min.Y) / float64(d.Rgba.Bounds().Dy()))
+    gl.TexCoord2d(float64(info.pos.Min.X) / image_dx, float64(info.pos.Min.Y) / image_dy)
     gl.Vertex2d(xleft, ytop)
 
-    gl.TexCoord2d(float64(info.pos.Max.X) / float64(d.Rgba.Bounds().Dx()), float64(info.pos.Min.Y) / float64(d.Rgba.Bounds().Dy()))
+    gl.TexCoord2d(float64(info.pos.Max.X) / image_dx, float64(info.pos.Min.Y) / image_dy)
     gl.Vertex2d(xright, ytop)
 
-    gl.TexCoord2d(float64(info.pos.Max.X) / float64(d.Rgba.Bounds().Dx()), float64(info.pos.Max.Y) / float64(d.Rgba.Bounds().Dy()))
+    gl.TexCoord2d(float64(info.pos.Max.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
     gl.Vertex2d(xright, ybot)
 
     x_pos += info.advance * scale
   }
   gl.End()
+  gl.PopAttrib()
 }
 
 func MakeDictionary(font *truetype.Font) *Dictionary {
@@ -312,6 +314,12 @@ func MakeDictionary(font *truetype.Font) *Dictionary {
   var dict Dictionary
   dict.Rgba = pim
   dict.info = rune_info
+  dict.ascii_info = make([]runeInfo, 256)
+  for r := rune(0); r < 256; r++ {
+    if info,ok := dict.info[r]; ok {
+      dict.ascii_info[r] = info
+    }
+  }
   dict.baseline = dict.info['.'].bounds.Min.Y
 
   dict.miny = int(1e9)
@@ -337,17 +345,6 @@ func MakeDictionary(font *truetype.Font) *Dictionary {
     glu.Build2DMipmaps(gl.TEXTURE_2D, 4, dict.Rgba.Bounds().Dx(), dict.Rgba.Bounds().Dy(), gl.RGBA, dict.Rgba.Pix)
     gl.Disable(gl.TEXTURE_2D)
   })
-
-  f,err := os.Create("/Users/runningwild/code/src/github.com/runningwild/tester/dict.png")
-  if err != nil {
-    panic(err)
-  }
-  defer f.Close()
-  err = png.Encode(f, dict.Rgba)
-  if err != nil {
-    panic(err)
-  }
-
   return &dict
 }
 
