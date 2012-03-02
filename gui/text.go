@@ -243,6 +243,10 @@ const (
   Right
 )
 
+func (d *Dictionary) MaxHeight() float64 {
+  return float64(d.maxy - d.miny)
+}
+
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
@@ -299,16 +303,15 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   gl.PopAttrib()
 }
 
-func MakeDictionary(font *truetype.Font) *Dictionary {
+func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   alphabet := " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()[]{};:'\",.<>/?\\|`~-_=+"
   context := freetype.NewContext()
   context.SetFont(font)
   width := 300
   height := 300
   context.SetSrc(image.White)
-  point_size := 45.0
   dpi := 150
-  context.SetFontSize(point_size)
+  context.SetFontSize(float64(size))
   context.SetDPI(dpi)
   var letters []image.Image
   rune_mapping := make(map[rune]image.Image)
