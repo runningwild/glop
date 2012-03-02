@@ -217,10 +217,40 @@ type Dictionary struct {
   texture gl.Texture
 }
 
+// Figures out how wide a string will be if rendered at its natural size.
+func (d *Dictionary) figureWidth(s string) float64 {
+  w := 0.0
+  for _,r := range s {
+    var info runeInfo
+    if r >= 0 && r < 256 {
+      info = d.ascii_info[r]
+    } else {
+      var ok bool
+      info,ok = d.info[r]
+      if !ok {
+        continue
+      }
+    }
+    w += info.advance
+  }
+  return w
+}
+
+type Justification int
+const (
+  Center Justification = iota
+  Left
+  Right
+)
+
+func (d *Dictionary) MaxHeight() float64 {
+  return float64(d.maxy - d.miny)
+}
+
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
-func (d *Dictionary) RenderString(s string, x, y, x2, y2, z float64) {
-  scale := (y2 - y) / float64(d.maxy - d.miny)
+func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
+  scale := height / float64(d.maxy - d.miny)
 
   gl.PushAttrib(gl.COLOR_BUFFER_BIT)
   gl.Enable(gl.BLEND)  
@@ -229,7 +259,14 @@ func (d *Dictionary) RenderString(s string, x, y, x2, y2, z float64) {
   gl.Enable(gl.TEXTURE_2D)
   d.texture.Bind(gl.TEXTURE_2D)
   gl.Begin(gl.QUADS)
+  width := d.figureWidth(s) * scale
   x_pos := x
+  switch just {
+    case Center:
+      x_pos -= width / 2
+    case Right:
+      x_pos -= width
+  }
   image_dx := float64(d.Rgba.Bounds().Dx())
   image_dy := float64(d.Rgba.Bounds().Dy())
   for _,r := range s {
@@ -246,7 +283,7 @@ func (d *Dictionary) RenderString(s string, x, y, x2, y2, z float64) {
     xleft := x_pos + float64(info.bounds.Min.X) * scale
     xright := x_pos + float64(info.bounds.Max.X) * scale
     ytop := y + scale * float64(d.maxy - info.bounds.Min.Y)
-    ybot := y2 + scale * float64(d.miny - info.bounds.Max.Y)
+    ybot := y + height + scale * float64(d.miny - info.bounds.Max.Y)
 
     gl.TexCoord2d(float64(info.pos.Min.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
     gl.Vertex2d(xleft, ybot)
@@ -266,16 +303,15 @@ func (d *Dictionary) RenderString(s string, x, y, x2, y2, z float64) {
   gl.PopAttrib()
 }
 
-func MakeDictionary(font *truetype.Font) *Dictionary {
+func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   alphabet := " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()[]{};:'\",.<>/?\\|`~-_=+"
   context := freetype.NewContext()
   context.SetFont(font)
   width := 300
   height := 300
   context.SetSrc(image.White)
-  point_size := 25.0
   dpi := 150
-  context.SetFontSize(point_size)
+  context.SetFontSize(float64(size))
   context.SetDPI(dpi)
   var letters []image.Image
   rune_mapping := make(map[rune]image.Image)

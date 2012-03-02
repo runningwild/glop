@@ -47,8 +47,8 @@ func (osx *osxSystemObject) SwapBuffers() {
   C.SwapBuffers(unsafe.Pointer(osx.context))
 }
 
-func (osx *osxSystemObject) Think() bool {
-  return C.Think() != 0
+func (osx *osxSystemObject) Think() {
+  C.Think()
 }
 
 // TODO: Make sure that events are given in sorted order (by timestamp)
