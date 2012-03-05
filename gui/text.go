@@ -4,6 +4,7 @@ import (
   "image"
   "image/color"
   "image/draw"
+  "runtime"
   "sort"
   "code.google.com/p/freetype-go/freetype"
   "code.google.com/p/freetype-go/freetype/raster"
@@ -215,6 +216,8 @@ type Dictionary struct {
   miny,maxy int
 
   texture gl.Texture
+
+  dlists map[string]uint
 }
 
 // Figures out how wide a string will be if rendered at its natural size.
@@ -251,14 +254,6 @@ func (d *Dictionary) MaxHeight() float64 {
 // text will be rendering the current color.
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
   scale := height / float64(d.maxy - d.miny)
-
-  gl.PushAttrib(gl.COLOR_BUFFER_BIT)
-  gl.Enable(gl.BLEND)  
-  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-  gl.Enable(gl.TEXTURE_2D)
-  d.texture.Bind(gl.TEXTURE_2D)
-  gl.Begin(gl.QUADS)
   width := d.figureWidth(s) * scale
   x_pos := x
   switch just {
@@ -269,6 +264,31 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   }
   image_dx := float64(d.Rgba.Bounds().Dx())
   image_dy := float64(d.Rgba.Bounds().Dy())
+
+  gl.PushMatrix()
+  defer gl.PopMatrix()
+  gl.Translated(x_pos, y, z)
+  gl.Scaled(scale, scale, 1)
+
+  gl.PushAttrib(gl.COLOR_BUFFER_BIT)
+  gl.Enable(gl.BLEND)
+  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+  gl.Enable(gl.TEXTURE_2D)
+  d.texture.Bind(gl.TEXTURE_2D)
+
+  list, ok := d.dlists[s]
+  if ok {
+    gl.CallList(list)
+    return
+  }
+  list = gl.GenLists(1)
+  d.dlists[s] = list
+  gl.NewList(list, gl.COMPILE)
+
+  x_pos = 0
+
+  gl.Begin(gl.QUADS)
   for _,r := range s {
     var info runeInfo
     if r >= 0 && r < 256 {
@@ -280,10 +300,10 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
         continue
       }
     }
-    xleft := x_pos + float64(info.bounds.Min.X) * scale
-    xright := x_pos + float64(info.bounds.Max.X) * scale
-    ytop := y + scale * float64(d.maxy - info.bounds.Min.Y)
-    ybot := y + height + scale * float64(d.miny - info.bounds.Max.Y)
+    xleft := x_pos + float64(info.bounds.Min.X)
+    xright := x_pos + float64(info.bounds.Max.X)
+    ytop := float64(d.maxy - info.bounds.Min.Y)
+    ybot := height + float64(d.miny - info.bounds.Max.Y)
 
     gl.TexCoord2d(float64(info.pos.Min.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
     gl.Vertex2d(xleft, ybot)
@@ -297,9 +317,11 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
     gl.TexCoord2d(float64(info.pos.Max.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
     gl.Vertex2d(xright, ybot)
 
-    x_pos += info.advance * scale
+    x_pos += info.advance
   }
   gl.End()
+  gl.EndList()
+
   gl.PopAttrib()
 }
 
@@ -350,6 +372,17 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   var dict Dictionary
   dict.Rgba = pim
   dict.info = rune_info
+  dict.dlists = make(map[string]uint)
+
+  // TODO: This finalizer is untested
+  runtime.SetFinalizer(&dict, func(d *Dictionary) {
+    render.Queue(func() {
+      for _,v := range d.dlists {
+        gl.DeleteLists(v, 1)
+      }
+    })
+  })
+
   dict.ascii_info = make([]runeInfo, 256)
   for r := rune(0); r < 256; r++ {
     if info,ok := dict.info[r]; ok {
@@ -374,8 +407,8 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
     dict.texture = gl.GenTexture()
     dict.texture.Bind(gl.TEXTURE_2D)
     gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+    gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
     glu.Build2DMipmaps(gl.TEXTURE_2D, 4, dict.Rgba.Bounds().Dx(), dict.Rgba.Bounds().Dy(), gl.RGBA, dict.Rgba.Pix)
