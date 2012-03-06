@@ -1,6 +1,8 @@
 package gui
 
 import (
+  "io"
+  "encoding/gob"
   "image"
   "image/color"
   "image/draw"
@@ -197,44 +199,53 @@ func packImages(ims []image.Image) *packedImage {
 }
 
 type runeInfo struct {
-  pos      image.Rectangle
-  bounds   image.Rectangle
-  advance  float64
+  Pos      image.Rectangle
+  Bounds   image.Rectangle
+  Advance  float64
 }
-type Dictionary struct {
-  Rgba  *image.RGBA
-  info  map[rune]runeInfo
+type dictData struct {
+  // The Pix data from the original image.Rgba
+  Pix  []byte
+
+  // Dx and Dy of the original image.Rgba
+  Dx, Dy int
+
+  // Map from rune to that rune's runeInfo.
+  Info  map[rune]runeInfo
 
   // runeInfo for all r < 256 will be stored here as well as in info so we can
   // avoid map lookups if possible.
-  ascii_info []runeInfo
+  Ascii_info []runeInfo
 
   // At what vertical value is the line on which text is logically rendered.
   // This is determined by the positioning of the '.' rune.
-  baseline int
+  Baseline int
 
-  miny,maxy int
+  Miny,Maxy int
+}
+type Dictionary struct {
+  data dictData
 
   texture gl.Texture
 
   dlists map[string]uint
 }
 
+func (d *Dictionary) getInfo(r rune) runeInfo {
+  var info runeInfo
+  if r >= 0 && r < 256 {
+    info = d.data.Ascii_info[r]
+  } else {
+    info,_ = d.data.Info[r]
+  }
+  return info
+}
+
 // Figures out how wide a string will be if rendered at its natural size.
 func (d *Dictionary) figureWidth(s string) float64 {
   w := 0.0
   for _,r := range s {
-    var info runeInfo
-    if r >= 0 && r < 256 {
-      info = d.ascii_info[r]
-    } else {
-      var ok bool
-      info,ok = d.info[r]
-      if !ok {
-        continue
-      }
-    }
-    w += info.advance
+    w += d.getInfo(r).Advance
   }
   return w
 }
@@ -247,13 +258,13 @@ const (
 )
 
 func (d *Dictionary) MaxHeight() float64 {
-  return float64(d.maxy - d.miny)
+  return float64(d.data.Maxy - d.data.Miny)
 }
 
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
-  scale := height / float64(d.maxy - d.miny)
+  scale := height / float64(d.data.Maxy - d.data.Miny)
   width := d.figureWidth(s) * scale
   x_pos := x
   switch just {
@@ -262,8 +273,6 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
     case Right:
       x_pos -= width
   }
-  image_dx := float64(d.Rgba.Bounds().Dx())
-  image_dy := float64(d.Rgba.Bounds().Dy())
 
   gl.PushMatrix()
   defer gl.PopMatrix()
@@ -290,39 +299,44 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 
   gl.Begin(gl.QUADS)
   for _,r := range s {
-    var info runeInfo
-    if r >= 0 && r < 256 {
-      info = d.ascii_info[r]
-    } else {
-      var ok bool
-      info,ok = d.info[r]
-      if !ok {
-        continue
-      }
-    }
-    xleft := x_pos + float64(info.bounds.Min.X)
-    xright := x_pos + float64(info.bounds.Max.X)
-    ytop := float64(d.maxy - info.bounds.Min.Y)
-    ybot := height + float64(d.miny - info.bounds.Max.Y)
+    info := d.getInfo(r)
+    xleft := x_pos + float64(info.Bounds.Min.X)
+    xright := x_pos + float64(info.Bounds.Max.X)
+    ytop := float64(d.data.Maxy - info.Bounds.Min.Y)
+    ybot := height + float64(d.data.Miny - info.Bounds.Max.Y)
 
-    gl.TexCoord2d(float64(info.pos.Min.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
+    gl.TexCoord2d(float64(info.Pos.Min.X) / float64(d.data.Dx), float64(info.Pos.Max.Y) / float64(d.data.Dy))
     gl.Vertex2d(xleft, ybot)
 
-    gl.TexCoord2d(float64(info.pos.Min.X) / image_dx, float64(info.pos.Min.Y) / image_dy)
+    gl.TexCoord2d(float64(info.Pos.Min.X) / float64(d.data.Dx), float64(info.Pos.Min.Y) / float64(d.data.Dy))
     gl.Vertex2d(xleft, ytop)
 
-    gl.TexCoord2d(float64(info.pos.Max.X) / image_dx, float64(info.pos.Min.Y) / image_dy)
+    gl.TexCoord2d(float64(info.Pos.Max.X) / float64(d.data.Dx), float64(info.Pos.Min.Y) / float64(d.data.Dy))
     gl.Vertex2d(xright, ytop)
 
-    gl.TexCoord2d(float64(info.pos.Max.X) / image_dx, float64(info.pos.Max.Y) / image_dy)
+    gl.TexCoord2d(float64(info.Pos.Max.X) / float64(d.data.Dx), float64(info.Pos.Max.Y) / float64(d.data.Dy))
     gl.Vertex2d(xright, ybot)
 
-    x_pos += info.advance
+    x_pos += info.Advance
   }
   gl.End()
   gl.EndList()
 
   gl.PopAttrib()
+}
+
+func (d *Dictionary) Store(w io.Writer) error {
+  return gob.NewEncoder(w).Encode(d.data)
+}
+
+func LoadDictionary(r io.Reader) (*Dictionary, error) {
+  var d Dictionary
+  err := gob.NewDecoder(r).Decode(&d.data)
+  if err != nil {
+    return nil, err
+  }
+  d.setupGlStuff()
+  return &d, nil
 }
 
 func MakeDictionary(font *truetype.Font, size int) *Dictionary {
@@ -348,13 +362,13 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
     letters = append(letters, sub)
     rune_mapping[r] = sub
     adv_x := float64(advance.X) / 256.0
-    rune_info[r] = runeInfo{ bounds: sub.bounds, advance: adv_x }
+    rune_info[r] = runeInfo{ Bounds: sub.bounds, Advance: adv_x }
   }
   packed := packImages(letters)
 
   for _,r := range alphabet {
     ri := rune_info[r]
-    ri.pos = packed.GetRect(rune_mapping[r])
+    ri.Pos = packed.GetRect(rune_mapping[r])
     rune_info[r] = ri
   }
 
@@ -370,12 +384,42 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   pim := image.NewRGBA(image.Rect(0, 0, dx, dy))
   draw.Draw(pim, pim.Bounds(), packed, image.Point{}, draw.Over)
   var dict Dictionary
-  dict.Rgba = pim
-  dict.info = rune_info
-  dict.dlists = make(map[string]uint)
+  dict.data.Pix = pim.Pix
+  dict.data.Dx = pim.Bounds().Dx()
+  dict.data.Dy = pim.Bounds().Dy()
+  dict.data.Info = rune_info
+
+  dict.data.Ascii_info = make([]runeInfo, 256)
+  for r := rune(0); r < 256; r++ {
+    if info,ok := dict.data.Info[r]; ok {
+      dict.data.Ascii_info[r] = info
+    }
+  }
+  dict.data.Baseline = dict.data.Info['.'].Bounds.Min.Y
+
+  dict.data.Miny = int(1e9)
+  dict.data.Maxy = int(-1e9)
+  for _,info := range dict.data.Info {
+    if info.Bounds.Min.Y < dict.data.Miny {
+      dict.data.Miny = info.Bounds.Min.Y
+    }
+    if info.Bounds.Max.Y > dict.data.Maxy {
+      dict.data.Maxy = info.Bounds.Max.Y
+    }
+  }
+
+  dict.setupGlStuff()
+
+  return &dict
+}
+
+// Sets up anything that wouldn't have been loaded from disk, including
+// all opengl data, and sets up finalizers for that data.
+func (d *Dictionary) setupGlStuff() {
+  d.dlists = make(map[string]uint)
 
   // TODO: This finalizer is untested
-  runtime.SetFinalizer(&dict, func(d *Dictionary) {
+  runtime.SetFinalizer(d, func(d *Dictionary) {
     render.Queue(func() {
       for _,v := range d.dlists {
         gl.DeleteLists(v, 1)
@@ -383,37 +427,16 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
     })
   })
 
-  dict.ascii_info = make([]runeInfo, 256)
-  for r := rune(0); r < 256; r++ {
-    if info,ok := dict.info[r]; ok {
-      dict.ascii_info[r] = info
-    }
-  }
-  dict.baseline = dict.info['.'].bounds.Min.Y
-
-  dict.miny = int(1e9)
-  dict.maxy = int(-1e9)
-  for _,info := range dict.info {
-    if info.bounds.Min.Y < dict.miny {
-      dict.miny = info.bounds.Min.Y
-    }
-    if info.bounds.Max.Y > dict.maxy {
-      dict.maxy = info.bounds.Max.Y
-    }
-  }
-
   render.Queue(func() {
     gl.Enable(gl.TEXTURE_2D)
-    dict.texture = gl.GenTexture()
-    dict.texture.Bind(gl.TEXTURE_2D)
+    d.texture = gl.GenTexture()
+    d.texture.Bind(gl.TEXTURE_2D)
     gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-    glu.Build2DMipmaps(gl.TEXTURE_2D, 4, dict.Rgba.Bounds().Dx(), dict.Rgba.Bounds().Dy(), gl.RGBA, dict.Rgba.Pix)
+    glu.Build2DMipmaps(gl.TEXTURE_2D, 4, d.data.Dx, d.data.Dy, gl.RGBA, d.data.Pix)
     gl.Disable(gl.TEXTURE_2D)
   })
-  return &dict
 }
-
