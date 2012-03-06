@@ -1,11 +1,12 @@
 package gos
 
+// #cgo LDFLAGS: -Lwindows/lib -lglop
 // #include "windows/include/glop.h"
 import "C"
 
 import (
-  "glop/system"
-  "glop/gin"
+  "github.com/runningwild/glop/system"
+  "github.com/runningwild/glop/gin"
   "unsafe"
 )
 
@@ -99,4 +100,7 @@ func (win32 *win32SystemObject) EnableVSync(enable bool) {
     _enable = 1
   }
   C.GlopEnableVSync(_enable)
+}
+
+func (win32 *win32SystemObject) HideCursor(hide bool) {
 }
