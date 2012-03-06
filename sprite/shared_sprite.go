@@ -6,6 +6,7 @@ import (
   _ "image/png"
   "os"
   "path/filepath"
+  "sort"
   "strconv"
   "strings"
   "github.com/runningwild/glop/util/algorithm"
@@ -82,6 +83,7 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
       fids = append(fids, frameId{ facing: facing, node: con.Id() })
     }
   }
+  sort.Sort(frameIdArray(fids))
   ss.connector,err = makeSheet(path, &anim.Graph, fids)
   if err != nil { return nil, err }
 
@@ -99,6 +101,7 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
         facing_fids = append(facing_fids, frameId{ facing: facing, node: node.Id() })
       }
     }
+    sort.Sort(frameIdArray(facing_fids))
     sh,err := makeSheet(path, &anim.Graph, facing_fids)
     if err != nil { return nil, err }
     ss.facings = append(ss.facings, sh)

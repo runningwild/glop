@@ -20,6 +20,19 @@ type frameId struct {
   facing int
   node   int
 }
+type frameIdArray []frameId
+func (fia frameIdArray) Len() int {
+  return len(fia)
+}
+func (fia frameIdArray) Less(i, j int) bool {
+  if fia[i].facing != fia[j].facing {
+    return fia[i].facing < fia[j].facing
+  }
+  return fia[i].node < fia[j].node
+}
+func (fia frameIdArray) Swap(i, j int) {
+  fia[i], fia[j] = fia[j], fia[i]
+}
 
 // A sheet contains a group of frames of animations indexed by frameId
 type sheet struct {
