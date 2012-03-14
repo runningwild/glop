@@ -264,6 +264,11 @@ func (d *Dictionary) MaxHeight() float64 {
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
+  list, ok := d.dlists[s]
+  if !ok {
+    defer d.RenderString(s, x, y, z, height, just)
+  }
+
   scale := height / float64(d.data.Maxy - d.data.Miny)
   width := d.figureWidth(s) * scale
   x_pos := x
@@ -286,11 +291,11 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   gl.Enable(gl.TEXTURE_2D)
   d.texture.Bind(gl.TEXTURE_2D)
 
-  list, ok := d.dlists[s]
   if ok {
     gl.CallList(list)
     return
   }
+
   list = gl.GenLists(1)
   d.dlists[s] = list
   gl.NewList(list, gl.COMPILE)
