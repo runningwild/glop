@@ -82,6 +82,15 @@ func (w *AnchorBox) Draw(region Region) {
     }
     child_region.X = xoff
     child_region.Y = yoff
+    ex, ey := widget.Expandable()
+    if ex {
+      child_region.X = region.X
+      child_region.Dx = region.Dx
+    }
+    if ey {
+      child_region.Y = region.Y
+      child_region.Dy = region.Dy
+    }
     widget.Draw(child_region)
   }
 }
