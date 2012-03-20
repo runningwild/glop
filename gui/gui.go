@@ -22,10 +22,10 @@ func (p Point) Inside(r Region) bool {
   if p.Y < r.Y {
     return false
   }
-  if p.X > r.X+r.Dx {
+  if p.X >= r.X+r.Dx {
     return false
   }
-  if p.Y > r.Y+r.Dy {
+  if p.Y >= r.Y+r.Dy {
     return false
   }
   return true
