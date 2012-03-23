@@ -486,6 +486,23 @@ func (s *Sprite) findPathForNextCmd() {
     s.path = append(s.path, s.shared.anim.Node(id))
   }
 }
+
+func (s *Sprite) Dims() (dx, dy int) {
+  var rect FrameRect
+  var ok bool
+  fid := frameId{ facing: s.facing, node: s.anim_node.Id() }
+  rect,ok = s.shared.connector.rects[fid]
+  if !ok {
+    rect,ok = s.shared.facings[s.facing].rects[fid]
+    if !ok {
+      return 0, 0
+    }
+  }
+  dx = rect.X2 - rect.X
+  dy = rect.Y2 - rect.Y
+  return
+}
+
 func (s *Sprite) Bind() (x,y,x2,y2 float64) {
   var rect FrameRect
   var sh *sheet
