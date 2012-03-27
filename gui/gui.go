@@ -58,6 +58,9 @@ func (r Region) Fit(t Region) Region {
   if r.X < t.X {
     r.X = t.X
   }
+  if r.Y < t.Y {
+    r.Y = t.Y
+  }
   if r.X + r.Dx > t.X + t.Dx {
     r.X -= (r.X + r.Dx) - (t.X + t.Dx)
   }

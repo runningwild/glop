@@ -119,7 +119,7 @@ func (w *ComboBox) GetComboedOption() interface{} {
   if w.selected == -1 {
     return ""
   }
-  return w.GetChildren()[w.selected].(SelectableWidget).GetData()
+  return w.table.GetChildren()[w.selected].(SelectableWidget).GetData()
 }
 
 func (w *ComboBox) SetSelectedOption(option interface{}) {
