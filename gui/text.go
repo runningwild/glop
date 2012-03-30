@@ -285,6 +285,7 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   gl.Scaled(scale, scale, 1)
 
   gl.PushAttrib(gl.COLOR_BUFFER_BIT)
+  defer gl.PopAttrib()
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
@@ -326,8 +327,6 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   }
   gl.End()
   gl.EndList()
-
-  gl.PopAttrib()
 }
 
 func (d *Dictionary) Store(w io.Writer) error {
