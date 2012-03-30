@@ -8,6 +8,8 @@ import (
   "image/draw"
   "os"
   "path/filepath"
+  "unsafe"
+  "github.com/mstap/coffer"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
@@ -126,7 +128,24 @@ func (s *sheet) makeTexture(pixer <-chan []byte) {
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, <-pixer)
+
+  // NOTE: This is one giant kludge because currently Go's garbage collected
+  // is not doing what it ought to on windows 32-bit.  The problem appears to
+  // be that data passed to cgo, or at least data that is mucked with in an
+  // unsafe way, is forever retained.  I'm using a coffer here to handle that
+  // data so that we can free it manually.
+  b := <-pixer
+  cb, err := coffer.NewMemCoffer(len(b))
+  if err != nil {
+    fmt.Printf("Failed to allocate coffer: %v\n", err)
+    return
+  }
+  c := cb.(*coffer.MemCoffer)
+  c.Write(b)
+  addr := c.GetBaseAddr()
+  b2 := (*byte)(unsafe.Pointer(addr))
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, b2)
+  c.Close()
 }
 
 func (s *sheet) loadRoutine() {
