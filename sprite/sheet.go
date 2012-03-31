@@ -8,11 +8,53 @@ import (
   "image/draw"
   "os"
   "path/filepath"
+  "sync"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
   "github.com/runningwild/yedparse"
 )
+
+// Used for doing manual memory management - not fast
+type memManager struct {
+  mutex  sync.Mutex
+  blocks [][][]byte
+  used   map[*byte]bool
+}
+var mem_manager memManager
+func init() {
+  mem_manager.blocks = make([][][]byte, 20)
+  mem_manager.used = make(map[*byte]bool)
+}
+func (mm *memManager) GetBlock(n int) []byte {
+  mm.mutex.Lock()
+  defer mm.mutex.Unlock()
+  c := 1024
+  s := 0
+  for c < n {
+    c *= 2
+    s++
+  }
+  for i := range mm.blocks[s] {
+    if _, ok := mm.used[&mm.blocks[s][i][0]]; !ok {
+      mm.used[&mm.blocks[s][i][0]] = true
+      return mm.blocks[s][i]
+    }
+  }
+  new_block := make([]byte, c)
+  mm.blocks[s] = append(mm.blocks[s], new_block)
+  mm.used[&new_block[0]] = true
+  return new_block[0:n]
+}
+func (mm *memManager) FreeBlock(b []byte) {
+  mm.mutex.Lock()
+  defer mm.mutex.Unlock()
+  if _, ok := mm.used[&b[0]]; !ok {
+    panic("Tried to free an unused block")
+  }
+  delete(mm.used, &b[0])
+}
+
 
 // An id that specifies a specific frame along with its facing.  This is used
 // to index into sprite sheets.
@@ -68,7 +110,8 @@ func (s *sheet) compose(pixer chan<- []byte) {
     if err != nil {
       f.Close()
     } else {
-      b := make([]byte, length)
+      b := mem_manager.GetBlock(int(length))
+      // b := make([]byte, length)
       _, err := f.Read(b)
       f.Close()
       if err == nil {
@@ -99,7 +142,9 @@ func (s *sheet) compose(pixer chan<- []byte) {
       os.Remove(filename)
     }
   }
-  pixer <- canvas.Pix
+  temp := mem_manager.GetBlock(len(canvas.Pix))
+  copy(temp, canvas.Pix)
+  pixer <- temp
 }
 
 // TODO: This was copied from the gui package, probably should just have some basic
@@ -126,7 +171,9 @@ func (s *sheet) makeTexture(pixer <-chan []byte) {
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
   gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, <-pixer)
+  data := <-pixer
+  glu.Build2DMipmaps(gl.TEXTURE_2D, 4, s.dx, s.dy, gl.RGBA, data)
+  mem_manager.FreeBlock(data)
 }
 
 func (s *sheet) loadRoutine() {
