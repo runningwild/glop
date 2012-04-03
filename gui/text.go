@@ -386,7 +386,7 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   }
 
   pim := image.NewRGBA(image.Rect(0, 0, dx, dy))
-  draw.Draw(pim, pim.Bounds(), packed, image.Point{}, draw.Over)
+  draw.Draw(pim, pim.Bounds(), packed, image.Point{}, draw.Src)
   var dict Dictionary
   dict.data.Pix = pim.Pix
   dict.data.Dx = pim.Bounds().Dx()

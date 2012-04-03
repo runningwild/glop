@@ -91,7 +91,7 @@ func (s *sheet) compose(pixer chan<- []byte) {
     file.Close()
     // if a file can't be read that is *not* ok, TODO: Log an error or something
     if err != nil { continue }
-    draw.Draw(canvas, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Over)
+    draw.Draw(canvas, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Src)
   }
   f, err = os.Create(filename)
   if err == nil {
