@@ -10,6 +10,7 @@ func TestAllSpecs(t *testing.T) {
   r.AddSpec(DijkstraSpec)
   r.AddSpec(ReachableSpec)
   r.AddSpec(ChooserSpec)
+  r.AddSpec(Chooser2Spec)
   r.AddSpec(MapperSpec)
   r.AddSpec(TopoSpec)
   gospec.MainGoTest(r, t)
