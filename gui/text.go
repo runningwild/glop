@@ -277,7 +277,7 @@ func (d *Dictionary) MaxHeight() float64 {
   return float64(d.data.Maxy - d.data.Miny)
 }
 
-func (d *Dictionary) RenderString2(s string, x, y, z, height float64, just Justification) {
+func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
   strbuf, ok := d.strs[s]
   if !ok {
     defer d.RenderString(s, x, y, z, height, just)
@@ -321,6 +321,7 @@ func (d *Dictionary) RenderString2(s string, x, y, z, height float64, just Justi
     gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
     return
   }
+  x_pos = 0
   for _,r := range s {
     info := d.getInfo(r)
     xleft := x_pos + float32(info.Bounds.Min.X)
@@ -373,10 +374,10 @@ func (d *Dictionary) RenderString2(s string, x, y, z, height float64, just Justi
 
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
-func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
+func (d *Dictionary) RenderStringOld(s string, x, y, z, height float64, just Justification) {
   list, ok := d.dlists[s]
   if !ok {
-    defer d.RenderString(s, x, y, z, height, just)
+    defer d.RenderStringOld(s, x, y, z, height, just)
   }
 
   scale := height / float64(d.data.Maxy - d.data.Miny)
