@@ -8,11 +8,13 @@ import (
   "image/draw"
   "runtime"
   "sort"
+  "unsafe"
   "code.google.com/p/freetype-go/freetype"
   "code.google.com/p/freetype-go/freetype/raster"
   "code.google.com/p/freetype-go/freetype/truetype"
   "github.com/runningwild/glop/render"
-  "github.com/runningwild/opengl/gl"
+  // "github.com/runningwild/opengl/gl"
+  gl "github.com/chsc/gogl/gl21"
   "github.com/runningwild/opengl/glu"
 )
 
@@ -226,10 +228,24 @@ type dictData struct {
 type Dictionary struct {
   data dictData
 
-  texture gl.Texture
+  texture uint32
 
-  dlists map[string]uint
+  strs map[string]strBuffer
+
+  dlists map[string]uint32
 }
+type strBuffer struct {
+  vbuffer uint32
+  vs []dictVert
+
+  ibuffer uint32
+  is []uint16
+}
+type dictVert struct {
+  x,y float32
+  u,v float32
+}
+
 
 func (d *Dictionary) getInfo(r rune) runeInfo {
   var info runeInfo
@@ -261,6 +277,100 @@ func (d *Dictionary) MaxHeight() float64 {
   return float64(d.data.Maxy - d.data.Miny)
 }
 
+func (d *Dictionary) RenderString2(s string, x, y, z, height float64, just Justification) {
+  strbuf, ok := d.strs[s]
+  if !ok {
+    defer d.RenderString(s, x, y, z, height, just)
+  }
+  size := unsafe.Sizeof(dictVert{})
+  scale := height / float64(d.data.Maxy - d.data.Miny)
+  width := float32(d.figureWidth(s) * scale)
+  x_pos := float32(x)
+  switch just {
+    case Center:
+      x_pos -= width / 2
+    case Right:
+      x_pos -= width
+  }
+  if ok {
+    gl.PushMatrix()
+    defer gl.PopMatrix()
+    gl.Translated(float64(x_pos), y, z)
+    gl.Scaled(scale, scale, 1)
+
+    gl.PushAttrib(gl.COLOR_BUFFER_BIT)
+    defer gl.PopAttrib()
+    gl.Enable(gl.BLEND)
+    gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+    gl.Enable(gl.TEXTURE_2D)
+    gl.BindTexture(gl.TEXTURE_2D, d.texture)
+
+    gl.BindBuffer(gl.ARRAY_BUFFER, strbuf.vbuffer)
+
+    gl.EnableClientState(gl.VERTEX_ARRAY)
+    gl.VertexPointer(2, gl.FLOAT, gl.Sizei(size), nil)
+
+    gl.EnableClientState(gl.TEXTURE_COORD_ARRAY)
+    gl.TexCoordPointer(2, gl.FLOAT, gl.Sizei(size), gl.Pointer(unsafe.Offsetof(strbuf.vs[0].u)))
+
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, strbuf.ibuffer)
+    gl.DrawElements(gl.TRIANGLES, gl.Sizei(len(strbuf.is)), gl.UNSIGNED_SHORT, nil)
+
+    gl.DisableClientState(gl.VERTEX_ARRAY)
+    gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
+    return
+  }
+  for _,r := range s {
+    info := d.getInfo(r)
+    xleft := x_pos + float32(info.Bounds.Min.X)
+    xright := x_pos + float32(info.Bounds.Max.X)
+    ytop := float32(d.data.Maxy - info.Bounds.Min.Y)
+    ybot := float32(height) + float32(d.data.Miny - info.Bounds.Max.Y)
+    start := uint16(len(strbuf.vs))
+    strbuf.is = append(strbuf.is, start+0)
+    strbuf.is = append(strbuf.is, start+1)
+    strbuf.is = append(strbuf.is, start+2)
+    strbuf.is = append(strbuf.is, start+0)
+    strbuf.is = append(strbuf.is, start+2)
+    strbuf.is = append(strbuf.is, start+3)
+    strbuf.vs = append(strbuf.vs, dictVert{
+      x: xleft,
+      y: ybot,
+      u: float32(info.Pos.Min.X) / float32(d.data.Dx),
+      v: float32(info.Pos.Max.Y) / float32(d.data.Dy),
+    })
+    strbuf.vs = append(strbuf.vs, dictVert{
+      x: xleft,
+      y: ytop,
+      u: float32(info.Pos.Min.X) / float32(d.data.Dx),
+      v: float32(info.Pos.Min.Y) / float32(d.data.Dy),
+    })
+    strbuf.vs = append(strbuf.vs, dictVert{
+      x: xright,
+      y: ytop,
+      u: float32(info.Pos.Max.X) / float32(d.data.Dx),
+      v: float32(info.Pos.Min.Y) / float32(d.data.Dy),
+    })
+    strbuf.vs = append(strbuf.vs, dictVert{
+      x: xright,
+      y: ybot,
+      u: float32(info.Pos.Max.X) / float32(d.data.Dx),
+      v: float32(info.Pos.Max.Y) / float32(d.data.Dy),
+    })
+    x_pos += float32(info.Advance)
+  }
+  gl.GenBuffers(1, &strbuf.vbuffer)
+  gl.BindBuffer(gl.ARRAY_BUFFER, strbuf.vbuffer)
+  gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(size)*len(strbuf.vs)), gl.Pointer(&strbuf.vs[0].x), gl.STATIC_DRAW)
+
+  gl.GenBuffers(1, &strbuf.ibuffer)
+  gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, strbuf.ibuffer)
+  gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(strbuf.is[0]))*len(strbuf.is)), gl.Pointer(&strbuf.is[0]), gl.STATIC_DRAW)
+  d.strs[s] = strbuf
+
+}
+
 // Renders the string on the quad spanning the specified coordinates.  The
 // text will be rendering the current color.
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
@@ -290,7 +400,7 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
   gl.Enable(gl.TEXTURE_2D)
-  d.texture.Bind(gl.TEXTURE_2D)
+  gl.BindTexture(gl.TEXTURE_2D, d.texture)
 
   if ok {
     gl.CallList(list)
@@ -420,8 +530,8 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
 // Sets up anything that wouldn't have been loaded from disk, including
 // all opengl data, and sets up finalizers for that data.
 func (d *Dictionary) setupGlStuff() {
-  d.dlists = make(map[string]uint)
-
+  d.dlists = make(map[string]uint32)
+  d.strs = make(map[string]strBuffer)
   // TODO: This finalizer is untested
   runtime.SetFinalizer(d, func(d *Dictionary) {
     render.Queue(func() {
@@ -433,8 +543,8 @@ func (d *Dictionary) setupGlStuff() {
 
   render.Queue(func() {
     gl.Enable(gl.TEXTURE_2D)
-    d.texture = gl.GenTexture()
-    d.texture.Bind(gl.TEXTURE_2D)
+    gl.GenTextures(1, &d.texture)
+    gl.BindTexture(gl.TEXTURE_2D, d.texture)
     gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
     gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
