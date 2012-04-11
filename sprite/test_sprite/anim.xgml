@@ -264,7 +264,8 @@ time:80</attribute>
 		</section>
 		<section name="node">
 			<attribute key="id" type="int">13</attribute>
-			<attribute key="label" type="String">damaged_01</attribute>
+			<attribute key="label" type="String">damaged_01
+sync:hit</attribute>
 			<section name="graphics">
 				<attribute key="x" type="double">420.0</attribute>
 				<attribute key="y" type="double">-133.8330078125</attribute>
@@ -275,7 +276,8 @@ time:80</attribute>
 				<attribute key="outline" type="String">#000000</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">damaged_01</attribute>
+				<attribute key="text" type="String">damaged_01
+sync:hit</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="anchor" type="String">c</attribute>
@@ -283,7 +285,8 @@ time:80</attribute>
 		</section>
 		<section name="node">
 			<attribute key="id" type="int">14</attribute>
-			<attribute key="label" type="String">damaged_01</attribute>
+			<attribute key="label" type="String">damaged_01
+sync:hit</attribute>
 			<section name="graphics">
 				<attribute key="x" type="double">647.0</attribute>
 				<attribute key="y" type="double">-220.8330078125</attribute>
@@ -294,7 +297,8 @@ time:80</attribute>
 				<attribute key="outline" type="String">#000000</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">damaged_01</attribute>
+				<attribute key="text" type="String">damaged_01
+sync:hit</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="anchor" type="String">c</attribute>
@@ -397,7 +401,8 @@ time:80</attribute>
 		</section>
 		<section name="node">
 			<attribute key="id" type="int">20</attribute>
-			<attribute key="label" type="String">melee_01</attribute>
+			<attribute key="label" type="String">melee_01
+sync:hit</attribute>
 			<section name="graphics">
 				<attribute key="x" type="double">254.25</attribute>
 				<attribute key="y" type="double">94.1669921875</attribute>
@@ -408,7 +413,8 @@ time:80</attribute>
 				<attribute key="outline" type="String">#000000</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">melee_01</attribute>
+				<attribute key="text" type="String">melee_01
+sync:hit</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="anchor" type="String">c</attribute>
@@ -563,7 +569,8 @@ mark:start</attribute>
 		</section>
 		<section name="node">
 			<attribute key="id" type="int">28</attribute>
-			<attribute key="label" type="String">undamaged_02</attribute>
+			<attribute key="label" type="String">undamaged_02
+sync:hit</attribute>
 			<section name="graphics">
 				<attribute key="x" type="double">420.0</attribute>
 				<attribute key="y" type="double">-365.59771728515625</attribute>
@@ -574,7 +581,8 @@ mark:start</attribute>
 				<attribute key="outline" type="String">#000000</attribute>
 			</section>
 			<section name="LabelGraphics">
-				<attribute key="text" type="String">undamaged_02</attribute>
+				<attribute key="text" type="String">undamaged_02
+sync:hit</attribute>
 				<attribute key="fontSize" type="int">12</attribute>
 				<attribute key="fontName" type="String">Dialog</attribute>
 				<attribute key="anchor" type="String">c</attribute>

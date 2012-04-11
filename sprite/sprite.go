@@ -193,7 +193,7 @@ func verifyStateGraph(graph *yed.Graph) error {
 
 // A valid anim graph has the properties specified in verifyAnyGraph()
 func verifyAnimGraph(graph *yed.Graph) error {
-  err := verifyAnyGraph(graph, []string{"time"}, []string{"facing", "weight"})
+  err := verifyAnyGraph(graph, []string{"time", "sync"}, []string{"facing", "weight"})
   if err != nil { return &spriteError{ fmt.Sprintf("Anim graph: %v", err) } }
 
   return nil
@@ -353,11 +353,48 @@ type Sprite struct {
   // commands that have been accepted by the state graph but haven't been
   // processed by the anim graph.  When path is empty a cmd will be taken from
   // this list and be used to generate the next path.
-  pending_cmds []string
+  pending_cmds []command
 
   // Used to keep track of the state that the current frame of animation
   // represents.
   anim_states []string
+}
+
+type command struct {
+  names []string  // List of names of edges
+
+  group *commandGroup
+}
+
+type commandGroup struct {
+  // This is the tag that all of the sprites in this group will sync to
+  sync_tag string
+
+  // all of the sprites in this list must have this commandGroup as part of
+  // their next command to execute before any of them will execute it.
+  sprites  []*Sprite
+
+  // If ready() ever returns true then this will be set to true and read()
+  // will always return true after that.  This prevents a situation where one
+  // sprite starts executing this command and then other sprites think they
+  // aren't ready because one of them has already progressed passed this
+  // command.
+  was_ready bool
+}
+
+// Returns true iff all sprites in this group have no pending cmds before this
+// one, and no nodes remaining in their immediate path.
+func (cg *commandGroup) ready() bool {
+  if cg.was_ready {
+    return true
+  }
+  for _, sp := range cg.sprites {
+    if len(sp.path) > 0 { return false }
+    if len(sp.pending_cmds) == 0 { return false }  // This one is a serious problem
+    if sp.pending_cmds[0].group != cg { return false }
+  }
+  cg.was_ready = true
+  return true
 }
 
 func (s *Sprite) State() string {
@@ -417,19 +454,50 @@ func edgeTo(a,b *yed.Node) *yed.Edge {
   return nil
 }
 
-func (s *Sprite) Command(cmd string) {
-  state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{cmd})
-  if state_edge == nil { return }
+func CommandSync(ss []*Sprite, cmds []string, sync_tag string) {
+  // Go through each sprite, if it can execute the specified command then add
+  // it to the group (and if it can't, don't).
+  var group commandGroup
+  group.sync_tag = sync_tag
+  for i := range ss {
+    cmd := command{
+      names: []string{cmds[i]},
+      group: &group,
+    }
+    if ss[i].baseCommand(cmd) {
+      group.sprites = append(group.sprites, ss[i])
+    }
+  }
+}
+
+func (s *Sprite) baseCommand(cmd command) bool {
+  state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{cmd.names[0]})
+  if state_edge == nil { return false }
   s.anim_states = append(s.anim_states, s.state_node.Line(0))
   s.state_node = state_edge.Dst()
 
   state_edge = selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
   for state_edge != nil {
+    // If this command is synced then we first need to make sure that we'll
+    // be able to get to the appropriate sync tag
+    // if cmd.group != nil && cmd.group.sync_tag != "" {
+    //   dst := state_edge.Dst()
+    //   s.shared.node_data
+    // }
     s.state_node = state_edge.Dst()
     state_edge = selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
   }
 
   s.pending_cmds = append(s.pending_cmds, cmd)
+  return true
+}
+
+func (s *Sprite) Command(cmd string) {
+  s.baseCommand(command{ names: []string{cmd}, group: nil })
+}
+
+func (s *Sprite) CommandN(cmds []string) {
+  s.baseCommand(command{ names: cmds, group: nil })
 }
 
 // This is a specialized wrapper around a yed.Graph that allows for the start
@@ -467,23 +535,40 @@ func (p pathingGraph) Adjacent(n int) (adj []int, cost []float64) {
   return
 }
 
-func (s *Sprite) findPathForNextCmd() {
-  if len(s.pending_cmds) == 0 { return }
-  if len(s.path) > 0 { return }
-  cmd := s.pending_cmds[0]
-  s.pending_cmds = s.pending_cmds[1:]
-  g := pathingGraph{ shared: s.shared, start: s.anim_node, cmd: cmd }
-  var end []int
-  for i := 0; i < s.shared.anim.NumEdges(); i++ {
-    edge := s.shared.anim.Edge(i)
-    if s.shared.edge_data[edge].cmd == cmd {
-      end = append(end, edge.Dst().Id())
+// If this returns nil it means this sprite isn't ready for a new path
+// If this returns a path with length 0 it means there wasn't a valid path
+func (s *Sprite) findPathForCmd(cmd command, anim_node *yed.Node) []*yed.Node {
+  // If the next command is supposed to be synced with other sprites then we
+  // need to wait until those sprites are ready before we all proceed.
+  if s.pending_cmds[0].group != nil && !s.pending_cmds[0].group.ready() {
+    return nil
+  }
+
+  var node_path []*yed.Node
+  for _, name := range cmd.names {
+    g := pathingGraph{ shared: s.shared, start: anim_node, cmd: name }
+    var end []int
+    for i := 0; i < s.shared.anim.NumEdges(); i++ {
+      edge := s.shared.anim.Edge(i)
+      if s.shared.edge_data[edge].cmd == name {
+        end = append(end, edge.Dst().Id())
+      }
+    }
+    _, path := algorithm.Dijkstra(g, []int{ s.shared.anim.NumNodes() }, end)
+    for _,id := range path[1:] {
+      node_path = append(node_path, s.shared.anim.Node(id))
+    }
+    if len(node_path) > 0 {
+      anim_node = node_path[len(node_path) - 1]
     }
   }
-  _, path := algorithm.Dijkstra(g, []int{ s.shared.anim.NumNodes() }, end)
-  if len(path) == 0 { return }
-  for _,id := range path[1:] {
-    s.path = append(s.path, s.shared.anim.Node(id))
+
+  return node_path
+}
+
+func (s *Sprite) applyPath(path []*yed.Node) {
+  for _, n := range path {
+    s.path = append(s.path, n)
   }
 }
 
@@ -539,8 +624,15 @@ func (s *Sprite) Think(dt int64) {
     return
     // panic("Can't have dt < 0")
   }
+  var path []*yed.Node
+  if len(s.pending_cmds) > 0 && len(s.path) == 0 {
+    path = s.findPathForCmd(s.pending_cmds[0], s.anim_node)
+  }
+  if path != nil {
+    s.applyPath(path)
+    s.pending_cmds = s.pending_cmds[1:]
+  }
 
-  s.findPathForNextCmd()
   if len(s.path) > 0 && s.anim_node.Group() != nil {
     // If the current node is in a group that has an edge to the next node
     // then we want to follow that edge immediately rather than waiting for
@@ -595,7 +687,8 @@ func (s *Sprite) Think(dt int64) {
 }
 
 type nodeData struct {
-  time int64
+  time     int64
+  sync_tag string
 }
 type edgeData struct {
   facing int

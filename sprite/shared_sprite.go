@@ -143,7 +143,7 @@ func (ss *sharedSprite) process() {
   ss.node_data = make(map[*yed.Node]nodeData)
   for i := 0; i < ss.anim.NumNodes(); i++ {
     node := ss.anim.Node(i)
-    data := nodeData{ time: defaultFrameTime }
+    data := nodeData{ time: defaultFrameTime, sync_tag: node.Tag("sync") }
     t,err := strconv.ParseInt(node.Tag("time"), 10, 32)
     if err == nil {
       data.time = t
