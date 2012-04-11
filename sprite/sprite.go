@@ -471,12 +471,19 @@ func CommandSync(ss []*Sprite, cmds []string, sync_tag string) {
 }
 
 func (s *Sprite) baseCommand(cmd command) bool {
-  state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{cmd.names[0]})
-  if state_edge == nil { return false }
-  s.anim_states = append(s.anim_states, s.state_node.Line(0))
-  s.state_node = state_edge.Dst()
+  state_node := s.state_node
+  for _, name := range cmd.names {
+    state_edge := selectAnEdge(state_node, s.shared.edge_data, []string{name})
+    if state_edge == nil { return false }
+    state_node = state_edge.Dst()
+  }
+  for _, name := range cmd.names {
+    s.anim_states = append(s.anim_states, s.state_node.Line(0))
+    edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{name})
+    s.state_node = edge.Dst()
+  }
 
-  state_edge = selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
+  state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
   for state_edge != nil {
     // If this command is synced then we first need to make sure that we'll
     // be able to get to the appropriate sync tag
@@ -535,15 +542,8 @@ func (p pathingGraph) Adjacent(n int) (adj []int, cost []float64) {
   return
 }
 
-// If this returns nil it means this sprite isn't ready for a new path
 // If this returns a path with length 0 it means there wasn't a valid path
 func (s *Sprite) findPathForCmd(cmd command, anim_node *yed.Node) []*yed.Node {
-  // If the next command is supposed to be synced with other sprites then we
-  // need to wait until those sprites are ready before we all proceed.
-  if s.pending_cmds[0].group != nil && !s.pending_cmds[0].group.ready() {
-    return nil
-  }
-
   var node_path []*yed.Node
   for _, name := range cmd.names {
     g := pathingGraph{ shared: s.shared, start: anim_node, cmd: name }
@@ -626,7 +626,9 @@ func (s *Sprite) Think(dt int64) {
   }
   var path []*yed.Node
   if len(s.pending_cmds) > 0 && len(s.path) == 0 {
-    path = s.findPathForCmd(s.pending_cmds[0], s.anim_node)
+    if s.pending_cmds[0].group == nil || s.pending_cmds[0].group.ready() {
+      path = s.findPathForCmd(s.pending_cmds[0], s.anim_node)
+    }
   }
   if path != nil {
     s.applyPath(path)
