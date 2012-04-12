@@ -380,6 +380,11 @@ type commandGroup struct {
   // aren't ready because one of them has already progressed passed this
   // command.
   was_ready bool
+
+  // Map from sprite to how long the sprite should wait until starting this
+  // command.  This map is not created until all sprites are ready.
+  eta   map[*Sprite]int64
+  paths map[*Sprite][]*yed.Node
 }
 
 // Returns true iff all sprites in this group have no pending cmds before this
@@ -392,6 +397,41 @@ func (cg *commandGroup) ready() bool {
     if len(sp.path) > 0 { return false }
     if len(sp.pending_cmds) == 0 { return false }  // This one is a serious problem
     if sp.pending_cmds[0].group != cg { return false }
+  }
+  // Everyone is ready, so we'll check how long it's going to take each one to
+  // get to the sync node and save that data.
+  cg.eta = make(map[*Sprite]int64)
+  cg.paths = make(map[*Sprite][]*yed.Node)
+  var max int64
+  for _, sp := range cg.sprites {
+    path := sp.findPathForSyncedCmd(sp.pending_cmds[0], sp.anim_node)
+    var total int64
+    for i, node := range path {
+      if node.Tag("sync") == cg.sync_tag {
+        break
+      }
+      var prev *yed.Node
+      if i == 0 {
+        prev = sp.anim_node
+      } else {
+        prev = path[i-1]
+      }
+      if !connectedByGroupEdge(prev, node) {
+        if i == 0 {
+          total += sp.togo
+        } else {
+          total += sp.shared.node_data[node].time
+        }
+      }
+    }
+    cg.eta[sp] = total
+    cg.paths[sp] = path
+    if total > max {
+      max = total
+    }
+  }
+  for _, sp := range cg.sprites {
+    cg.eta[sp] = max - cg.eta[sp]
   }
   cg.was_ready = true
   return true
@@ -408,6 +448,16 @@ func (s *Sprite) AnimState() string {
     return s.State()
   }
   return s.anim_states[0]
+}
+
+func connectedByGroupEdge(n1, n2 *yed.Node) bool {
+  for i := 0; i < n1.NumGroupOutputs(); i++ {
+    edge := n1.GroupOutput(i)
+    if edge.Src() != n1 && edge.Dst() == n2 {
+      return true
+    }
+  }
+  return false
 }
 
 // selects an outgoing edge from node random among those outgoing edges that
@@ -454,14 +504,14 @@ func edgeTo(a,b *yed.Node) *yed.Edge {
   return nil
 }
 
-func CommandSync(ss []*Sprite, cmds []string, sync_tag string) {
+func CommandSync(ss []*Sprite, cmds [][]string, sync_tag string) {
   // Go through each sprite, if it can execute the specified command then add
   // it to the group (and if it can't, don't).
   var group commandGroup
   group.sync_tag = sync_tag
   for i := range ss {
     cmd := command{
-      names: []string{cmds[i]},
+      names: cmds[i],
       group: &group,
     }
     if ss[i].baseCommand(cmd) {
@@ -540,6 +590,40 @@ func (p pathingGraph) Adjacent(n int) (adj []int, cost []float64) {
     cost = append(cost, 1)
   }
   return
+}
+
+// Like findPathForCmd, but extends the path, if necessary, such that a node
+// with the appropriate sync_tag is in the path.  If such a node cannot be
+// found then no additional nodes are added to the path.
+func (s *Sprite) findPathForSyncedCmd(cmd command, anim_node *yed.Node) []*yed.Node {
+  path := s.findPathForCmd(cmd, anim_node)
+  if len(path) == 0 {
+    return path
+  }
+  for _, node := range path {
+    if node.Tag("sync") == cmd.group.sync_tag {
+      return path
+    }
+  }
+  var extra []*yed.Node
+  adds := make(map[*yed.Node]bool)
+  tail := path[len(path) - 1]
+  edge := selectAnEdge(tail, s.shared.edge_data, []string{""})
+  for !adds[tail] && edge != nil {
+    adds[tail] = true
+    tail = edge.Dst()
+    extra = append(extra, tail)
+    if tail.Tag("sync") == cmd.group.sync_tag {
+      break
+    }
+    edge = selectAnEdge(tail, s.shared.edge_data, []string{""})
+  }
+  if len(extra) > 0 && extra[len(extra) - 1].Tag("sync") == cmd.group.sync_tag {
+    for _, node := range extra {
+      path = append(path, node)
+    }
+  }
+  return path
 }
 
 // If this returns a path with length 0 it means there wasn't a valid path
@@ -624,10 +708,21 @@ func (s *Sprite) Think(dt int64) {
     return
     // panic("Can't have dt < 0")
   }
+
   var path []*yed.Node
   if len(s.pending_cmds) > 0 && len(s.path) == 0 {
-    if s.pending_cmds[0].group == nil || s.pending_cmds[0].group.ready() {
+    if s.pending_cmds[0].group == nil {
       path = s.findPathForCmd(s.pending_cmds[0], s.anim_node)
+    } else if s.pending_cmds[0].group.ready() {
+      t := s.pending_cmds[0].group.eta[s]
+      t -= dt
+      if t <= 0 {
+        path = s.pending_cmds[0].group.paths[s]
+        s.anim_node = path[0]
+        s.togo = s.shared.node_data[s.anim_node].time
+        path = path[1:]
+      }
+      s.pending_cmds[0].group.eta[s] = t
     }
   }
   if path != nil {
@@ -669,8 +764,9 @@ func (s *Sprite) Think(dt int64) {
       next = s.anim_node
     }
   }
+  var edge *yed.Edge
   if next != nil {
-    edge := edgeTo(s.anim_node, next)
+    edge = edgeTo(s.anim_node, next)
     face := s.shared.edge_data[edge].facing
     if face != 0 {
       s.facing = (s.facing + face + len(s.shared.facings)) % len(s.shared.facings)

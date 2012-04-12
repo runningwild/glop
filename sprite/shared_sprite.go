@@ -14,6 +14,8 @@ import (
 )
 
 type sharedSprite struct {
+  path string
+
   anim,state  *yed.Graph
   anim_start  *yed.Node
   state_start *yed.Node
@@ -47,6 +49,7 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
   // If we've made it this far then the sprite is probably well formed so we
   // can start putting all of the data together
   var ss sharedSprite
+  ss.path = path
   ss.anim = &anim.Graph
   ss.state = &state.Graph
 
