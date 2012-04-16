@@ -193,7 +193,7 @@ func verifyStateGraph(graph *yed.Graph) error {
 
 // A valid anim graph has the properties specified in verifyAnyGraph()
 func verifyAnimGraph(graph *yed.Graph) error {
-  err := verifyAnyGraph(graph, []string{"time", "sync"}, []string{"facing", "weight"})
+  err := verifyAnyGraph(graph, []string{"time", "sync", "func"}, []string{"facing", "weight"})
   if err != nil { return &spriteError{ fmt.Sprintf("Anim graph: %v", err) } }
 
   return nil
@@ -698,6 +698,12 @@ func (s *Sprite) Bind() (x,y,x2,y2 float64) {
 func (s *Sprite) Facing() int {
   return s.facing
 }
+func (s *Sprite) doTrigger() {
+  if s.shared.manager.trigger != nil &&
+     s.anim_node.Tag("func") != "" {
+    s.shared.manager.trigger(s, s.anim_node.Tag("func"))
+  }
+}
 func (s *Sprite) Think(dt int64) {
   if s.thinks == 0 {
     s.shared.facings[0].Load()
@@ -719,6 +725,7 @@ func (s *Sprite) Think(dt int64) {
       if t <= 0 {
         path = s.pending_cmds[0].group.paths[s]
         s.anim_node = path[0]
+        s.doTrigger()
         s.togo = s.shared.node_data[s.anim_node].time
         path = path[1:]
       }
@@ -780,6 +787,7 @@ func (s *Sprite) Think(dt int64) {
     }
   }
   s.anim_node = next
+  s.doTrigger()
   s.togo = s.shared.node_data[s.anim_node].time
   s.Think(dt)
 }
@@ -801,9 +809,29 @@ type FrameRect struct {
   X,Y,X2,Y2 int
 }
 
+// A trigger func is a function that is called when a certain frame of
+// animation is reached.  It is specified by line like "func:foo bar wingding"
+// in the animation graph, and such a line will mean that when that frame is
+// reached by any sprite with that graph the TriggerFunc foo will be called
+// with two parameters, the Sprite that reached that frame, and the text
+// "foo bar wingding".
+type TriggerFunc func(*Sprite, string)
+
 type Manager struct {
-  shared map[string]*sharedSprite
-  mutex sync.Mutex
+  shared  map[string]*sharedSprite
+  trigger TriggerFunc
+  mutex   sync.Mutex
+}
+
+// Sets the function that gets called when a sprite reaches a "trigger" tag.
+// This function will not be called concurrently with itself so long as
+// Sprites never Think() concurrently with each other.
+func (m *Manager) SetTriggerFunc(tf TriggerFunc) {
+  // I have no idea if locking here is necessary, but I don't think it could
+  // really hinder performance in any way, so might as well be safe.
+  m.mutex.Lock()
+  defer m.mutex.Unlock()
+  m.trigger = tf
 }
 func MakeManager() *Manager {
   var m Manager
@@ -819,6 +847,9 @@ func init() {
 func LoadSprite(path string) (*Sprite, error) {
   return the_manager.LoadSprite(path)
 }
+func SetTriggerFunc(tf TriggerFunc) {
+  the_manager.SetTriggerFunc(tf)
+}
 func (m *Manager) loadSharedSprite(path string) error {
   m.mutex.Lock()
   defer m.mutex.Unlock()
@@ -827,8 +858,12 @@ func (m *Manager) loadSharedSprite(path string) error {
   }
 
   ss,err := loadSharedSprite(path)
+  if err != nil {
+    return err
+  }
   m.shared[path] = ss
-  return err
+  ss.manager = m
+  return nil
 }
 
 func (m *Manager) LoadSprite(path string) (*Sprite, error) {

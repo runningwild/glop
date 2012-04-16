@@ -25,6 +25,8 @@ type sharedSprite struct {
 
   connector *sheet
   facings []*sheet
+
+  manager *Manager
 }
 
 func loadSharedSprite(path string) (*sharedSprite, error) {
