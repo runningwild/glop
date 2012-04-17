@@ -278,6 +278,9 @@ func (d *Dictionary) MaxHeight() float64 {
 }
 
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
+  if len(s) == 0 {
+    return
+  }
   strbuf, ok := d.strs[s]
   if !ok {
     defer d.RenderString(s, x, y, z, height, just)
