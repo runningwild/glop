@@ -51,7 +51,7 @@ func Choose2(_a interface{}, chooser interface{}) {
     panic("chooser must take exactly 1 input parameter")
   }
   if c.Type().In(0).Kind() != a.Elem().Type().Elem().Kind() {
-    panic(fmt.Sprintf("chooser's parameter must %v, not %v", c.Type().In(0), a.Addr().Elem()))
+    panic(fmt.Sprintf("chooser's parameter must be %v, not %v", a.Addr().Elem(), c.Type().In(0)))
   }
   if c.Type().NumOut() != 1 || c.Type().Out(0).Kind() != reflect.Bool {
     panic("chooser must have exactly 1 output parameter, a bool")
@@ -73,16 +73,6 @@ func Choose2(_a interface{}, chooser interface{}) {
     }
   }
   slice.Set(slice.Slice(0, slice.Len() - count))
-  fmt.Printf("Hits: %d\n", count)
-  // ret := reflect.MakeSlice(a.Type(), count, count)
-  // cur := 0
-  // for i := 0; i < a.Len(); i++ {
-  //   if choose(a.Index(i).Interface()) {
-  //     ret.Index(cur).Set(a.Index(i))
-  //     cur++
-  //   }
-  // }
-  // return ret.Interface()
 }
 
 type Mapper func(a interface{}) interface{}
@@ -106,3 +96,51 @@ func Map(_a interface{}, _b interface{}, mapper Mapper) interface{} {
 
   return ret.Interface()
 }
+
+func Map2(_in interface{}, _out interface{}, mapper interface{}) {
+  in := reflect.ValueOf(_in)
+  if in.Kind() != reflect.Slice {
+    panic(fmt.Sprintf("Can only Map from a slice, not a %v", in))
+  }
+
+  out := reflect.ValueOf(_out)
+  if out.Kind() != reflect.Ptr || out.Elem().Kind() != reflect.Slice {
+    panic(fmt.Sprintf("Can only Map to a pointer to a slice, not a %v", out))
+  }
+
+  m := reflect.ValueOf(mapper)
+  if m.Kind() != reflect.Func {
+    panic(fmt.Sprintf("mapper must be a func, not a %v", m))
+  }
+  if m.Type().NumIn() != 1 {
+    panic("chooser must take exactly 1 input parameter")
+  }
+  if m.Type().In(0).Kind() != in.Type().Elem().Kind() {
+    panic(fmt.Sprintf("mapper's parameter must be %v, not %v", in.Addr().Elem(), m.Type().In(0)))
+  }
+  if m.Type().NumOut() != 1 {
+    panic("chooser must have exactly 1 output parameter")
+  }
+  if m.Type().Out(0).Kind() != out.Elem().Type().Elem().Kind() {
+    panic(fmt.Sprintf("mapper's output parameter must be %v, not %v", out.Type().Elem().Kind(), m.Type().Out(0)))
+  }
+
+  if out.Elem().Len() < in.Len() {
+    slice := reflect.MakeSlice(out.Elem().Type(), in.Len(), in.Len())
+    out.Elem().Set(slice)
+  }
+
+  out.Elem().SetLen(in.Len())
+  for i := 0; i < out.Elem().Len(); i++ {
+    v := m.Call([]reflect.Value{in.Index(i)})
+    out.Elem().Index(i).Set(v[0])
+  }
+}
+
+
+
+
+
+
+
+
