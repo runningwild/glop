@@ -19,6 +19,17 @@ type TextEditLine struct {
   cursor cursor
 }
 
+var shift_mapping map[gin.KeyId]byte
+func init() {
+  lower := "abcdefghijklmnopqrstuvwxyz0123456789-=[];,./\\'"
+  upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ)!@#$%^&*(_+{}:<>?|\""
+  shift_mapping = make(map[gin.KeyId]byte)
+  for i := range lower {
+    shift_mapping[gin.KeyId(lower[i])] = upper[i]
+  }
+  shift_mapping[' '] = 0
+}
+
 func (w *TextEditLine) String() string {
   return "text edit line"
 }
@@ -90,11 +101,11 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus 
   }
   key_id := event.Key.Id()
   if event_group.Focus {
-    if key_id == gin.Escape {
+    if key_id == gin.Escape || key_id == gin.Return {
       change_focus = true
       return
     }
-    if key_id == gin.Backspace {
+    if found, _ := event_group.FindEvent(gin.Backspace); found {
       if len(w.text) > 0 && w.cursor.index > 0 {
         var pre, post string
         if w.cursor.index > 0 {
@@ -107,8 +118,11 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus 
         w.cursor.index--
         w.cursor.moved = true
       }
-    } else if key_id > 0 && key_id <= 127 && event.Type == gin.Press {
-      w.SetText(w.text[0:w.cursor.index] + string([]byte{byte(key_id)}) + w.text[w.cursor.index:])
+    } else if v, ok := shift_mapping[key_id]; ok {
+      if v == 0 || !gin.In().GetKey(gin.EitherShift).IsDown() {
+        v = byte(key_id)
+      }
+      w.SetText(w.text[0:w.cursor.index] + string([]byte{v}) + w.text[w.cursor.index:])
       w.cursor.index++
       w.cursor.moved = true
     } else if key_id == gin.MouseLButton {
@@ -116,6 +130,16 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus 
       cx := w.TextLine.Render_region.X
       w.cursor.index = w.findIndexAtOffset(x - cx)
       w.cursor.moved = true
+    } else if found, _ := event_group.FindEvent(gin.Left); found {
+      if w.cursor.index > 0 {
+        w.cursor.index--
+        w.cursor.moved = true
+      }
+    } else if found, _ := event_group.FindEvent(gin.Right); found {
+      if w.cursor.index < len(w.text) {
+        w.cursor.index++
+        w.cursor.moved = true
+      }
     }
     consume = true
   } else {
