@@ -115,6 +115,7 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
   ss.connector.Load()
   ss.anim_start = getStartNode(ss.anim)
   ss.state_start = getStartNode(ss.state)
+
   ss.process()
 
   return &ss, nil
@@ -142,6 +143,75 @@ func figureConnectors(anim *yed.Graph, limit int) []*yed.Node {
     ret = append(ret, anim.Node(reach))
   }
   return ret
+}
+
+func (ss *sharedSprite) markNodesWithState(node *yed.Node, state string) {
+  used := make(map[*yed.Node]bool)
+  unused := make(map[*yed.Node]bool)
+  unused[node] = true
+  for len(unused) > 0 {
+    for node = range unused {
+      break
+    }
+    delete(unused, node)
+    used[node] = true
+    data := ss.node_data[node]
+    data.state = state
+    ss.node_data[node] = data
+    for i := 0; i < node.NumGroupOutputs(); i++ {
+      edge := node.GroupOutput(i)
+      if edge.Line(0) != "" {
+        continue
+      }
+      n := edge.Dst()
+      if ss.node_data[n].state != "" {
+        continue
+      }
+      if !used[n] {
+        unused[n] = true
+      }
+    }
+  }
+}
+
+func (ss *sharedSprite) findCmdFromAnimNode(node *yed.Node, cmd string) *yed.Node {
+  used := make(map[*yed.Node]bool)
+  unused := make(map[*yed.Node]bool)
+  unused[node] = true
+  for len(unused) > 0 {
+    for node = range unused {
+      break
+    }
+    delete(unused, node)
+    used[node] = true
+    for i := 0; i < node.NumGroupOutputs(); i++ {
+      edge := node.GroupOutput(i)
+      if edge.NumLines() > 0 && edge.Line(0) == cmd {
+        return edge.Dst()
+      }
+      n := edge.Dst()
+      if !used[n] {
+        unused[n] = true
+      }
+    }
+  }
+  return nil
+}
+
+func (ss *sharedSprite) markAnimFramesWithState(anim, state *yed.Node) {
+  if ss.node_data[anim].state != "" {
+    return
+  }
+  ss.markNodesWithState(anim, state.Line(0))
+  for i := 0; i < state.NumGroupOutputs(); i++ {
+    edge := state.GroupOutput(i)
+    cmd := edge.Line(0)
+    if cmd == "" {
+      continue
+    }
+    next_anim := ss.findCmdFromAnimNode(anim, cmd)
+    ss.markAnimFramesWithState(next_anim, edge.Dst())
+  }
 }
 
 func (ss *sharedSprite) process() {
@@ -182,5 +252,11 @@ func (ss *sharedSprite) process() {
   }
   proc_graph(ss.anim)
   proc_graph(ss.state)
+
+  ss.markAnimFramesWithState(ss.anim_start, ss.state_start)
+  for i := 0; i < ss.anim.NumNodes(); i++ {
+    node := ss.anim.Node(i)
+    fmt.Printf("%s -> %s\n", node.Line(0), ss.node_data[node].state)
+  }
 }
 

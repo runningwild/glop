@@ -354,10 +354,6 @@ type Sprite struct {
   // processed by the anim graph.  When path is empty a cmd will be taken from
   // this list and be used to generate the next path.
   pending_cmds []command
-
-  // Used to keep track of the state that the current frame of animation
-  // represents.
-  anim_states []string
 }
 
 type command struct {
@@ -444,10 +440,7 @@ func (s *Sprite) Anim() string {
   return s.anim_node.Line(0)
 }
 func (s *Sprite) AnimState() string {
-  if len(s.anim_states) == 0 {
-    return s.State()
-  }
-  return s.anim_states[0]
+  return s.shared.node_data[s.anim_node].state
 }
 
 func connectedByGroupEdge(n1, n2 *yed.Node) bool {
@@ -528,7 +521,6 @@ func (s *Sprite) baseCommand(cmd command) bool {
     state_node = state_edge.Dst()
   }
   for _, name := range cmd.names {
-    s.anim_states = append(s.anim_states, s.state_node.Line(0))
     edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{name})
     s.state_node = edge.Dst()
   }
@@ -778,13 +770,6 @@ func (s *Sprite) Think(dt int64) {
     if face != 0 {
       s.facing = (s.facing + face + len(s.shared.facings)) % len(s.shared.facings)
     }
-    if s.shared.edge_data[edge].cmd != "" {
-      if len(s.anim_states) == 0 {
-        s.anim_states = nil
-      } else {
-        s.anim_states = s.anim_states[1:]
-      }
-    }
   }
   s.anim_node = next
   s.doTrigger()
@@ -795,6 +780,9 @@ func (s *Sprite) Think(dt int64) {
 type nodeData struct {
   time     int64
   sync_tag string
+
+  // The state that this frame of animation belongs to
+  state string
 }
 type edgeData struct {
   facing int
