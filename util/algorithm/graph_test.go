@@ -78,6 +78,10 @@ func ReachableSpec(c gospec.Context) {
     reach = algorithm.ReachableWithinLimit(board(b), []int{21, 27}, 2)
     c.Expect(reach, ContainsInOrder, []int{13, 14, 15, 20, 21, 22, 23, 25, 26, 27})
   })
+  c.Specify("Check bounds with multiple sources", func() {
+    reach := algorithm.ReachableWithinBounds(board(b), []int{0, 6}, 2, 4)
+    c.Expect(reach, ContainsInOrder, []int{1, 5, 8, 12, 19, 20, 26, 27})
+  })
 }
 
 type adag [][]int

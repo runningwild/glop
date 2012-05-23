@@ -46,34 +46,36 @@ func (da *dArray) Pop() interface{} {
 // Returns the list of vertices that can be reached from the vertices in src with total
 // path weight <= limit.
 func ReachableWithinLimit(g Graph, src []int, limit float64) []int {
+  return ReachableWithinBounds(g, src, 0, limit)
+}
+
+// Returns the list of vertices whose shortest path from the sources are of
+// length that satisfies min <= length <= max
+func ReachableWithinBounds(g Graph, src []int, min, max float64) []int {
   used := make([]bool, g.NumVertex())
   h := make(dArray, len(src))
   for i, s := range src {
     h[i] = dNode{v: s, weight: 0}
   }
 
+  var ret []int
   for len(h) > 0 {
     cur := heap.Pop(&h).(dNode)
     if used[cur.v] {
       continue
     }
-    if cur.weight > limit {
+    if cur.weight > max {
       break
     }
     used[cur.v] = true
+    if cur.weight >= min {
+      ret = append(ret, cur.v)
+    }
     adj, weights := g.Adjacent(cur.v)
     for i := range adj {
       heap.Push(&h, dNode{v: adj[i], weight: weights[i] + cur.weight})
     }
   }
-
-  var ret []int
-  for v := range used {
-    if used[v] {
-      ret = append(ret, v)
-    }
-  }
-
   sort.Ints(ret)
   return ret
 }
