@@ -36,13 +36,14 @@ func (aig *AiGraph) Term() chan<- error {
   return aig.term
 }
 
-func (aig *AiGraph) subEval(node *yed.Node) error {
+func (aig *AiGraph) subEval(labels *[]string, node *yed.Node) error {
   select {
     case err := <-aig.term:
     return err
 
     default:
   }
+  *labels = append(*labels, node.Label())
   res, err := aig.Context.Eval(node.Label())
   if err != nil {
     return err
@@ -89,15 +90,17 @@ func (aig *AiGraph) subEval(node *yed.Node) error {
     return nil
   }
   follow := edges[rand.Intn(len(edges))]
-  return aig.subEval(follow.Dst())
+  return aig.subEval(labels, follow.Dst())
 }
 
-func (aig *AiGraph) Eval() error {
+func (aig *AiGraph) Eval() ([]string, error) {
+  var labels []string
   for i := 0; i < aig.Graph.NumNodes(); i++ {
     node := aig.Graph.Node(i)
     if node.Label() == "start" {
-      return aig.subEval(node.Output(0).Dst())
+      err := aig.subEval(&labels, node.Output(0).Dst())
+      return labels, err
     }
   }
-  return StartError
+  return labels, StartError
 }
