@@ -541,6 +541,10 @@ func (s *Sprite) baseCommand(cmd command) bool {
   return true
 }
 
+func (s *Sprite) NumPendingCmds() int {
+  return len(s.pending_cmds)
+}
+
 func (s *Sprite) Command(cmd string) {
   s.baseCommand(command{ names: []string{cmd}, group: nil })
 }
