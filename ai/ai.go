@@ -1,6 +1,7 @@
 package ai
 
 import (
+  "fmt"
   "github.com/runningwild/yedparse"
   "github.com/runningwild/polish"
   "math/rand"
@@ -36,17 +37,22 @@ func (aig *AiGraph) Term() chan<- error {
   return aig.term
 }
 
-func (aig *AiGraph) subEval(labels *[]string, node *yed.Node) error {
+func (aig *AiGraph) subEval(labels *[]string, node *yed.Node) (out_node *yed.Node, err error) {
+  defer func() {
+    if r := recover(); r != nil {
+      err = &Error{fmt.Sprintf("%v", r)}
+    }
+  } ()
   select {
     case err := <-aig.term:
-    return err
+    return nil, err
 
     default:
   }
   *labels = append(*labels, node.Label())
   res, err := aig.Context.Eval(node.Label())
   if err != nil {
-    return err
+    return nil, err
   }
   var red,green,black []*yed.Edge
   for i := 0; i < node.NumOutputs(); i++ {
@@ -87,20 +93,40 @@ func (aig *AiGraph) subEval(labels *[]string, node *yed.Node) error {
   }
 
   if len(edges) == 0 {
-    return nil
+    return nil, nil
   }
   follow := edges[rand.Intn(len(edges))]
-  return aig.subEval(labels, follow.Dst())
+  return follow.Dst(), nil
 }
 
-func (aig *AiGraph) Eval() ([]string, error) {
+// chunk_size is the number of nodes that will be evaluated at a time.
+// After that many nodes are evaluated, if evaluation has not already
+// terminated, cont will be called and evaluation will only continue if
+// cont returns true. 
+func (aig *AiGraph) Eval(chunk_size int, cont func() bool) ([]string, error) {
   var labels []string
+  var node *yed.Node
   for i := 0; i < aig.Graph.NumNodes(); i++ {
-    node := aig.Graph.Node(i)
+    node = aig.Graph.Node(i)
     if node.Label() == "start" {
-      err := aig.subEval(&labels, node.Output(0).Dst())
-      return labels, err
+      break
     }
   }
-  return labels, StartError
+  if node == nil || node.NumOutputs() == 0 {
+    return labels, StartError
+  }
+  node = node.Output(0).Dst()
+  var err error
+  for node != nil {
+    for i := 0; i < chunk_size && node != nil; i++ {
+      node, err = aig.subEval(&labels, node)
+      if err != nil {
+        return labels, err
+      }
+    }
+    if !cont() {
+      break
+    }
+  }
+  return labels, nil
 }
