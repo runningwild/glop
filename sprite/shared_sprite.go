@@ -254,9 +254,5 @@ func (ss *sharedSprite) process() {
   proc_graph(ss.state)
 
   ss.markAnimFramesWithState(ss.anim_start, ss.state_start)
-  for i := 0; i < ss.anim.NumNodes(); i++ {
-    node := ss.anim.Node(i)
-    fmt.Printf("%s -> %s\n", node.Line(0), ss.node_data[node].state)
-  }
 }
 
