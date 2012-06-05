@@ -80,6 +80,39 @@ func ReachableWithinBounds(g Graph, src []int, min, max float64) []int {
   return ret
 }
 
+// Returns a list of all elements in dst that can be reached by some element
+// in src.
+func ReachableDestinations(g Graph, src []int, dst []int) []int {
+  cur := make([]int, len(src))
+  copy(cur, src)
+  used := make([]bool, g.NumVertex())
+  target := make(map[int]bool, len(dst))
+  for _, d := range dst {
+    target[d] = true
+  }
+  var reachable []int
+  for len(cur) > 0 && len(target) > 0 {
+    v := cur[0]
+    cur = cur[1:]
+    if used[v] {
+      continue
+    }
+    used[v] = true
+    if target[v] {
+      reachable = append(reachable, v)
+      delete(target, v)
+    }
+    adj, _ := g.Adjacent(v)
+    for _, a := range adj {
+      if !used[a] {
+        cur = append(cur, a)
+      }
+    }
+  }
+  sort.Ints(reachable)
+  return reachable
+}
+
 func Dijkstra(g Graph, src []int, dst []int) (float64, []int) {
   used := make([]bool, g.NumVertex())
   conn := make([]int, g.NumVertex())

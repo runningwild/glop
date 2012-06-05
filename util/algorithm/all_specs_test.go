@@ -9,6 +9,7 @@ func TestAllSpecs(t *testing.T) {
   r := gospec.NewRunner()
   r.AddSpec(DijkstraSpec)
   r.AddSpec(ReachableSpec)
+  r.AddSpec(ReachableDestinationsSpec)
   r.AddSpec(ChooserSpec)
   r.AddSpec(Chooser2Spec)
   r.AddSpec(MapperSpec)

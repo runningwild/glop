@@ -16,19 +16,19 @@ func (b board) Adjacent(n int) ([]int, []float64) {
   y := n / len(b[0])
   var adj []int
   var weight []float64
-  if x > 0 {
+  if x > 0 && b[y][x-1] > 0 {
     adj = append(adj, n-1)
     weight = append(weight, float64(b[y][x-1]))
   }
-  if y > 0 {
+  if y > 0 && b[y-1][x] > 0  {
     adj = append(adj, n-len(b[0]))
     weight = append(weight, float64(b[y-1][x]))
   }
-  if x < len(b[0])-1 {
+  if x < len(b[0])-1 && b[y][x+1] > 0  {
     adj = append(adj, n+1)
     weight = append(weight, float64(b[y][x+1]))
   }
-  if y < len(b)-1 {
+  if y < len(b)-1 && b[y+1][x] > 0  {
     adj = append(adj, n+len(b[0]))
     weight = append(weight, float64(b[y+1][x]))
   }
@@ -81,6 +81,21 @@ func ReachableSpec(c gospec.Context) {
   c.Specify("Check bounds with multiple sources", func() {
     reach := algorithm.ReachableWithinBounds(board(b), []int{0, 6}, 2, 4)
     c.Expect(reach, ContainsInOrder, []int{1, 5, 8, 12, 19, 20, 26, 27})
+  })
+}
+
+func ReachableDestinationsSpec(c gospec.Context) {
+  b := [][]int{
+    []int{1, 2, 9, 4, 0, 2, 1}, // 0 - 6
+    []int{0, 0, 0, 0, 0, 1, 1}, // 7 - 13
+    []int{2, 1, 5, 5, 0, 2, 1}, // 14 - 20
+    []int{1, 1, 1, 9, 0, 1, 1}, // 21 - 27
+  }
+  c.Specify("Check reachability", func() {
+    reachable := algorithm.ReachableDestinations(board(b), []int{14}, []int{0, 2, 5, 13, 17, 22})
+    c.Expect(reachable, ContainsInOrder, []int{17, 22})
+    reachable = algorithm.ReachableDestinations(board(b), []int{1, 26}, []int{0, 2, 5, 13, 17, 22})
+    c.Expect(reachable, ContainsInOrder, []int{0, 2, 5, 13})
   })
 }
 
