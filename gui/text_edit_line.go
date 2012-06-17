@@ -94,7 +94,22 @@ func (w *TextEditLine) DoThink(t int64, focus bool) {
   }
 }
 
+func (w *TextEditLine) IsBeingEdited() bool {
+  return w.cursor.start > 0
+}
+
+func (w *TextEditLine) SetText(text string) {
+  max := (w.cursor.index >= len(w.text))
+  w.TextLine.SetText(text)
+  if max || w.cursor.index > len(w.text) {
+    w.cursor.index = len(w.text)
+  }
+}
+
 func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus bool) {
+  if w.cursor.index > len(w.text) {
+    w.cursor.index = len(w.text)
+  }
   event := event_group.Events[0]
   if event.Type != gin.Press {
     return
