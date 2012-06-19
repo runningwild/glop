@@ -106,6 +106,19 @@ func (w *TextEditLine) SetText(text string) {
   }
 }
 
+func characterFromEventGroup(event_group EventGroup) byte {
+  for _, event := range event_group.Events {
+    if v, ok := shift_mapping[event.Key.Id()]; ok {
+      if gin.In().GetKey(gin.EitherShift).IsDown() {
+        return v
+      } else {
+        return byte(event.Key.Id())
+      }
+    }
+  }
+  return 0
+}
+
 func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus bool) {
   if w.cursor.index > len(w.text) {
     w.cursor.index = len(w.text)
@@ -133,10 +146,7 @@ func (w *TextEditLine) DoRespond(event_group EventGroup) (consume, change_focus 
         w.cursor.index--
         w.cursor.moved = true
       }
-    } else if v, ok := shift_mapping[key_id]; ok {
-      if v == 0 || !gin.In().GetKey(gin.EitherShift).IsDown() {
-        v = byte(key_id)
-      }
+    } else if v := characterFromEventGroup(event_group); v != 0 {
       w.SetText(w.text[0:w.cursor.index] + string([]byte{v}) + w.text[w.cursor.index:])
       w.cursor.index++
       w.cursor.moved = true
