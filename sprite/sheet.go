@@ -9,7 +9,7 @@ import (
   "os"
   "path/filepath"
   "github.com/runningwild/glop/render"
-  "github.com/runningwild/glop/memory"
+  "github.com/runningwild/memory"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
   "github.com/runningwild/yedparse"
