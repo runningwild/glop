@@ -231,6 +231,7 @@ type Dictionary struct {
   texture uint32
 
   strs map[string]strBuffer
+  pars map[string]strBuffer
 
   dlists map[string]uint32
 }
@@ -275,6 +276,56 @@ const (
 
 func (d *Dictionary) MaxHeight() float64 {
   return float64(d.data.Maxy - d.data.Miny)
+}
+
+func (d *Dictionary) split(s string, dx, height float64) []string {
+  var lines []string
+  var line []rune
+  var word []rune
+  pos := 0.0
+  for _, r := range s {
+    if r == ' ' {
+      if len(line) > 0 {
+        line = append(line, ' ')
+      }
+      for _, r := range word {
+        line = append(line, r)
+      }
+      word = word[0:0]
+    } else {
+      word = append(word, r)
+    }
+    pos += d.getInfo(r).Advance * height / d.MaxHeight()
+    if pos >= dx {
+      pos = 0.0
+      for _, r := range word {
+        pos += d.getInfo(r).Advance * height / d.MaxHeight()
+      }
+      lines = append(lines, string(line))
+      line = line[0:0]
+    }
+  }
+  if pos < dx {
+    if len(line) > 0 {
+      line = append(line, ' ')
+    }
+    for _, r := range word {
+      line = append(line, r)
+    }
+    lines = append(lines, string(line))
+  } else {
+    lines = append(lines, string(line))
+    lines = append(lines, string(word))
+  }
+  return lines
+}
+
+func (d *Dictionary) RenderParagraph(s string, x, y, z, dx, height float64, just Justification) {
+  lines := d.split(s, dx, height)
+  for _, line := range lines {
+    d.RenderString(line, x, y, z, height, just)
+    y -= height
+  }
 }
 
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
@@ -372,7 +423,6 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
   gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, strbuf.ibuffer)
   gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(strbuf.is[0]))*len(strbuf.is)), gl.Pointer(&strbuf.is[0]), gl.STATIC_DRAW)
   d.strs[s] = strbuf
-
 }
 
 // Renders the string on the quad spanning the specified coordinates.  The
@@ -536,6 +586,7 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
 func (d *Dictionary) setupGlStuff() {
   d.dlists = make(map[string]uint32)
   d.strs = make(map[string]strBuffer)
+  d.pars = make(map[string]strBuffer)
   // TODO: This finalizer is untested
   runtime.SetFinalizer(d, func(d *Dictionary) {
     render.Queue(func() {
