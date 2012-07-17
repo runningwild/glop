@@ -23,13 +23,14 @@ const (
 type spriteError struct {
   Msg string
 }
+
 func (e *spriteError) Error() string {
   return e.Msg
 }
 
 // attempt to make a relative path, otherwise leaves it alone
-func tryRelPath(base,path string) string {
-  rel,err := filepath.Rel(base, path)
+func tryRelPath(base, path string) string {
+  rel, err := filepath.Rel(base, path)
   if err == nil {
     return rel
   }
@@ -51,14 +52,14 @@ func getStartNode(g *yed.Graph) *yed.Node {
 // * It has exactly one node that has the tag "mark" : "start"
 // * All nodes in the graph can be reached by starting at the start node
 // * All nodes and edges have only the specified tags
-func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
+func verifyAnyGraph(graph *yed.Graph, node_tags, edge_tags []string) error {
   valid_node_tags := make(map[string]bool)
-  for _,tag := range node_tags {
+  for _, tag := range node_tags {
     valid_node_tags[tag] = true
   }
 
   valid_edge_tags := make(map[string]bool)
-  for _,tag := range edge_tags {
+  for _, tag := range edge_tags {
     valid_edge_tags[tag] = true
   }
 
@@ -66,7 +67,7 @@ func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
   for i := 0; i < graph.NumNodes(); i++ {
     node := graph.Node(i)
     if node.NumLines() == 0 || strings.Contains(node.Line(0), ":") {
-      return &spriteError{ "contains an unlabeled node" }
+      return &spriteError{"contains an unlabeled node"}
     }
   }
 
@@ -77,12 +78,12 @@ func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
       if start == nil {
         start = graph.Node(i)
       } else {
-        return &spriteError{ "more than one node is marked as the start node" }
+        return &spriteError{"more than one node is marked as the start node"}
       }
     }
   }
   if start == nil {
-    return &spriteError{ "no start node was found" }
+    return &spriteError{"no start node was found"}
   }
 
   // Check that all nodes can be reached by the start node
@@ -94,11 +95,11 @@ func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
     for node := range next {
       nodes = append(nodes, node)
     }
-    for _,node := range nodes {
+    for _, node := range nodes {
       delete(next, node)
       used[node] = true
     }
-    for _,node := range nodes {
+    for _, node := range nodes {
       // Traverse the parent
       if node.Group() != nil && !used[node.Group()] {
         next[node.Group()] = true
@@ -119,15 +120,15 @@ func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
     }
   }
   if len(used) != graph.NumNodes() {
-    return &spriteError{ "not all nodes are reachable from the start node" }
+    return &spriteError{"not all nodes are reachable from the start node"}
   }
 
   // Check that nodes only have the specified tags
   for i := 0; i < graph.NumNodes(); i++ {
     node := graph.Node(i)
-    for _,tag := range node.TagKeys() {
-      if !(valid_node_tags[tag] || (node == start && tag == "mark")){
-        return &spriteError{ fmt.Sprintf("a node has an unknown tag (%s)", tag) }
+    for _, tag := range node.TagKeys() {
+      if !(valid_node_tags[tag] || (node == start && tag == "mark")) {
+        return &spriteError{fmt.Sprintf("a node has an unknown tag (%s)", tag)}
       }
     }
   }
@@ -135,9 +136,9 @@ func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
   // Check that edges only have the specified tags
   for i := 0; i < graph.NumEdges(); i++ {
     edge := graph.Edge(i)
-    for _,tag := range edge.TagKeys() {
+    for _, tag := range edge.TagKeys() {
       if !valid_edge_tags[tag] {
-        return &spriteError{ fmt.Sprintf("an edge has an unknown tag (%s)", tag) }
+        return &spriteError{fmt.Sprintf("an edge has an unknown tag (%s)", tag)}
       }
     }
   }
@@ -153,7 +154,9 @@ func verifyAnyGraph(graph *yed.Graph, node_tags,edge_tags []string) error {
 // * There are no groups
 func verifyStateGraph(graph *yed.Graph) error {
   err := verifyAnyGraph(graph, []string{}, []string{"facing"})
-  if err != nil { return &spriteError{ fmt.Sprintf("State graph: %v", err) } }
+  if err != nil {
+    return &spriteError{fmt.Sprintf("State graph: %v", err)}
+  }
 
   start := getStartNode(graph)
 
@@ -161,7 +164,7 @@ func verifyStateGraph(graph *yed.Graph) error {
   for i := 0; i < start.NumOutputs(); i++ {
     edge := start.Output(i)
     if edge.NumLines() == 0 || strings.Contains(edge.Line(0), ":") {
-      return &spriteError{ "State graph: The start node has an unlabeled output edge" }
+      return &spriteError{"State graph: The start node has an unlabeled output edge"}
     }
   }
 
@@ -175,8 +178,8 @@ func verifyStateGraph(graph *yed.Graph) error {
         num_labels++
       }
     }
-    if num_labels < node.NumOutputs() - 1 {
-      return &spriteError{ fmt.Sprintf("State graph: Found more than one unlabeled output edge on node '%s'", node.Line(0)) }
+    if num_labels < node.NumOutputs()-1 {
+      return &spriteError{fmt.Sprintf("State graph: Found more than one unlabeled output edge on node '%s'", node.Line(0))}
     }
   }
 
@@ -184,7 +187,7 @@ func verifyStateGraph(graph *yed.Graph) error {
   for i := 0; i < graph.NumNodes(); i++ {
     node := graph.Node(i)
     if node.NumChildren() > 0 {
-      return &spriteError{ "State graph: cannot contain groups" }
+      return &spriteError{"State graph: cannot contain groups"}
     }
   }
 
@@ -194,7 +197,9 @@ func verifyStateGraph(graph *yed.Graph) error {
 // A valid anim graph has the properties specified in verifyAnyGraph()
 func verifyAnimGraph(graph *yed.Graph) error {
   err := verifyAnyGraph(graph, []string{"time", "sync", "func"}, []string{"facing", "weight"})
-  if err != nil { return &spriteError{ fmt.Sprintf("Anim graph: %v", err) } }
+  if err != nil {
+    return &spriteError{fmt.Sprintf("Anim graph: %v", err)}
+  }
 
   return nil
 }
@@ -215,7 +220,7 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
     }
 
     // skip hidden files
-    if _,file := filepath.Split(cpath); file[0] == '.' {
+    if _, file := filepath.Split(cpath); file[0] == '.' {
       return nil
     }
 
@@ -224,20 +229,22 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
       return filepath.SkipDir
     } else {
       switch {
-        case info.Name() == "anim.xgml":
-        case info.Name() == "state.xgml":
-        case info.Name() == "thumb.png":
-        case strings.HasSuffix(info.Name(), ".gob"):
-        default:
-          err = &spriteError{ fmt.Sprintf("Unexpected file found in sprite directory, %s", tryRelPath(path, cpath)) }
-          return err
+      case info.Name() == "anim.xgml":
+      case info.Name() == "state.xgml":
+      case info.Name() == "thumb.png":
+      case strings.HasSuffix(info.Name(), ".gob"):
+      default:
+        err = &spriteError{fmt.Sprintf("Unexpected file found in sprite directory, %s", tryRelPath(path, cpath))}
+        return err
       }
     }
     return nil
   })
-  if err != nil { return }
+  if err != nil {
+    return
+  }
   if num_facings == 0 {
-    err = &spriteError{ "Found no facings in the sprite directory" }
+    err = &spriteError{"Found no facings in the sprite directory"}
     return
   }
 
@@ -246,7 +253,7 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
   // ignored.
   valid_names := make(map[string]bool)
   for i := 0; i < graph.NumNodes(); i++ {
-    valid_names[graph.Node(i).Line(0) + ".png"] = true
+    valid_names[graph.Node(i).Line(0)+".png"] = true
   }
 
   filenames_map := make(map[string]bool)
@@ -262,12 +269,12 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
       }
 
       // skip hidden files
-      if _,file := filepath.Split(cpath); file[0] == '.' {
+      if _, file := filepath.Split(cpath); file[0] == '.' {
         return nil
       }
 
       if info.IsDir() {
-        err = &spriteError{ fmt.Sprintf("Found a directory inside facing directory %d, %s", facing, tryRelPath(path, cpath)) }
+        err = &spriteError{fmt.Sprintf("Found a directory inside facing directory %d, %s", facing, tryRelPath(path, cpath))}
         return err
       }
       if filepath.Ext(cpath) == ".png" {
@@ -275,7 +282,7 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
         if valid_names[base] {
           filenames_map[base] = true
         } else {
-          err = &spriteError{ fmt.Sprintf("Found an unused .png file: %s", tryRelPath(path, cpath))}
+          err = &spriteError{fmt.Sprintf("Found an unused .png file: %s", tryRelPath(path, cpath))}
         }
         return err
       }
@@ -296,6 +303,7 @@ func verifyDirectoryStructure(path string, graph *yed.Graph) (num_facings int, f
 type animAlgoGraph struct {
   anim *yed.Graph
 }
+
 func (cg *animAlgoGraph) NumVertex() int {
   return cg.anim.NumNodes()
 }
@@ -304,7 +312,7 @@ func (cg *animAlgoGraph) Adjacent(n int) (adj []int, cost []float64) {
 
   var delay float64 = defaultFrameTime
   if node.Tag("time") != "" {
-    t,err := strconv.ParseFloat(node.Tag("time"), 64)
+    t, err := strconv.ParseFloat(node.Tag("time"), 64)
     if err == nil {
       delay = t
     } else {
@@ -327,8 +335,25 @@ func (cg *animAlgoGraph) Adjacent(n int) (adj []int, cost []float64) {
   return
 }
 
+type waiter struct {
+  // Any state mentioned here is acceptable to signal the waiter
+  states []string
+
+  c chan struct{}
+}
+
+func (s *Sprite) Wait(states []string) {
+  s.waiter_mutex.Lock()
+  var w waiter
+  w.states = states
+  w.c = make(chan struct{}, 1)
+  s.waiters = append(s.waiters, &w)
+  s.waiter_mutex.Unlock()
+  <-w.c
+}
+
 type Sprite struct {
-  shared *sharedSprite
+  shared     *sharedSprite
   anim_node  *yed.Node
   state_node *yed.Node
 
@@ -354,10 +379,13 @@ type Sprite struct {
   // processed by the anim graph.  When path is empty a cmd will be taken from
   // this list and be used to generate the next path.
   pending_cmds []command
+
+  waiter_mutex sync.Mutex
+  waiters      []*waiter
 }
 
 type command struct {
-  names []string  // List of names of edges
+  names []string // List of names of edges
 
   group *commandGroup
 }
@@ -368,7 +396,7 @@ type commandGroup struct {
 
   // all of the sprites in this list must have this commandGroup as part of
   // their next command to execute before any of them will execute it.
-  sprites  []*Sprite
+  sprites []*Sprite
 
   // If ready() ever returns true then this will be set to true and read()
   // will always return true after that.  This prevents a situation where one
@@ -390,9 +418,15 @@ func (cg *commandGroup) ready() bool {
     return true
   }
   for _, sp := range cg.sprites {
-    if len(sp.path) > 0 { return false }
-    if len(sp.pending_cmds) == 0 { return false }  // This one is a serious problem
-    if sp.pending_cmds[0].group != cg { return false }
+    if len(sp.path) > 0 {
+      return false
+    }
+    if len(sp.pending_cmds) == 0 {
+      return false
+    } // This one is a serious problem
+    if sp.pending_cmds[0].group != cg {
+      return false
+    }
   }
   // Everyone is ready, so we'll check how long it's going to take each one to
   // get to the sync node and save that data.
@@ -458,14 +492,16 @@ func connectedByGroupEdge(n1, n2 *yed.Node) bool {
 // found in edge_data
 func selectAnEdge(node *yed.Node, edge_data map[*yed.Edge]edgeData, cmds []string) *yed.Edge {
   cmd_map := make(map[string]bool)
-  for _,cmd := range cmds {
+  for _, cmd := range cmds {
     cmd_map[cmd] = true
   }
 
   total := 0.0
   for i := 0; i < node.NumOutputs(); i++ {
     edge := node.Output(i)
-    if _,ok := cmd_map[edge_data[edge].cmd]; !ok { continue }
+    if _, ok := cmd_map[edge_data[edge].cmd]; !ok {
+      continue
+    }
     total += edge_data[edge].weight
   }
   if total > 0 {
@@ -473,7 +509,9 @@ func selectAnEdge(node *yed.Node, edge_data map[*yed.Edge]edgeData, cmds []strin
     total = 0.0
     for i := 0; i < node.NumOutputs(); i++ {
       edge := node.Output(i)
-      if _,ok := cmd_map[edge_data[edge].cmd]; !ok { continue }
+      if _, ok := cmd_map[edge_data[edge].cmd]; !ok {
+        continue
+      }
       total += edge_data[edge].weight
       if total >= pick {
         return edge
@@ -485,7 +523,7 @@ func selectAnEdge(node *yed.Node, edge_data map[*yed.Edge]edgeData, cmds []strin
 
 // Returns the edge that leads from a, or an ancestor of a, to b, or an
 // ancestor of b
-func edgeTo(a,b *yed.Node) *yed.Edge {
+func edgeTo(a, b *yed.Node) *yed.Edge {
   for i := 0; i < a.NumGroupOutputs(); i++ {
     edge := a.GroupOutput(i)
     for cb := b; cb != nil; cb = cb.Group() {
@@ -517,7 +555,9 @@ func (s *Sprite) baseCommand(cmd command) bool {
   state_node := s.state_node
   for _, name := range cmd.names {
     state_edge := selectAnEdge(state_node, s.shared.edge_data, []string{name})
-    if state_edge == nil { return false }
+    if state_edge == nil {
+      return false
+    }
     state_node = state_edge.Dst()
   }
   for _, name := range cmd.names {
@@ -538,6 +578,7 @@ func (s *Sprite) baseCommand(cmd command) bool {
   }
 
   s.pending_cmds = append(s.pending_cmds, cmd)
+  fmt.Printf("Sucessfully did: %v", cmd.names)
   return true
 }
 
@@ -546,11 +587,11 @@ func (s *Sprite) NumPendingCmds() int {
 }
 
 func (s *Sprite) Command(cmd string) {
-  s.baseCommand(command{ names: []string{cmd}, group: nil })
+  s.baseCommand(command{names: []string{cmd}, group: nil})
 }
 
 func (s *Sprite) CommandN(cmds []string) {
-  s.baseCommand(command{ names: cmds, group: nil })
+  s.baseCommand(command{names: cmds, group: nil})
 }
 
 // This is a specialized wrapper around a yed.Graph that allows for the start
@@ -567,6 +608,7 @@ type pathingGraph struct {
   // or if the command associated with them is the same as this command.
   cmd string
 }
+
 func (p pathingGraph) NumVertex() int {
   return p.shared.anim.NumNodes() + 1
 }
@@ -603,7 +645,7 @@ func (s *Sprite) findPathForSyncedCmd(cmd command, anim_node *yed.Node) []*yed.N
   }
   var extra []*yed.Node
   adds := make(map[*yed.Node]bool)
-  tail := path[len(path) - 1]
+  tail := path[len(path)-1]
   edge := selectAnEdge(tail, s.shared.edge_data, []string{""})
   for !adds[tail] && edge != nil {
     adds[tail] = true
@@ -614,7 +656,7 @@ func (s *Sprite) findPathForSyncedCmd(cmd command, anim_node *yed.Node) []*yed.N
     }
     edge = selectAnEdge(tail, s.shared.edge_data, []string{""})
   }
-  if len(extra) > 0 && extra[len(extra) - 1].Tag("sync") == cmd.group.sync_tag {
+  if len(extra) > 0 && extra[len(extra)-1].Tag("sync") == cmd.group.sync_tag {
     for _, node := range extra {
       path = append(path, node)
     }
@@ -626,7 +668,7 @@ func (s *Sprite) findPathForSyncedCmd(cmd command, anim_node *yed.Node) []*yed.N
 func (s *Sprite) findPathForCmd(cmd command, anim_node *yed.Node) []*yed.Node {
   var node_path []*yed.Node
   for _, name := range cmd.names {
-    g := pathingGraph{ shared: s.shared, start: anim_node, cmd: name }
+    g := pathingGraph{shared: s.shared, start: anim_node, cmd: name}
     var end []int
     for i := 0; i < s.shared.anim.NumEdges(); i++ {
       edge := s.shared.anim.Edge(i)
@@ -634,12 +676,12 @@ func (s *Sprite) findPathForCmd(cmd command, anim_node *yed.Node) []*yed.Node {
         end = append(end, edge.Dst().Id())
       }
     }
-    _, path := algorithm.Dijkstra(g, []int{ s.shared.anim.NumNodes() }, end)
-    for _,id := range path[1:] {
+    _, path := algorithm.Dijkstra(g, []int{s.shared.anim.NumNodes()}, end)
+    for _, id := range path[1:] {
       node_path = append(node_path, s.shared.anim.Node(id))
     }
     if len(node_path) > 0 {
-      anim_node = node_path[len(node_path) - 1]
+      anim_node = node_path[len(node_path)-1]
     }
   }
 
@@ -655,10 +697,10 @@ func (s *Sprite) applyPath(path []*yed.Node) {
 func (s *Sprite) Dims() (dx, dy int) {
   var rect FrameRect
   var ok bool
-  fid := frameId{ facing: s.facing, node: s.anim_node.Id() }
-  rect,ok = s.shared.connector.rects[fid]
+  fid := frameId{facing: s.facing, node: s.anim_node.Id()}
+  rect, ok = s.shared.connector.rects[fid]
   if !ok {
-    rect,ok = s.shared.facings[s.facing].rects[fid]
+    rect, ok = s.shared.facings[s.facing].rects[fid]
     if !ok {
       return 0, 0
     }
@@ -668,15 +710,15 @@ func (s *Sprite) Dims() (dx, dy int) {
   return
 }
 
-func (s *Sprite) Bind() (x,y,x2,y2 float64) {
+func (s *Sprite) Bind() (x, y, x2, y2 float64) {
   var rect FrameRect
   var sh *sheet
   var ok bool
-  fid := frameId{ facing: s.facing, node: s.anim_node.Id() }
-  var dx,dy float64
-  if rect,ok = s.shared.connector.rects[fid]; ok {
+  fid := frameId{facing: s.facing, node: s.anim_node.Id()}
+  var dx, dy float64
+  if rect, ok = s.shared.connector.rects[fid]; ok {
     sh = s.shared.connector
-  } else if rect,ok = s.shared.facings[s.facing].rects[fid]; ok {
+  } else if rect, ok = s.shared.facings[s.facing].rects[fid]; ok {
     sh = s.shared.facings[s.facing]
   } else {
     error_texture.Bind(gl.TEXTURE_2D)
@@ -696,7 +738,7 @@ func (s *Sprite) Facing() int {
 }
 func (s *Sprite) doTrigger() {
   if s.shared.manager.trigger != nil &&
-     s.anim_node.Tag("func") != "" {
+    s.anim_node.Tag("func") != "" {
     s.shared.manager.trigger(s, s.anim_node.Tag("func"))
   }
 }
@@ -710,6 +752,24 @@ func (s *Sprite) Think(dt int64) {
     return
     // panic("Can't have dt < 0")
   }
+
+  // Check for waiters
+  defer func() {
+    if s.NumPendingCmds() > 0 {
+      return
+    }
+    for i := range s.waiters {
+      for _, state := range s.waiters[i].states {
+        if state == s.AnimState() {
+          s.waiters[i].c <- struct{}{}
+          s.waiters[i].states = nil
+        }
+      }
+      algorithm.Choose2(&s.waiters, func(w *waiter) bool {
+        return w.states != nil
+      })
+    }
+  }()
 
   var path []*yed.Node
   if len(s.pending_cmds) > 0 && len(s.path) == 0 {
@@ -739,7 +799,9 @@ func (s *Sprite) Think(dt int64) {
     // the time for this frame to elapse
     for i := 0; i < s.anim_node.NumGroupOutputs(); i++ {
       edge := s.anim_node.GroupOutput(i)
-      if edge.Src() == s.anim_node { continue }
+      if edge.Src() == s.anim_node {
+        continue
+      }
       if edge.Dst() == s.path[0] {
         s.togo = 0
       }
@@ -798,7 +860,7 @@ type Data struct {
   anim  *yed.Node
 }
 type FrameRect struct {
-  X,Y,X2,Y2 int
+  X, Y, X2, Y2 int
 }
 
 // A trigger func is a function that is called when a certain frame of
@@ -830,9 +892,11 @@ func MakeManager() *Manager {
   m.shared = make(map[string]*sharedSprite)
   return &m
 }
+
 var the_manager *Manager
 var error_texture gl.Texture
 var gen_tex_once sync.Once
+
 func init() {
   the_manager = MakeManager()
 }
@@ -845,11 +909,11 @@ func SetTriggerFunc(tf TriggerFunc) {
 func (m *Manager) loadSharedSprite(path string) error {
   m.mutex.Lock()
   defer m.mutex.Unlock()
-  if _,ok := m.shared[path]; ok {
+  if _, ok := m.shared[path]; ok {
     return nil
   }
 
-  ss,err := loadSharedSprite(path)
+  ss, err := loadSharedSprite(path)
   if err != nil {
     return err
   }
@@ -872,14 +936,16 @@ func (m *Manager) LoadSprite(path string) (*Sprite, error) {
       gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
       gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
       gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-      pink := []byte{ 255, 0, 255, 255 }
+      pink := []byte{255, 0, 255, 255}
       glu.Build2DMipmaps(gl.TEXTURE_2D, 4, 1, 1, gl.RGBA, pink)
     })
   })
 
   path = filepath.Clean(path)
   err := m.loadSharedSprite(path)
-  if err != nil { return nil, err }
+  if err != nil {
+    return nil, err
+  }
   var s Sprite
   m.mutex.Lock()
   s.shared = m.shared[path]
