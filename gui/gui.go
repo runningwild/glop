@@ -61,10 +61,10 @@ func (r Region) Fit(t Region) Region {
   if r.Y < t.Y {
     r.Y = t.Y
   }
-  if r.X + r.Dx > t.X + t.Dx {
+  if r.X+r.Dx > t.X+t.Dx {
     r.X -= (r.X + r.Dx) - (t.X + t.Dx)
   }
-  if r.Y + r.Dy > t.Y + t.Dy {
+  if r.Y+r.Dy > t.Y+t.Dy {
     r.Y -= (r.Y + r.Dy) - (t.Y + t.Dy)
   }
   return r
@@ -79,14 +79,18 @@ func (r Region) Isect(s Region) Region {
     r.Dy -= s.Y - r.Y
     r.Y = s.Y
   }
-  if r.X + r.Dx > s.X + s.Dx {
+  if r.X+r.Dx > s.X+s.Dx {
     r.Dx -= (r.X + r.Dx) - (s.X + s.Dx)
   }
-  if r.Y + r.Dy > s.Y + s.Dy {
+  if r.Y+r.Dy > s.Y+s.Dy {
     r.Dy -= (r.Y + r.Dy) - (s.Y + s.Dy)
   }
-  if r.Dx < 0 { r.Dx = 0 }
-  if r.Dy < 0 { r.Dy = 0 }
+  if r.Dx < 0 {
+    r.Dx = 0
+  }
+  if r.Dy < 0 {
+    r.Dy = 0
+  }
   return r
 }
 
@@ -103,11 +107,12 @@ var clippers []Region
 // it here we avoid that allocation - it amounts to a lot of someone is calling
 // this every frame.
 var eqs [4][4]float64
+
 func (r Region) setClipPlanes() {
-  eqs[0][0], eqs[0][1], eqs[0][2], eqs[0][3]  =  1,  0,  0, -float64(r.X)
-  eqs[1][0], eqs[1][1], eqs[1][2], eqs[1][3]  = -1,  0,  0,  float64(r.X + r.Dx)
-  eqs[2][0], eqs[2][1], eqs[2][2], eqs[2][3]  =  0,  1,  0, -float64(r.Y)
-  eqs[3][0], eqs[3][1], eqs[3][2], eqs[3][3]  =  0, -1,  0,  float64(r.Y + r.Dy)
+  eqs[0][0], eqs[0][1], eqs[0][2], eqs[0][3] = 1, 0, 0, -float64(r.X)
+  eqs[1][0], eqs[1][1], eqs[1][2], eqs[1][3] = -1, 0, 0, float64(r.X+r.Dx)
+  eqs[2][0], eqs[2][1], eqs[2][2], eqs[2][3] = 0, 1, 0, -float64(r.Y)
+  eqs[3][0], eqs[3][1], eqs[3][2], eqs[3][3] = 0, -1, 0, float64(r.Y+r.Dy)
   gl.ClipPlane(gl.CLIP_PLANE0, &eqs[0][0])
   gl.ClipPlane(gl.CLIP_PLANE1, &eqs[1][0])
   gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
@@ -163,6 +168,12 @@ type Zone interface {
 type EventGroup struct {
   gin.EventGroup
   Focus bool
+}
+
+type WidgetParent interface {
+  AddChild(w Widget)
+  RemoveChild(w Widget)
+  GetChildren() []Widget
 }
 
 type Widget interface {
