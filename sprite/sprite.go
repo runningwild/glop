@@ -368,6 +368,11 @@ type Sprite struct {
   // lots of facings if a sprite changes facings multiple times between thinks
   prev_facing int
 
+  // current facing in the state graph.  This lets us know what direction the
+  // sprite will be facing once it is done with all of its pendings commands
+  // and its current path.
+  state_facing int
+
   // Time remaining on the current frame of animation
   togo int64
 
@@ -563,6 +568,8 @@ func (s *Sprite) baseCommand(cmd command) bool {
   for _, name := range cmd.names {
     edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{name})
     s.state_node = edge.Dst()
+    face := s.shared.edge_data[edge].facing
+    s.state_facing = (s.state_facing + face + len(s.shared.facings)) % len(s.shared.facings)
   }
 
   state_edge := selectAnEdge(s.state_node, s.shared.edge_data, []string{""})
@@ -578,7 +585,6 @@ func (s *Sprite) baseCommand(cmd command) bool {
   }
 
   s.pending_cmds = append(s.pending_cmds, cmd)
-  fmt.Printf("Sucessfully did: %v", cmd.names)
   return true
 }
 
@@ -735,6 +741,9 @@ func (s *Sprite) Bind() (x, y, x2, y2 float64) {
 }
 func (s *Sprite) Facing() int {
   return s.facing
+}
+func (s *Sprite) StateFacing() int {
+  return s.state_facing
 }
 func (s *Sprite) doTrigger() {
   if s.shared.manager.trigger != nil &&
