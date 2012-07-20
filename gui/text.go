@@ -1,6 +1,7 @@
 package gui
 
 import (
+  "fmt"
   "io"
   "encoding/gob"
   "image"
@@ -22,7 +23,8 @@ type subImage struct {
   im     image.Image
   bounds image.Rectangle
 }
-type transparent struct {}
+type transparent struct{}
+
 func (t transparent) RGBA() (r, g, b, a uint32) {
   return 0, 0, 0, 0
 }
@@ -51,7 +53,7 @@ func minimalSubImage(src image.Image) *subImage {
   for x := bounds.Min.X; x <= bounds.Max.X; x++ {
     for y := bounds.Min.Y; y <= bounds.Max.Y; y++ {
       c := src.At(x, y)
-      _,_,_,a := c.RGBA()
+      _, _, _, a := c.RGBA()
       if a > 0 {
         if x < new_bounds.Min.X {
           new_bounds.Min.X = x
@@ -80,7 +82,7 @@ func minimalSubImage(src image.Image) *subImage {
     new_bounds = image.Rect(0, 0, 0, 0)
   }
 
-  return &subImage{ src, new_bounds }
+  return &subImage{src, new_bounds}
 }
 
 // This stupid thing is just so that our idiot-packedImage can answer queries
@@ -90,6 +92,7 @@ func minimalSubImage(src image.Image) *subImage {
 type packedImageSortByArea struct {
   *packedImage
 }
+
 func (p *packedImageSortByArea) Len() int {
   return len(p.ims)
 }
@@ -104,10 +107,11 @@ func (p *packedImageSortByArea) Swap(i, j int) {
 }
 
 type packedImage struct {
-  ims []image.Image
-  off []image.Point
+  ims    []image.Image
+  off    []image.Point
   bounds image.Rectangle
 }
+
 func (p *packedImage) Len() int {
   return len(p.ims)
 }
@@ -136,7 +140,7 @@ func (p *packedImage) At(x, y int) color.Color {
   point := image.Point{x, y}
   for i := range p.ims {
     if point.In(p.ims[i].Bounds().Add(p.off[i])) {
-      return p.ims[i].At(x - p.off[i].X, y - p.off[i].Y)
+      return p.ims[i].At(x-p.off[i].X, y-p.off[i].Y)
     }
   }
   return transparent{}
@@ -156,8 +160,8 @@ func packImages(ims []image.Image) *packedImage {
   max_width := 512
   max_height := 0
   for i := 1; i < len(p.off); i++ {
-    run += p.ims[i - 1].Bounds().Dx()
-    if run + p.ims[i].Bounds().Dx() > max_width {
+    run += p.ims[i-1].Bounds().Dx()
+    if run+p.ims[i].Bounds().Dx() > max_width {
       run = 0
       height += max_height
       max_height = 0
@@ -173,7 +177,7 @@ func packImages(ims []image.Image) *packedImage {
   }
 
   // Done packing - now figure out the resulting bounds
-  p.bounds.Min.X = 1e9  // if we exceed this something else will break first
+  p.bounds.Min.X = 1e9 // if we exceed this something else will break first
   p.bounds.Min.Y = 1e9
   p.bounds.Max.X = -1e9
   p.bounds.Max.Y = -1e9
@@ -201,19 +205,19 @@ func packImages(ims []image.Image) *packedImage {
 }
 
 type runeInfo struct {
-  Pos      image.Rectangle
-  Bounds   image.Rectangle
-  Advance  float64
+  Pos     image.Rectangle
+  Bounds  image.Rectangle
+  Advance float64
 }
 type dictData struct {
   // The Pix data from the original image.Rgba
-  Pix  []byte
+  Pix []byte
 
   // Dx and Dy of the original image.Rgba
   Dx, Dy int
 
   // Map from rune to that rune's runeInfo.
-  Info  map[rune]runeInfo
+  Info map[rune]runeInfo
 
   // runeInfo for all r < 256 will be stored here as well as in info so we can
   // avoid map lookups if possible.
@@ -223,7 +227,7 @@ type dictData struct {
   // This is determined by the positioning of the '.' rune.
   Baseline int
 
-  Miny,Maxy int
+  Miny, Maxy int
 }
 type Dictionary struct {
   data dictData
@@ -237,23 +241,22 @@ type Dictionary struct {
 }
 type strBuffer struct {
   vbuffer uint32
-  vs []dictVert
+  vs      []dictVert
 
   ibuffer uint32
-  is []uint16
+  is      []uint16
 }
 type dictVert struct {
-  x,y float32
-  u,v float32
+  x, y float32
+  u, v float32
 }
-
 
 func (d *Dictionary) getInfo(r rune) runeInfo {
   var info runeInfo
   if r >= 0 && r < 256 {
     info = d.data.Ascii_info[r]
   } else {
-    info,_ = d.data.Info[r]
+    info, _ = d.data.Info[r]
   }
   return info
 }
@@ -261,13 +264,14 @@ func (d *Dictionary) getInfo(r rune) runeInfo {
 // Figures out how wide a string will be if rendered at its natural size.
 func (d *Dictionary) figureWidth(s string) float64 {
   w := 0.0
-  for _,r := range s {
+  for _, r := range s {
     w += d.getInfo(r).Advance
   }
   return w
 }
 
 type Justification int
+
 const (
   Center Justification = iota
   Left
@@ -328,6 +332,15 @@ func (d *Dictionary) RenderParagraph(s string, x, y, z, dx, height float64, just
   }
 }
 
+func (d *Dictionary) StringWidth(s string) float64 {
+  width := 0.0
+  for _, r := range s[0 : len(s)-1] {
+    info := d.getInfo(r)
+    width += info.Advance
+  }
+  return width
+}
+
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
   if len(s) == 0 {
     return
@@ -337,14 +350,14 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
     defer d.RenderString(s, x, y, z, height, just)
   }
   size := unsafe.Sizeof(dictVert{})
-  scale := height / float64(d.data.Maxy - d.data.Miny)
+  scale := height / float64(d.data.Maxy-d.data.Miny)
   width := float32(d.figureWidth(s) * scale)
   x_pos := float32(x)
   switch just {
-    case Center:
-      x_pos -= width / 2
-    case Right:
-      x_pos -= width
+  case Center:
+    x_pos -= width / 2
+  case Right:
+    x_pos -= width
   }
   if ok {
     gl.PushMatrix()
@@ -376,12 +389,12 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
     return
   }
   x_pos = 0
-  for _,r := range s {
+  for _, r := range s {
     info := d.getInfo(r)
     xleft := x_pos + float32(info.Bounds.Min.X)
     xright := x_pos + float32(info.Bounds.Max.X)
     ytop := float32(d.data.Maxy - info.Bounds.Min.Y)
-    ybot := float32(height) + float32(d.data.Miny - info.Bounds.Max.Y)
+    ybot := float32(height) + float32(d.data.Miny-info.Bounds.Max.Y)
     start := uint16(len(strbuf.vs))
     strbuf.is = append(strbuf.is, start+0)
     strbuf.is = append(strbuf.is, start+1)
@@ -433,14 +446,14 @@ func (d *Dictionary) RenderStringOld(s string, x, y, z, height float64, just Jus
     defer d.RenderStringOld(s, x, y, z, height, just)
   }
 
-  scale := height / float64(d.data.Maxy - d.data.Miny)
+  scale := height / float64(d.data.Maxy-d.data.Miny)
   width := d.figureWidth(s) * scale
   x_pos := x
   switch just {
-    case Center:
-      x_pos -= width / 2
-    case Right:
-      x_pos -= width
+  case Center:
+    x_pos -= width / 2
+  case Right:
+    x_pos -= width
   }
 
   gl.PushMatrix()
@@ -468,23 +481,23 @@ func (d *Dictionary) RenderStringOld(s string, x, y, z, height float64, just Jus
   x_pos = 0
 
   gl.Begin(gl.QUADS)
-  for _,r := range s {
+  for _, r := range s {
     info := d.getInfo(r)
     xleft := x_pos + float64(info.Bounds.Min.X)
     xright := x_pos + float64(info.Bounds.Max.X)
     ytop := float64(d.data.Maxy - info.Bounds.Min.Y)
-    ybot := height + float64(d.data.Miny - info.Bounds.Max.Y)
+    ybot := height + float64(d.data.Miny-info.Bounds.Max.Y)
 
-    gl.TexCoord2d(float64(info.Pos.Min.X) / float64(d.data.Dx), float64(info.Pos.Max.Y) / float64(d.data.Dy))
+    gl.TexCoord2d(float64(info.Pos.Min.X)/float64(d.data.Dx), float64(info.Pos.Max.Y)/float64(d.data.Dy))
     gl.Vertex2d(xleft, ybot)
 
-    gl.TexCoord2d(float64(info.Pos.Min.X) / float64(d.data.Dx), float64(info.Pos.Min.Y) / float64(d.data.Dy))
+    gl.TexCoord2d(float64(info.Pos.Min.X)/float64(d.data.Dx), float64(info.Pos.Min.Y)/float64(d.data.Dy))
     gl.Vertex2d(xleft, ytop)
 
-    gl.TexCoord2d(float64(info.Pos.Max.X) / float64(d.data.Dx), float64(info.Pos.Min.Y) / float64(d.data.Dy))
+    gl.TexCoord2d(float64(info.Pos.Max.X)/float64(d.data.Dx), float64(info.Pos.Min.Y)/float64(d.data.Dy))
     gl.Vertex2d(xright, ytop)
 
-    gl.TexCoord2d(float64(info.Pos.Max.X) / float64(d.data.Dx), float64(info.Pos.Max.Y) / float64(d.data.Dy))
+    gl.TexCoord2d(float64(info.Pos.Max.X)/float64(d.data.Dx), float64(info.Pos.Max.Y)/float64(d.data.Dy))
     gl.Vertex2d(xright, ybot)
 
     x_pos += info.Advance
@@ -520,24 +533,25 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   var letters []image.Image
   rune_mapping := make(map[rune]image.Image)
   rune_info := make(map[rune]runeInfo)
-  for _,r := range alphabet {
+  for _, r := range alphabet {
     canvas := image.NewRGBA(image.Rect(-width/2, -height/2, width/2, height/2))
     context.SetDst(canvas)
     context.SetClip(canvas.Bounds())
 
-    advance,_ := context.DrawString(string([]rune{r}), raster.Point{})
+    advance, _ := context.DrawString(string([]rune{r}), raster.Point{})
     sub := minimalSubImage(canvas)
     letters = append(letters, sub)
     rune_mapping[r] = sub
     adv_x := float64(advance.X) / 256.0
-    rune_info[r] = runeInfo{ Bounds: sub.bounds, Advance: adv_x }
+    rune_info[r] = runeInfo{Bounds: sub.bounds, Advance: adv_x}
   }
   packed := packImages(letters)
 
-  for _,r := range alphabet {
+  for _, r := range alphabet {
     ri := rune_info[r]
     ri.Pos = packed.GetRect(rune_mapping[r])
     rune_info[r] = ri
+    fmt.Printf("Rune(%c): %d %d", r, rune_info[r].Bounds.Dx(), rune_info[r].Bounds.Dy())
   }
 
   dx := 1
@@ -559,7 +573,7 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
 
   dict.data.Ascii_info = make([]runeInfo, 256)
   for r := rune(0); r < 256; r++ {
-    if info,ok := dict.data.Info[r]; ok {
+    if info, ok := dict.data.Info[r]; ok {
       dict.data.Ascii_info[r] = info
     }
   }
@@ -567,7 +581,7 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
 
   dict.data.Miny = int(1e9)
   dict.data.Maxy = int(-1e9)
-  for _,info := range dict.data.Info {
+  for _, info := range dict.data.Info {
     if info.Bounds.Min.Y < dict.data.Miny {
       dict.data.Miny = info.Bounds.Min.Y
     }
@@ -590,7 +604,7 @@ func (d *Dictionary) setupGlStuff() {
   // TODO: This finalizer is untested
   runtime.SetFinalizer(d, func(d *Dictionary) {
     render.Queue(func() {
-      for _,v := range d.dlists {
+      for _, v := range d.dlists {
         gl.DeleteLists(v, 1)
       }
     })
