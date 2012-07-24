@@ -276,6 +276,8 @@ const (
   Center Justification = iota
   Left
   Right
+  Top
+  Bottom
 )
 
 func (d *Dictionary) MaxHeight() float64 {
@@ -324,10 +326,17 @@ func (d *Dictionary) split(s string, dx, height float64) []string {
   return lines
 }
 
-func (d *Dictionary) RenderParagraph(s string, x, y, z, dx, height float64, just Justification) {
+func (d *Dictionary) RenderParagraph(s string, x, y, z, dx, height float64, halign, valign Justification) {
   lines := d.split(s, dx, height)
+  total_height := height * float64(len(lines)-1)
+  switch valign {
+  case Bottom:
+    y += total_height
+  case Center:
+    y += total_height / 2
+  }
   for _, line := range lines {
-    d.RenderString(line, x, y, z, height, just)
+    d.RenderString(line, x, y, z, height, halign)
     y -= height
   }
 }
