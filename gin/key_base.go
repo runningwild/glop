@@ -50,6 +50,7 @@ type aggregator interface {
   SetPressAmt(amt float64, ms int64, event_type EventType)
   SendAllNonZero() bool
 }
+
 // Simple struct that aggregates presses and press_amts during a frame so they can be viewed
 // between Think()s
 type keyStats struct {
@@ -121,7 +122,11 @@ func (sa *standardAggregator) SetPressAmt(amt float64, ms int64, event_type Even
 }
 func (sa *standardAggregator) Think(ms int64) (bool, float64) {
   sa.this.press_sum += sa.this.press_amt * float64(ms-sa.last_press)
-  sa.this.press_avg = sa.this.press_sum / float64(ms-sa.last_think)
+  if ms != sa.last_think {
+    sa.this.press_avg = sa.this.press_sum / float64(ms-sa.last_think)
+  } else {
+    sa.this.press_avg = 0
+  }
   sa.prev = sa.this
   sa.this = keyStats{
     press_amt: sa.prev.press_amt,
@@ -182,7 +187,7 @@ func (wa *wheelAggregator) SetPressAmt(amt float64, ms int64, event_type EventTy
 }
 
 func (wa *wheelAggregator) Think(ms int64) (bool, float64) {
-  if b,_ := wa.standardAggregator.Think(ms); b {
+  if b, _ := wa.standardAggregator.Think(ms); b {
     panic("standardAggregator should not generate an event on Think()")
   }
   if wa.CurPressAmt() != 0 {
