@@ -357,6 +357,9 @@ type Sprite struct {
   anim_node  *yed.Node
   state_node *yed.Node
 
+  // Used to run callbacks when certain frames of animations are hit.
+  trigger TriggerFunc
+
   // number of times Think() has been called.  This is mostly so that we can
   // run some code the very first time that Think() is called.
   thinks int
@@ -592,6 +595,10 @@ func (s *Sprite) NumPendingCmds() int {
   return len(s.pending_cmds)
 }
 
+func (s *Sprite) Idle() bool {
+  return len(s.pending_cmds) == 0 && len(s.path) == 0
+}
+
 func (s *Sprite) Command(cmd string) {
   s.baseCommand(command{names: []string{cmd}, group: nil})
 }
@@ -634,6 +641,10 @@ func (p pathingGraph) Adjacent(n int) (adj []int, cost []float64) {
     cost = append(cost, 1)
   }
   return
+}
+
+func (s *Sprite) SetTriggerFunc(tf TriggerFunc) {
+  s.trigger = tf
 }
 
 // Like findPathForCmd, but extends the path, if necessary, such that a node
@@ -746,9 +757,9 @@ func (s *Sprite) StateFacing() int {
   return s.state_facing
 }
 func (s *Sprite) doTrigger() {
-  if s.shared.manager.trigger != nil &&
+  if s.trigger != nil &&
     s.anim_node.Tag("func") != "" {
-    s.shared.manager.trigger(s, s.anim_node.Tag("func"))
+    s.trigger(s, s.anim_node.Tag("func"))
   }
 }
 func (s *Sprite) Think(dt int64) {
@@ -881,21 +892,10 @@ type FrameRect struct {
 type TriggerFunc func(*Sprite, string)
 
 type Manager struct {
-  shared  map[string]*sharedSprite
-  trigger TriggerFunc
-  mutex   sync.Mutex
+  shared map[string]*sharedSprite
+  mutex  sync.Mutex
 }
 
-// Sets the function that gets called when a sprite reaches a "trigger" tag.
-// This function will not be called concurrently with itself so long as
-// Sprites never Think() concurrently with each other.
-func (m *Manager) SetTriggerFunc(tf TriggerFunc) {
-  // I have no idea if locking here is necessary, but I don't think it could
-  // really hinder performance in any way, so might as well be safe.
-  m.mutex.Lock()
-  defer m.mutex.Unlock()
-  m.trigger = tf
-}
 func MakeManager() *Manager {
   var m Manager
   m.shared = make(map[string]*sharedSprite)
@@ -911,9 +911,6 @@ func init() {
 }
 func LoadSprite(path string) (*Sprite, error) {
   return the_manager.LoadSprite(path)
-}
-func SetTriggerFunc(tf TriggerFunc) {
-  the_manager.SetTriggerFunc(tf)
 }
 func (m *Manager) loadSharedSprite(path string) error {
   m.mutex.Lock()
