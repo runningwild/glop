@@ -16,7 +16,7 @@ import (
 type sharedSprite struct {
   path string
 
-  anim,state  *yed.Graph
+  anim, state *yed.Graph
   anim_start  *yed.Node
   state_start *yed.Node
 
@@ -24,29 +24,39 @@ type sharedSprite struct {
   edge_data map[*yed.Edge]edgeData
 
   connector *sheet
-  facings []*sheet
+  facings   []*sheet
 
   manager *Manager
 }
 
 func loadSharedSprite(path string) (*sharedSprite, error) {
-  state,err := yed.ParseFromFile(filepath.Join(path, "state.xgml"))
-  if err != nil { return nil, err }
+  state, err := yed.ParseFromFile(filepath.Join(path, "state.xgml"))
+  if err != nil {
+    return nil, err
+  }
 
   err = verifyStateGraph(&state.Graph)
-  if err != nil { return nil, err }
+  if err != nil {
+    return nil, err
+  }
 
-  anim,err := yed.ParseFromFile(filepath.Join(path, "anim.xgml"))
-  if err != nil { return nil, err }
+  anim, err := yed.ParseFromFile(filepath.Join(path, "anim.xgml"))
+  if err != nil {
+    return nil, err
+  }
 
   err = verifyAnimGraph(&anim.Graph)
-  if err != nil { return nil, err }
+  if err != nil {
+    return nil, err
+  }
 
   // TODO: Verify both graphs at the same time - they both need to respond to
   // the same commands in the same way.
 
   num_facings, filenames, err := verifyDirectoryStructure(path, &anim.Graph)
-  if err != nil { return nil, err }
+  if err != nil {
+    return nil, err
+  }
 
   // If we've made it this far then the sprite is probably well formed so we
   // can start putting all of the data together
@@ -60,15 +70,19 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
   width := 0
   height := 0
   for facing := 0; facing < num_facings; facing++ {
-    for _,filename := range filenames {
-      file,err := os.Open(filepath.Join(path, fmt.Sprintf("%d", facing), filename))
+    for _, filename := range filenames {
+      file, err := os.Open(filepath.Join(path, fmt.Sprintf("%d", facing), filename))
       // if a file isn't there that's ok
-      if err != nil { continue }
+      if err != nil {
+        continue
+      }
 
-      config,_,err := image.DecodeConfig(file)
+      config, _, err := image.DecodeConfig(file)
       file.Close()
       // if a file can't be read that is *not* ok
-      if err != nil { return nil, err }
+      if err != nil {
+        return nil, err
+      }
 
       if config.Height > height {
         height = config.Height
@@ -83,19 +97,21 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
 
   // Arrange them all into one sprite sheet
   var fids []frameId
-  for _,con := range conn {
+  for _, con := range conn {
     for facing := 0; facing < num_facings; facing++ {
-      fids = append(fids, frameId{ facing: facing, node: con.Id() })
+      fids = append(fids, frameId{facing: facing, node: con.Id()})
     }
   }
   sort.Sort(frameIdArray(fids))
-  ss.connector,err = makeSheet(path, &anim.Graph, fids)
-  if err != nil { return nil, err }
+  ss.connector, err = makeSheet(path, &anim.Graph, fids)
+  if err != nil {
+    return nil, err
+  }
 
   // Now we make a sheet for each facing, but don't include any of the frames
   // that are in the connctor sheet
   used := make(map[*yed.Node]bool)
-  for _,con := range conn {
+  for _, con := range conn {
     used[con] = true
   }
   for facing := 0; facing < num_facings; facing++ {
@@ -103,12 +119,14 @@ func loadSharedSprite(path string) (*sharedSprite, error) {
     for i := 0; i < anim.Graph.NumNodes(); i++ {
       node := anim.Graph.Node(i)
       if !used[node] {
-        facing_fids = append(facing_fids, frameId{ facing: facing, node: node.Id() })
+        facing_fids = append(facing_fids, frameId{facing: facing, node: node.Id()})
       }
     }
     sort.Sort(frameIdArray(facing_fids))
-    sh,err := makeSheet(path, &anim.Graph, facing_fids)
-    if err != nil { return nil, err }
+    sh, err := makeSheet(path, &anim.Graph, facing_fids)
+    if err != nil {
+      return nil, err
+    }
     ss.facings = append(ss.facings, sh)
   }
 
@@ -139,7 +157,7 @@ func figureConnectors(anim *yed.Graph, limit int) []*yed.Node {
 
   reachable := algorithm.ReachableWithinLimit(&animAlgoGraph{anim}, facing_edges, float64(limit))
   var ret []*yed.Node
-  for _,reach := range reachable {
+  for _, reach := range reachable {
     ret = append(ret, anim.Node(reach))
   }
   return ret
@@ -218,8 +236,8 @@ func (ss *sharedSprite) process() {
   ss.node_data = make(map[*yed.Node]nodeData)
   for i := 0; i < ss.anim.NumNodes(); i++ {
     node := ss.anim.Node(i)
-    data := nodeData{ time: defaultFrameTime, sync_tag: node.Tag("sync") }
-    t,err := strconv.ParseInt(node.Tag("time"), 10, 32)
+    data := nodeData{time: defaultFrameTime, sync_tag: node.Tag("sync")}
+    t, err := strconv.ParseInt(node.Tag("time"), 10, 32)
     if err == nil {
       data.time = t
     }
@@ -230,14 +248,14 @@ func (ss *sharedSprite) process() {
   proc_graph := func(graph *yed.Graph) {
     for i := 0; i < graph.NumEdges(); i++ {
       edge := graph.Edge(i)
-      data := edgeData{ weight: 1.0 }
+      data := edgeData{weight: 1.0}
 
-      f,err := strconv.ParseInt(edge.Tag("facing"), 10, 32)
+      f, err := strconv.ParseInt(edge.Tag("facing"), 10, 32)
       if err == nil {
         data.facing = int(f)
       }
 
-      w,err := strconv.ParseFloat(edge.Tag("weight"), 64)
+      w, err := strconv.ParseFloat(edge.Tag("weight"), 64)
       if err == nil {
         data.weight = w
       }
@@ -254,5 +272,16 @@ func (ss *sharedSprite) process() {
   proc_graph(ss.state)
 
   ss.markAnimFramesWithState(ss.anim_start, ss.state_start)
+  for i := 0; i < ss.anim.NumNodes(); i++ {
+    n := ss.anim.Node(i)
+    state := n.Tag("state")
+    if state != "" && n.NumChildren() > 0 {
+      for j := 0; j < n.NumChildren(); j++ {
+        child := n.Child(j)
+        d := ss.node_data[child]
+        d.state = state
+        ss.node_data[child] = d
+      }
+    }
+  }
 }
-

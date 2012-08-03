@@ -22,6 +22,7 @@ type frameId struct {
   node   int
 }
 type frameIdArray []frameId
+
 func (fia frameIdArray) Len() int {
   return len(fia)
 }
@@ -37,10 +38,10 @@ func (fia frameIdArray) Swap(i, j int) {
 
 // A sheet contains a group of frames of animations indexed by frameId
 type sheet struct {
-  rects map[frameId]FrameRect
-  dx,dy int
-  path string
-  anim *yed.Graph
+  rects  map[frameId]FrameRect
+  dx, dy int
+  path   string
+  anim   *yed.Graph
 
   // Unique name that is based on the path of the sprite and the list of
   // frameIds used to generate this sheet.  This name is used to store the
@@ -48,8 +49,8 @@ type sheet struct {
   name string
 
   reference_chan chan int
-  load_chan chan bool
-  texture gl.Texture
+  load_chan      chan bool
+  texture        gl.Texture
 }
 
 func (s *sheet) Load() {
@@ -80,18 +81,22 @@ func (s *sheet) compose(pixer chan<- []byte) {
     }
   }
   rect := image.Rect(0, 0, s.dx, s.dy)
-  canvas := &image.RGBA{memory.GetBlock(4*s.dx*s.dy), 4*s.dx, rect}
-  for fid,rect := range s.rects {
+  canvas := &image.RGBA{memory.GetBlock(4 * s.dx * s.dy), 4 * s.dx, rect}
+  for fid, rect := range s.rects {
     name := s.anim.Node(fid.node).Line(0) + ".png"
-    file,err := os.Open(filepath.Join(s.path, fmt.Sprintf("%d", fid.facing), name))
+    file, err := os.Open(filepath.Join(s.path, fmt.Sprintf("%d", fid.facing), name))
     // if a file isn't there that's ok
-    if err != nil { continue }
+    if err != nil {
+      continue
+    }
 
-    im,_,err := image.Decode(file)
+    im, _, err := image.Decode(file)
     file.Close()
     // if a file can't be read that is *not* ok, TODO: Log an error or something
-    if err != nil { continue }
-    draw.Draw(canvas, image.Rect(rect.X, s.dy - rect.Y, rect.X2, s.dy - rect.Y2), im, image.Point{}, draw.Src)
+    if err != nil {
+      continue
+    }
+    draw.Draw(canvas, image.Rect(rect.X, s.dy-rect.Y, rect.X2, s.dy-rect.Y2), im, image.Point{}, draw.Src)
   }
   f, err = os.Create(filename)
   if err == nil {
@@ -145,7 +150,7 @@ func (s *sheet) loadRoutine() {
           s.makeTexture(pixer)
           ready <- true
         })
-      } ()
+      }()
     } else {
       go func() {
         <-ready
@@ -153,7 +158,7 @@ func (s *sheet) loadRoutine() {
           s.texture.Delete()
           s.texture = 0
         })
-      } ()
+      }()
     }
   }
 }
@@ -195,25 +200,29 @@ func uniqueName(fids []frameId) string {
 }
 
 func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
-  s := sheet{ path: path, anim: anim, name: uniqueName(fids) }
+  s := sheet{path: path, anim: anim, name: uniqueName(fids)}
   s.rects = make(map[frameId]FrameRect)
   cy := 0
   cx := 0
   cdy := 0
   tdx := 0
   max_width := 2048
-  for _,fid := range fids {
+  for _, fid := range fids {
     name := anim.Node(fid.node).Line(0) + ".png"
-    file,err := os.Open(filepath.Join(path, fmt.Sprintf("%d", fid.facing), name))
+    file, err := os.Open(filepath.Join(path, fmt.Sprintf("%d", fid.facing), name))
     // if a file isn't there that's ok
-    if err != nil { continue }
+    if err != nil {
+      continue
+    }
 
-    config,_,err := image.DecodeConfig(file)
+    config, _, err := image.DecodeConfig(file)
     file.Close()
     // if a file can't be read that is *not* ok
-    if err != nil { return nil, err }
+    if err != nil {
+      return nil, err
+    }
 
-    if cx + config.Width > max_width {
+    if cx+config.Width > max_width {
       cx = 0
       cy += cdy
       cdy = 0
@@ -221,7 +230,7 @@ func makeSheet(path string, anim *yed.Graph, fids []frameId) (*sheet, error) {
     if config.Height > cdy {
       cdy = config.Height
     }
-    s.rects[fid] = FrameRect{ X: cx, X2: cx + config.Width, Y: cy, Y2: cy + config.Height }
+    s.rects[fid] = FrameRect{X: cx, X2: cx + config.Width, Y: cy, Y2: cy + config.Height}
     cx += config.Width
     if cx > tdx {
       tdx = cx

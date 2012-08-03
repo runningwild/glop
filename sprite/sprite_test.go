@@ -8,7 +8,7 @@ import (
 
 func LoadSpriteSpec(c gospec.Context) {
   c.Specify("Sample sprite loads correctly", func() {
-    s,err := sprite.LoadSprite("test_sprite")
+    s, err := sprite.LoadSprite("test_sprite")
     c.Expect(err, Equals, nil)
     for i := 0; i < 2000; i++ {
       s.Think(50)
@@ -43,7 +43,7 @@ func LoadSpriteSpec(c gospec.Context) {
 
 func CommandNSpec(c gospec.Context) {
   c.Specify("Sample sprite loads correctly", func() {
-    s,err := sprite.LoadSprite("test_sprite")
+    s, err := sprite.LoadSprite("test_sprite")
     c.Expect(err, Equals, nil)
     for i := 0; i < 2000; i++ {
       s.Think(50)
@@ -72,9 +72,9 @@ func CommandNSpec(c gospec.Context) {
 
 func SyncSpec(c gospec.Context) {
   c.Specify("Sample sprite loads correctly", func() {
-    s1,err := sprite.LoadSprite("test_sprite")
+    s1, err := sprite.LoadSprite("test_sprite")
     c.Expect(err, Equals, nil)
-    s2,err := sprite.LoadSprite("test_sprite")
+    s2, err := sprite.LoadSprite("test_sprite")
     c.Expect(err, Equals, nil)
     sprite.CommandSync([]*sprite.Sprite{s1, s2}, [][]string{[]string{"melee"}, []string{"defend", "damaged"}}, "hit")
     hit := false

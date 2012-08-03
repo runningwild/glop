@@ -196,7 +196,7 @@ func verifyStateGraph(graph *yed.Graph) error {
 
 // A valid anim graph has the properties specified in verifyAnyGraph()
 func verifyAnimGraph(graph *yed.Graph) error {
-  err := verifyAnyGraph(graph, []string{"time", "sync", "func"}, []string{"facing", "weight"})
+  err := verifyAnyGraph(graph, []string{"time", "sync", "func", "state"}, []string{"facing", "weight"})
   if err != nil {
     return &spriteError{fmt.Sprintf("Anim graph: %v", err)}
   }
