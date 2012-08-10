@@ -343,7 +343,7 @@ func (d *Dictionary) RenderParagraph(s string, x, y, z, dx, height float64, hali
 
 func (d *Dictionary) StringWidth(s string) float64 {
   width := 0.0
-  for _, r := range s[0 : len(s)-1] {
+  for _, r := range s {
     info := d.getInfo(r)
     width += info.Advance
   }
