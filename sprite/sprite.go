@@ -808,11 +808,14 @@ func (s *Sprite) SetSpriteState(state SpriteState) error {
     return errors.New("Can't SetSpriteState while there are pending waiters.")
   }
   if s.thinks == 0 {
+    s.prev_facing = s.facing
     s.facing = state.internals.Facing
+    s.state_facing = s.facing
     s.shared.facings[s.facing].Load()
   } else {
     s.shared.facings[s.facing].Unload()
     s.facing = state.internals.Facing
+    s.state_facing = s.facing
   }
   s.anim_node = s.shared.anim.Node(state.internals.Anim_node_id)
   s.state_node = s.shared.state.Node(state.internals.State_node_id)
