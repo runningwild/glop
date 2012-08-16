@@ -9,6 +9,9 @@ import (
   "strconv"
   "strings"
   "sync"
+  "bytes"
+  "encoding/gob"
+  "errors"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/glop/util/algorithm"
   "github.com/runningwild/opengl/gl"
@@ -762,6 +765,62 @@ func (s *Sprite) doTrigger() {
     s.trigger(s, s.anim_node.Tag("func"))
   }
 }
+
+type spriteStateInternal struct {
+  Facing        int
+  State_node_id int
+  Anim_node_id  int
+}
+
+// An opaque object that contains everything necessary to start a sprite from
+// a particular point.  Useful when rewinding something, for example.
+// Gobbable.
+type SpriteState struct {
+  internals spriteStateInternal
+}
+
+func (ss *SpriteState) GobEncode() ([]byte, error) {
+  buf := bytes.NewBuffer(nil)
+  enc := gob.NewEncoder(buf)
+  err := enc.Encode(ss.internals)
+  if err != nil {
+    return nil, err
+  }
+  return buf.Bytes(), nil
+}
+
+func (ss *SpriteState) GobDecode(data []byte) error {
+  return gob.NewDecoder(bytes.NewBuffer(data)).Decode(&ss.internals)
+}
+
+func (s *Sprite) GetSpriteState() SpriteState {
+  return SpriteState{
+    internals: spriteStateInternal{
+      Facing:        s.facing,
+      State_node_id: s.state_node.Id(),
+      Anim_node_id:  s.anim_node.Id(),
+    },
+  }
+}
+
+func (s *Sprite) SetSpriteState(state SpriteState) error {
+  if len(s.waiters) != 0 {
+    return errors.New("Can't SetSpriteState while there are pending waiters.")
+  }
+  if s.thinks == 0 {
+    s.facing = state.internals.Facing
+    s.shared.facings[s.facing].Load()
+  } else {
+    s.shared.facings[s.facing].Unload()
+    s.facing = state.internals.Facing
+  }
+  s.anim_node = s.shared.anim.Node(state.internals.Anim_node_id)
+  s.state_node = s.shared.state.Node(state.internals.State_node_id)
+  s.path = nil
+  s.pending_cmds = nil
+  return nil
+}
+
 func (s *Sprite) Think(dt int64) {
   if s.thinks == 0 {
     s.shared.facings[0].Load()
