@@ -3,16 +3,16 @@ package sprite
 import (
   "encoding/binary"
   "fmt"
-  "hash/fnv"
-  "image"
-  "image/draw"
-  "os"
-  "path/filepath"
   "github.com/runningwild/glop/render"
   "github.com/runningwild/memory"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
   "github.com/runningwild/yedparse"
+  "hash/fnv"
+  "image"
+  "image/draw"
+  "os"
+  "path/filepath"
 )
 
 // An id that specifies a specific frame along with its facing.  This is used
@@ -171,7 +171,7 @@ func (s *sheet) routine() {
   for load := range s.reference_chan {
     if load < 0 {
       if references == 0 {
-        panic("Tried to unload a sprite sheet more times than it was loaded")
+        panic(fmt.Sprintf("Tried to unload a sprite (%s/%s) sheet more times than it was loaded.", s.name, s.path))
       }
       references--
       if references == 0 {

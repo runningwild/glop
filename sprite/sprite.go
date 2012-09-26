@@ -1,7 +1,15 @@
 package sprite
 
 import (
+  "bytes"
+  "encoding/gob"
+  "errors"
   "fmt"
+  "github.com/runningwild/glop/render"
+  "github.com/runningwild/glop/util/algorithm"
+  "github.com/runningwild/opengl/gl"
+  "github.com/runningwild/opengl/glu"
+  "github.com/runningwild/yedparse"
   "math/rand"
   "os"
   "path/filepath"
@@ -9,14 +17,6 @@ import (
   "strconv"
   "strings"
   "sync"
-  "bytes"
-  "encoding/gob"
-  "errors"
-  "github.com/runningwild/glop/render"
-  "github.com/runningwild/glop/util/algorithm"
-  "github.com/runningwild/opengl/gl"
-  "github.com/runningwild/opengl/glu"
-  "github.com/runningwild/yedparse"
 )
 
 const (
@@ -812,10 +812,11 @@ func (s *Sprite) SetSpriteState(state SpriteState) error {
     s.facing = state.internals.Facing
     s.state_facing = s.facing
     s.shared.facings[s.facing].Load()
-  } else {
+  } else if state.internals.Facing != s.facing {
     s.shared.facings[s.facing].Unload()
     s.facing = state.internals.Facing
     s.state_facing = s.facing
+    s.shared.facings[s.facing].Load()
   }
   s.anim_node = s.shared.anim.Node(state.internals.Anim_node_id)
   s.state_node = s.shared.state.Node(state.internals.State_node_id)
