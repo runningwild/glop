@@ -813,7 +813,7 @@ func (s *Sprite) SetSpriteState(state SpriteState) error {
     s.state_facing = s.facing
     s.shared.facings[s.facing].Load()
   } else if state.internals.Facing != s.facing {
-    s.shared.facings[s.facing].Unload()
+    // s.shared.facings[s.facing].Unload()
     s.facing = state.internals.Facing
     s.state_facing = s.facing
     s.shared.facings[s.facing].Load()
