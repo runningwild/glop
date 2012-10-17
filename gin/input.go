@@ -5,70 +5,70 @@ import (
 )
 
 const (
-  Space          = 32
-  Backspace      = 8
-  Tab            = 9
-  Return         = 13
-  Escape         = 27
-  F1             = 129
-  F2             = 130
-  F3             = 131
-  F4             = 132
-  F5             = 133
-  F6             = 134
-  F7             = 135
-  F8             = 136
-  F9             = 137
-  F10            = 138
-  F11            = 139
-  F12            = 140
-  CapsLock       = 150
-  NumLock        = 151
-  ScrollLock     = 152
-  PrintScreen    = 153
-  Pause          = 154
-  LeftShift      = 155
-  RightShift     = 156
-  LeftControl    = 157
-  RightControl   = 158
-  LeftAlt        = 159
-  RightAlt       = 160
-  LeftGui        = 161
-  RightGui       = 162
-  Right          = 166
-  Left           = 167
-  Up             = 168
-  Down           = 169
-  KeyPadDivide   = 170
-  KeyPadMultiply = 171
-  KeyPadSubtract = 172
-  KeyPadAdd      = 173
-  KeyPadEnter    = 174
-  KeyPadDecimal  = 175
-  KeyPadEquals   = 176
-  KeyPad0        = 177
-  KeyPad1        = 178
-  KeyPad2        = 179
-  KeyPad3        = 180
-  KeyPad4        = 181
-  KeyPad5        = 182
-  KeyPad6        = 183
-  KeyPad7        = 184
-  KeyPad8        = 185
-  KeyPad9        = 186
-  KeyDelete      = 190
-  KeyHome        = 191
-  KeyInsert      = 192
-  KeyEnd         = 193
-  KeyPageUp      = 194
-  KeyPageDown    = 195
-  MouseXAxis     = 300
-  MouseYAxis     = 301
+  Space                = 32
+  Backspace            = 8
+  Tab                  = 9
+  Return               = 13
+  Escape               = 27
+  F1                   = 129
+  F2                   = 130
+  F3                   = 131
+  F4                   = 132
+  F5                   = 133
+  F6                   = 134
+  F7                   = 135
+  F8                   = 136
+  F9                   = 137
+  F10                  = 138
+  F11                  = 139
+  F12                  = 140
+  CapsLock             = 150
+  NumLock              = 151
+  ScrollLock           = 152
+  PrintScreen          = 153
+  Pause                = 154
+  LeftShift            = 155
+  RightShift           = 156
+  LeftControl          = 157
+  RightControl         = 158
+  LeftAlt              = 159
+  RightAlt             = 160
+  LeftGui              = 161
+  RightGui             = 162
+  Right                = 166
+  Left                 = 167
+  Up                   = 168
+  Down                 = 169
+  KeyPadDivide         = 170
+  KeyPadMultiply       = 171
+  KeyPadSubtract       = 172
+  KeyPadAdd            = 173
+  KeyPadEnter          = 174
+  KeyPadDecimal        = 175
+  KeyPadEquals         = 176
+  KeyPad0              = 177
+  KeyPad1              = 178
+  KeyPad2              = 179
+  KeyPad3              = 180
+  KeyPad4              = 181
+  KeyPad5              = 182
+  KeyPad6              = 183
+  KeyPad7              = 184
+  KeyPad8              = 185
+  KeyPad9              = 186
+  KeyDelete            = 190
+  KeyHome              = 191
+  KeyInsert            = 192
+  KeyEnd               = 193
+  KeyPageUp            = 194
+  KeyPageDown          = 195
+  MouseXAxis           = 300
+  MouseYAxis           = 301
   MouseWheelVertical   = 302
   MouseWheelHorizontal = 303
-  MouseLButton   = 304
-  MouseRButton   = 305
-  MouseMButton   = 306
+  MouseLButton         = 304
+  MouseRButton         = 305
+  MouseMButton         = 306
 
   // standard derived keys start here
   EitherShift = 1000 + iota
@@ -268,6 +268,7 @@ func (event EventType) String() string {
   panic(fmt.Sprintf("%d is not a valid EventType", event))
   return ""
 }
+
 // TODO: Consider making a Timestamp type (int64)
 type Event struct {
   Key  Key
@@ -289,6 +290,7 @@ type EventGroup struct {
   Events    []Event
   Timestamp int64
 }
+
 // Returns a bool indicating whether an event corresponding to the given KeyId is present
 // in the EventGroup, and if so the Event returned is a copy of that event.
 func (eg *EventGroup) FindEvent(id KeyId) (bool, Event) {
@@ -356,7 +358,7 @@ func (input *Input) GetKey(id KeyId) Key {
   return key
 }
 func (input *Input) GetKeyByName(name string) Key {
-  for _,key := range input.key_map {
+  for _, key := range input.key_map {
     if key.Name() == name {
       return key
     }
@@ -444,9 +446,11 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
   }
 
   for _, key := range input.all_keys {
-    gen,amt := key.Think(t)
-    if !gen { continue }
-    group := EventGroup{ Timestamp: t }
+    gen, amt := key.Think(t)
+    if !gen {
+      continue
+    }
+    group := EventGroup{Timestamp: t}
     input.pressKey(key, amt, Event{}, &group)
     if len(group.Events) > 0 {
       groups = append(groups, group)
