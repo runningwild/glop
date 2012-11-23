@@ -468,7 +468,7 @@ func MakeDictionary(font *truetype.Font, size int) *Dictionary {
   width := 300
   height := 300
   context.SetSrc(image.White)
-  dpi := 150
+  dpi := 150.0
   context.SetFontSize(float64(size))
   context.SetDPI(dpi)
   var letters []image.Image

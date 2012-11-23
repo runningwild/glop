@@ -1,20 +1,21 @@
 package gui
 
 import (
-  "fmt"
-  "image"
-  "image/draw"
-  "image/color"
   "code.google.com/p/freetype-go/freetype"
   "code.google.com/p/freetype-go/freetype/truetype"
+  "fmt"
   "github.com/runningwild/opengl/gl"
   "github.com/runningwild/opengl/glu"
+  "image"
+  "image/color"
+  "image/draw"
   "io/ioutil"
 )
 
 type guiError struct {
   ErrorString string
 }
+
 func (g *guiError) Error() string {
   return g.ErrorString
 }
@@ -36,7 +37,7 @@ func MustLoadFontAs(path, name string) {
 
 func LoadFontAs(path, name string) error {
   if _, ok := basic_fonts[name]; ok {
-    return &guiError{ fmt.Sprintf("Cannot load two fonts with the same name: '%s'.", name) }
+    return &guiError{fmt.Sprintf("Cannot load two fonts with the same name: '%s'.", name)}
   }
   data, err := ioutil.ReadFile(path)
   if err != nil {
@@ -51,7 +52,7 @@ func LoadFontAs(path, name string) error {
 }
 
 func GetDict(name string) *Dictionary {
-  d,ok := basic_dicts[name]
+  d, ok := basic_dicts[name]
   if ok {
     return d
   }
@@ -72,7 +73,7 @@ func drawText(font *truetype.Font, c *freetype.Context, color color.Color, rgba 
   // TODO: wtf - this is all wrong!
   // fix fonts - we can't change the font size easily
   height := 1.3
-  pt := freetype.Pt(0, int(float64(c.FUnitToPixelRU(font.UnitsPerEm()))*height))
+  pt := freetype.Pt(0, int(float64(c.PointToFix32(10)>>8)))
   adv, _ := c.DrawString(text, pt)
   pt.X += adv.X
   py := int(float64(pt.Y>>8)/height + 0.01)
@@ -214,10 +215,10 @@ func (w *TextLine) preDraw(region Region) {
 
   gl.Color3d(0, 0, 0)
   gl.Begin(gl.QUADS)
-    gl.Vertex2i(region.X, region.Y)
-    gl.Vertex2i(region.X, region.Y + region.Dy)
-    gl.Vertex2i(region.X + region.Dx, region.Y + region.Dy)
-    gl.Vertex2i(region.X + region.Dx, region.Y)
+  gl.Vertex2i(region.X, region.Y)
+  gl.Vertex2i(region.X, region.Y+region.Dy)
+  gl.Vertex2i(region.X+region.Dx, region.Y+region.Dy)
+  gl.Vertex2i(region.X+region.Dx, region.Y)
   gl.End()
 
   gl.PushAttrib(gl.TEXTURE_BIT)
@@ -244,7 +245,9 @@ func (w *TextLine) Draw(region Region) {
 }
 
 func (w *TextLine) coreDraw(region Region) {
-  if region.Size() == 0 { return }
+  if region.Size() == 0 {
+    return
+  }
   gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
   gl.Color4d(1.0, 1.0, 1.0, 1.0)
   req := w.Request_dims
