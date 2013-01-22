@@ -56,7 +56,7 @@ func GetDict(name string) *Dictionary {
   if ok {
     return d
   }
-  basic_dicts[name] = MakeDictionary(basic_fonts[name], 15)
+  // basic_dicts[name] = MakeDictionary(basic_fonts[name], 15)
   return basic_dicts[name]
 }
 
