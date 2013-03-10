@@ -242,8 +242,11 @@ type Input struct {
 	all_keys []Key
 	key_map  map[KeyId]Key
 
-	// map from keyId to list of (derived) Keys that depend on it in some way
+	// map from keyId to list of derived Keys and general derived Keys that depend
+	// on it in some way
 	id_to_deps map[KeyId][]Key
+
+	id_to_family_deps map[KeyIndex][]derivedKeyFamily
 
 	// map from KeyIndex to an aggregator of the appropriate type for that index,
 	// this allows us to construct Keys for devices as the events happen, rather
@@ -281,6 +284,7 @@ func Make() *Input {
 	input.id_to_deps = make(map[KeyId][]Key, 16)
 	input.index_to_agg_type = make(map[KeyIndex]aggregatorType)
 	input.index_to_name = make(map[KeyIndex]string)
+	input.id_to_family_deps = make(map[KeyIndex][]derivedKeyFamily)
 
 	input.registerKeyIndex(AnyKey, aggregatorTypeStandard, "AnyKey")
 	for c := 'a'; c <= 'z'; c++ {
@@ -506,8 +510,18 @@ func (input *Input) informDeps(event Event, group *EventGroup) {
 	any_device := id.Device
 	any_device.Index = 0
 	deps := input.id_to_deps[id]
+	fmt.Printf("Informing deps: %v\n", id)
+	fmt.Printf("basic deos: %v\n", deps)
 	for _, dep := range input.id_to_deps[KeyId{Index: id.Index, Device: any_device}] {
+		fmt.Printf("%v depends on %v\n", dep.Id(), id)
 		deps = append(deps, dep)
+	}
+	if id.Device.Type != DeviceTypeDerived && id.Device.Index != DeviceIndexAny {
+		for _, family_dep := range input.id_to_family_deps[id.Index] {
+			key := family_dep.GetKey(id.Device)
+			fmt.Printf("%v depends on %v\n", key.Id(), id)
+			deps = append(deps, key)
+		}
 	}
 	for _, dep := range deps {
 		input.pressKey(dep, dep.CurPressAmt(), event, group)
@@ -517,9 +531,8 @@ func (input *Input) informDeps(event Event, group *EventGroup) {
 	}
 }
 
-var foo int
-
 func (input *Input) pressKey(k Key, amt float64, cause Event, group *EventGroup) {
+	fmt.Printf("PressKey: %v\n", k.Id())
 	event := k.SetPressAmt(amt, group.Timestamp, cause)
 	input.informDeps(event, group)
 	if k.Id().Index != AnyKey && k.Id().Device.Type != DeviceTypeAny && k.Id().Device.Type != DeviceTypeDerived && k.Id().Device.Index != 0 {

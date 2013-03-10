@@ -21,21 +21,25 @@ func (input *Input) registerDependence(derived Key, dep KeyId) {
 	}
 	list = append(list, derived)
 	input.id_to_deps[dep] = list
+	if derived.Id() == dep {
+		panic("Can't have a key depend on itself.")
+	}
 }
 
 func (input *Input) BindDerivedKey(name string, bindings ...Binding) Key {
-	return input.bindDerivedKeyWithIndex(name, genDerivedKeyIndex(), bindings...)
+	return input.bindDerivedKeyWithIndex(
+		name,
+		genDerivedKeyIndex(),
+		DeviceId{Index: 1, Type: DeviceTypeDerived},
+		bindings...)
 }
 
-func (input *Input) bindDerivedKeyWithIndex(name string, index KeyIndex, bindings ...Binding) Key {
+func (input *Input) bindDerivedKeyWithIndex(name string, index KeyIndex, device DeviceId, bindings ...Binding) Key {
 	dk := &derivedKey{
 		keyState: keyState{
 			id: KeyId{
-				Index: index,
-				Device: DeviceId{
-					Index: 1,
-					Type:  DeviceTypeDerived,
-				},
+				Index:  index,
+				Device: device,
 			},
 			name:       name,
 			aggregator: &standardAggregator{},
@@ -146,7 +150,7 @@ func (b *Binding) primaryPressAmt() float64 {
 
 func (b *Binding) CurPressAmt() float64 {
 	for i := range b.Modifiers {
-		if b.Input.key_map[b.Modifiers[i]].IsDown() != b.Down[i] {
+		if b.Input.GetKey(b.Modifiers[i]).IsDown() != b.Down[i] {
 			return 0
 		}
 	}
@@ -154,4 +158,77 @@ func (b *Binding) CurPressAmt() float64 {
 		return 0
 	}
 	return b.Input.key_map[b.PrimaryKey].CurPressAmt()
+}
+
+type derivedKeyFamily struct {
+	name             string
+	index            KeyIndex
+	binding_families []BindingFamily
+	input            *Input
+}
+
+func (input *Input) BindDerivedKeyFamily(name string, bindings ...BindingFamily) KeyIndex {
+	dkf := derivedKeyFamily{
+		name:             name,
+		index:            genDerivedKeyIndex(),
+		binding_families: bindings,
+		input:            input,
+	}
+	for _, binding := range bindings {
+		input.id_to_family_deps[binding.PrimaryIndex] = append(input.id_to_family_deps[dkf.index], dkf)
+		for _, mod := range binding.Modifiers {
+			input.id_to_family_deps[mod] = append(input.id_to_family_deps[dkf.index], dkf)
+		}
+	}
+	return dkf.index
+}
+
+func (dkf *derivedKeyFamily) GetKey(device DeviceId) Key {
+	id := KeyId{Index: dkf.index, Device: device}
+	if _, ok := dkf.input.key_map[id]; !ok {
+		var bindings []Binding
+		for _, binding_family := range dkf.binding_families {
+			var modifiers []KeyId
+			for _, index := range binding_family.Modifiers {
+				modifiers = append(modifiers, KeyId{Index: index, Device: device})
+			}
+			bindings = append(bindings, Binding{
+				PrimaryKey: KeyId{Index: binding_family.PrimaryIndex, Device: device},
+				Modifiers:  modifiers,
+				Down:       binding_family.Down,
+				Input:      dkf.input,
+			})
+		}
+		key := dkf.input.bindDerivedKeyWithIndex(dkf.name, dkf.index, device, bindings...)
+		dkf.input.key_map[id] = key
+	}
+	ret := dkf.input.GetKeyFlat(dkf.index, device.Type, device.Index)
+	return ret
+}
+
+// A BindingFamily is like a binding, but it does not specify a device.  Instead
+// a binding family can be down per device.  Example:
+// bf := BindingFamily{
+//   PrimaryKey: KeyA,
+//   Modifiers: []KeyIndex{KeyB},
+//   Down: []bool{false},
+// }
+// bf will be down 
+// A BindingFamily is considered down if PrimaryKey is down and all Modifiers' IsDown()s match the
+// corresponding entry in Down
+type BindingFamily struct {
+	PrimaryIndex KeyIndex
+	Modifiers    []KeyIndex
+	Down         []bool
+}
+
+func (input *Input) MakeBindingFamily(primary KeyIndex, modifiers []KeyIndex, down []bool) BindingFamily {
+	if len(modifiers) != len(down) {
+		panic("MakeBindingFamilys(primary, modifiers, down) - modifiers and down must have the same length.")
+	}
+	return BindingFamily{
+		PrimaryIndex: primary,
+		Modifiers:    modifiers,
+		Down:         down,
+	}
 }

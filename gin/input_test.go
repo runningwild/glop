@@ -1,6 +1,7 @@
 package gin_test
 
 import (
+	"fmt"
 	. "github.com/orfjackal/gospec/src/gospec"
 	"github.com/orfjackal/gospec/src/gospec"
 	"github.com/runningwild/glop/gin"
@@ -242,6 +243,46 @@ func DerivedKeySpec(c gospec.Context) {
 		input.Think(60, false, events)
 		c.Expect(ABc_Ef.IsDown(), Equals, false)
 		c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
+	})
+}
+
+// Check that derived keys can properly differentiate between the same key
+// pressed on different devices.
+func DeviceFamilySpec(c gospec.Context) {
+	input := gin.Make()
+	binding := input.MakeBindingFamily(gin.KeyA, []gin.KeyIndex{gin.KeyB}, []bool{true})
+	monkey_index := input.BindDerivedKeyFamily("monkey", binding)
+
+	c.Specify("FAMILIES.", func() {
+		// Test that first binding can trigger a press
+		events := make([]gin.OsEvent, 0)
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
+		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 1)
+		fmt.Printf("Pressing A\n")
+		input.Think(2, false, events)
+		// c.Expect(monkey1.IsDown(), Equals, false)
+		// c.Expect(monkey2.IsDown(), Equals, false)
+		// c.Expect(monkeyAny.IsDown(), Equals, false)
+
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
+		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 3)
+		fmt.Printf("Releasing A\n")
+		input.Think(4, false, events)
+		// c.Expect(monkey1.IsDown(), Equals, false)
+		// c.Expect(monkey2.IsDown(), Equals, false)
+		// c.Expect(monkeyAny.IsDown(), Equals, false)
+
+		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 1, 5)
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 5)
+		fmt.Printf("Pressing A then B\n")
+		input.Think(6, false, events)
+		monkey1 := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, 1)
+		monkey2 := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, 2)
+		monkeyAny := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+
+		c.Expect(monkey1.IsDown(), Equals, true)
+		c.Expect(monkey2.IsDown(), Equals, false)
+		c.Expect(monkeyAny.IsDown(), Equals, true)
 	})
 }
 
