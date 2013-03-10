@@ -246,7 +246,11 @@ type Input struct {
 	// on it in some way
 	id_to_deps map[KeyId][]Key
 
-	id_to_family_deps map[KeyIndex][]derivedKeyFamily
+	// map from KeyId to list of derived key families that depend on it
+	index_to_family_deps map[KeyIndex][]derivedKeyFamily
+
+	// map from KeyId to the derivedKeyFamily that it represents, if any
+	index_to_family map[KeyIndex]derivedKeyFamily
 
 	// map from KeyIndex to an aggregator of the appropriate type for that index,
 	// this allows us to construct Keys for devices as the events happen, rather
@@ -284,7 +288,8 @@ func Make() *Input {
 	input.id_to_deps = make(map[KeyId][]Key, 16)
 	input.index_to_agg_type = make(map[KeyIndex]aggregatorType)
 	input.index_to_name = make(map[KeyIndex]string)
-	input.id_to_family_deps = make(map[KeyIndex][]derivedKeyFamily)
+	input.index_to_family_deps = make(map[KeyIndex][]derivedKeyFamily)
+	input.index_to_family = make(map[KeyIndex]derivedKeyFamily)
 
 	input.registerKeyIndex(AnyKey, aggregatorTypeStandard, "AnyKey")
 	for c := 'a'; c <= 'z'; c++ {
@@ -453,8 +458,19 @@ func (input *Input) GetKey(id KeyId) Key {
 	}
 	key, ok := input.key_map[id]
 	if !ok {
-		// If we're looking for a general key we know how to create those
-		if id.Index == AnyKey || id.Device.Type == DeviceTypeAny || id.Device.Index == 0 {
+		if family, ok := input.index_to_family[id.Index]; ok {
+			// If the index indicates a family but the key doesn't exist, go ahead and
+			// have the family create it.
+			input.key_map[id] = family.GetKey(id.Device)
+			key = input.key_map[id]
+
+			// TODO: there are three blocks here and they all add a key to
+			// input.all_keys, but this one does it implicitly through
+			// family.GetKey().  We should find a way to avoid this and have all
+			// additions to all_keys be in the same place.
+			// input.all_keys = append(input.all_keys, key)
+		} else if id.Index == AnyKey || id.Device.Type == DeviceTypeAny || id.Device.Index == 0 {
+			// If we're looking for a general key we know how to create those
 			if id.Device.Type == DeviceTypeAny && id.Device.Index != 0 {
 				panic("Cannot specify a Device Index but not a Device Type.")
 			}
@@ -466,6 +482,8 @@ func (input *Input) GetKey(id KeyId) Key {
 				},
 				input: input,
 			}
+			key = input.key_map[id]
+			input.all_keys = append(input.all_keys, key)
 		} else {
 			// Check if the index is valid, if it is then we can just create a new key
 			// the appropriate device.
@@ -484,15 +502,14 @@ func (input *Input) GetKey(id KeyId) Key {
 			default:
 				panic(fmt.Sprintf("Unknown aggregator type specified: %T.", agg_type))
 			}
-			// TODO: duplicate the aggregator, probably needs to use reflection
 			input.key_map[id] = &keyState{
 				id:         id,
 				name:       input.index_to_name[id.Index],
 				aggregator: agg,
 			}
+			key = input.key_map[id]
+			input.all_keys = append(input.all_keys, key)
 		}
-		key = input.key_map[id]
-		input.all_keys = append(input.all_keys, key)
 	}
 	return key
 }
@@ -510,16 +527,12 @@ func (input *Input) informDeps(event Event, group *EventGroup) {
 	any_device := id.Device
 	any_device.Index = 0
 	deps := input.id_to_deps[id]
-	fmt.Printf("Informing deps: %v\n", id)
-	fmt.Printf("basic deos: %v\n", deps)
 	for _, dep := range input.id_to_deps[KeyId{Index: id.Index, Device: any_device}] {
-		fmt.Printf("%v depends on %v\n", dep.Id(), id)
 		deps = append(deps, dep)
 	}
 	if id.Device.Type != DeviceTypeDerived && id.Device.Index != DeviceIndexAny {
-		for _, family_dep := range input.id_to_family_deps[id.Index] {
+		for _, family_dep := range input.index_to_family_deps[id.Index] {
 			key := family_dep.GetKey(id.Device)
-			fmt.Printf("%v depends on %v\n", key.Id(), id)
 			deps = append(deps, key)
 		}
 	}
@@ -532,7 +545,6 @@ func (input *Input) informDeps(event Event, group *EventGroup) {
 }
 
 func (input *Input) pressKey(k Key, amt float64, cause Event, group *EventGroup) {
-	fmt.Printf("PressKey: %v\n", k.Id())
 	event := k.SetPressAmt(amt, group.Timestamp, cause)
 	input.informDeps(event, group)
 	if k.Id().Index != AnyKey && k.Id().Device.Type != DeviceTypeAny && k.Id().Device.Type != DeviceTypeDerived && k.Id().Device.Index != 0 {
@@ -573,6 +585,10 @@ func (input *Input) RegisterEventListener(listener Listener) {
 func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []EventGroup {
 	// If we have lost focus, clear all key state. Note that down_keys_frame_ is rebuilt every frame
 	// regardless, so we do not need to worry about it here.
+	fmt.Printf("DEPOS\n")
+	for a, b := range input.id_to_deps {
+		fmt.Printf("id(%v): %v\n", a, b)
+	}
 	if lost_focus {
 		//    clearAllKeyState()
 	}
@@ -584,6 +600,7 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
 		group := EventGroup{
 			Timestamp: os_event.Timestamp,
 		}
+		fmt.Printf("Raw press key (%v): %v\n", os_event.KeyId, os_event.Press_amt)
 		input.pressKey(
 			input.GetKey(os_event.KeyId),
 			os_event.Press_amt,
@@ -612,6 +629,7 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
 	}
 
 	for _, key := range input.all_keys {
+		fmt.Printf("Loop think on %v\n", key.Id())
 		gen, amt := key.Think(t)
 		if !gen {
 			continue

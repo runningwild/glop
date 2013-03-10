@@ -1,7 +1,6 @@
 package gin_test
 
 import (
-	"fmt"
 	. "github.com/orfjackal/gospec/src/gospec"
 	"github.com/orfjackal/gospec/src/gospec"
 	"github.com/runningwild/glop/gin"
@@ -253,36 +252,64 @@ func DeviceFamilySpec(c gospec.Context) {
 	binding := input.MakeBindingFamily(gin.KeyA, []gin.KeyIndex{gin.KeyB}, []bool{true})
 	monkey_index := input.BindDerivedKeyFamily("monkey", binding)
 
-	c.Specify("FAMILIES.", func() {
+	monkey1 := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, 1)
+	monkey2 := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, 2)
+	monkeyAny := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+
+	c.Specify("Derived key families work properly.", func() {
 		// Test that first binding can trigger a press
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 1)
-		fmt.Printf("Pressing A\n")
 		input.Think(2, false, events)
-		// c.Expect(monkey1.IsDown(), Equals, false)
-		// c.Expect(monkey2.IsDown(), Equals, false)
-		// c.Expect(monkeyAny.IsDown(), Equals, false)
+		c.Expect(monkey1.IsDown(), Equals, false)
+		c.Expect(monkey1.FramePressCount(), Equals, 0)
+		c.Expect(monkey2.IsDown(), Equals, false)
+		c.Expect(monkey2.FramePressCount(), Equals, 0)
+		c.Expect(monkeyAny.IsDown(), Equals, false)
+		c.Expect(monkeyAny.FramePressCount(), Equals, 0)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 3)
-		fmt.Printf("Releasing A\n")
 		input.Think(4, false, events)
-		// c.Expect(monkey1.IsDown(), Equals, false)
-		// c.Expect(monkey2.IsDown(), Equals, false)
-		// c.Expect(monkeyAny.IsDown(), Equals, false)
+		c.Expect(monkey1.IsDown(), Equals, false)
+		c.Expect(monkey1.FramePressCount(), Equals, 0)
+		c.Expect(monkey2.IsDown(), Equals, false)
+		c.Expect(monkey2.FramePressCount(), Equals, 0)
+		c.Expect(monkeyAny.IsDown(), Equals, false)
+		c.Expect(monkeyAny.FramePressCount(), Equals, 0)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 1, 5)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 5)
-		fmt.Printf("Pressing A then B\n")
 		input.Think(6, false, events)
-		monkey1 := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, 1)
-		monkey2 := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, 2)
-		monkeyAny := input.GetKeyFlat(monkey_index, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
-
 		c.Expect(monkey1.IsDown(), Equals, true)
+		c.Expect(monkey1.FramePressCount(), Equals, 1)
 		c.Expect(monkey2.IsDown(), Equals, false)
+		c.Expect(monkey2.FramePressCount(), Equals, 0)
 		c.Expect(monkeyAny.IsDown(), Equals, true)
+		c.Expect(monkeyAny.FramePressCount(), Equals, 1)
+
+		events = events[0:0]
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 7)
+		input.Think(8, false, events)
+		c.Expect(monkey1.IsDown(), Equals, false)
+		c.Expect(monkey1.FrameReleaseCount(), Equals, 1)
+		c.Expect(monkey2.IsDown(), Equals, false)
+		c.Expect(monkey2.FrameReleaseCount(), Equals, 0)
+		c.Expect(monkeyAny.IsDown(), Equals, false)
+		c.Expect(monkeyAny.FrameReleaseCount(), Equals, 1)
+
+		events = events[0:0]
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 9)
+		input.Think(10, false, events)
+		c.Expect(monkey1.IsDown(), Equals, true)
+		c.Expect(monkey1.FramePressCount(), Equals, 1)
+		c.Expect(monkey2.IsDown(), Equals, false)
+		c.Expect(monkey2.FramePressCount(), Equals, 0)
+		c.Expect(monkeyAny.IsDown(), Equals, true)
+		c.Expect(monkeyAny.FramePressCount(), Equals, 1)
 	})
 }
 

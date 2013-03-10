@@ -103,8 +103,10 @@ func (a *baseAggregator) CurPressSum() float64 {
 func (a *baseAggregator) handleEventType(event_type EventType) {
 	switch event_type {
 	case Press:
+		fmt.Printf("press %d -> %d\n", a.this.press_count, a.this.press_count+1)
 		a.this.press_count++
 	case Release:
+		fmt.Printf("release %d -> %d\n", a.this.release_count, a.this.release_count+1)
 		a.this.release_count++
 	}
 }

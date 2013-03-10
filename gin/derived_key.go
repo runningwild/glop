@@ -1,5 +1,9 @@
 package gin
 
+import (
+	"fmt"
+)
+
 var (
 	next_derived_key_index KeyIndex
 )
@@ -59,6 +63,9 @@ func (input *Input) bindDerivedKeyWithIndex(name string, index KeyIndex, device 
 			input.registerDependence(dk, modifier)
 		}
 	}
+
+	// TODO: Figure out a way to move this into Input.GetKey() or something.  It's
+	// really dirty to have these maps/slices populated in multiple places.
 	input.key_map[dk.id] = dk
 	input.all_keys = append(input.all_keys, dk)
 	return dk
@@ -73,6 +80,11 @@ type derivedKey struct {
 
 	// We store the down state of all of our bindings so that things 
 	bindings_down []bool
+}
+
+func (dk *derivedKey) Think(ms int64) (bool, float64) {
+	fmt.Printf("Thinking on dk %v\n", dk.id)
+	return dk.keyState.Think(ms)
 }
 
 func (dk *derivedKey) CurPressAmt() float64 {
@@ -114,6 +126,7 @@ func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Eve
 		event.Type = Release
 	}
 	if amt != 0 && index != -1 && dk.numBindingsDown() == 0 && !dk.bindings_down[index] {
+		fmt.Printf("(%p) Generated press event for %v\n", dk, dk.Id())
 		event.Type = Press
 	}
 	if index != -1 {
@@ -175,11 +188,12 @@ func (input *Input) BindDerivedKeyFamily(name string, bindings ...BindingFamily)
 		input:            input,
 	}
 	for _, binding := range bindings {
-		input.id_to_family_deps[binding.PrimaryIndex] = append(input.id_to_family_deps[dkf.index], dkf)
+		input.index_to_family_deps[binding.PrimaryIndex] = append(input.index_to_family_deps[dkf.index], dkf)
 		for _, mod := range binding.Modifiers {
-			input.id_to_family_deps[mod] = append(input.id_to_family_deps[dkf.index], dkf)
+			input.index_to_family_deps[mod] = append(input.index_to_family_deps[dkf.index], dkf)
 		}
 	}
+	dkf.input.index_to_family[dkf.index] = dkf
 	return dkf.index
 }
 
@@ -199,8 +213,14 @@ func (dkf *derivedKeyFamily) GetKey(device DeviceId) Key {
 				Input:      dkf.input,
 			})
 		}
-		key := dkf.input.bindDerivedKeyWithIndex(dkf.name, dkf.index, device, bindings...)
-		dkf.input.key_map[id] = key
+		dkf.input.bindDerivedKeyWithIndex(dkf.name, dkf.index, device, bindings...)
+
+		// On second thought i don't think i need any of this - it's done in the above
+		// function call		
+		// TODO: Maybe should set the key in the map here, it gets set elsewhere and
+		// it might be nice to have that all in one place.
+		// dkf.input.key_map[id] = key
+		// dkf.input.all_keys = append(dkf.input.all_keys, key)
 	}
 	ret := dkf.input.GetKeyFlat(dkf.index, device.Type, device.Index)
 	return ret
