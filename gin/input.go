@@ -5,97 +5,97 @@ import (
 )
 
 var (
-	AnyAnyKey               = KeyId{Index: AnyKey, Device: DeviceId{Type: DeviceTypeAny, Index: 0}}
-	AnySpace                = KeyId{Index: Space, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyBackspace            = KeyId{Index: Backspace, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyTab                  = KeyId{Index: Tab, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyReturn               = KeyId{Index: Return, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyEscape               = KeyId{Index: Escape, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyA                 = KeyId{Index: KeyA, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyB                 = KeyId{Index: KeyB, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyC                 = KeyId{Index: KeyC, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyD                 = KeyId{Index: KeyD, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyE                 = KeyId{Index: KeyE, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyF                 = KeyId{Index: KeyF, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyG                 = KeyId{Index: KeyG, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyH                 = KeyId{Index: KeyH, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyI                 = KeyId{Index: KeyI, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyJ                 = KeyId{Index: KeyJ, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyK                 = KeyId{Index: KeyK, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyL                 = KeyId{Index: KeyL, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyM                 = KeyId{Index: KeyM, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyN                 = KeyId{Index: KeyN, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyO                 = KeyId{Index: KeyO, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyP                 = KeyId{Index: KeyP, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyQ                 = KeyId{Index: KeyQ, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyR                 = KeyId{Index: KeyR, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyS                 = KeyId{Index: KeyS, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyT                 = KeyId{Index: KeyT, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyU                 = KeyId{Index: KeyU, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyV                 = KeyId{Index: KeyV, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyW                 = KeyId{Index: KeyW, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyX                 = KeyId{Index: KeyX, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyY                 = KeyId{Index: KeyY, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyZ                 = KeyId{Index: KeyZ, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF1                   = KeyId{Index: F1, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF2                   = KeyId{Index: F2, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF3                   = KeyId{Index: F3, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF4                   = KeyId{Index: F4, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF5                   = KeyId{Index: F5, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF6                   = KeyId{Index: F6, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF7                   = KeyId{Index: F7, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF8                   = KeyId{Index: F8, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF9                   = KeyId{Index: F9, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF10                  = KeyId{Index: F10, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF11                  = KeyId{Index: F11, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyF12                  = KeyId{Index: F12, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyCapsLock             = KeyId{Index: CapsLock, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyNumLock              = KeyId{Index: NumLock, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyScrollLock           = KeyId{Index: ScrollLock, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyPrintScreen          = KeyId{Index: PrintScreen, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyPause                = KeyId{Index: Pause, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyLeftShift            = KeyId{Index: LeftShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyRightShift           = KeyId{Index: RightShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyLeftControl          = KeyId{Index: LeftControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyRightControl         = KeyId{Index: RightControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyLeftAlt              = KeyId{Index: LeftAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyRightAlt             = KeyId{Index: RightAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyLeftGui              = KeyId{Index: LeftGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyRightGui             = KeyId{Index: RightGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyRight                = KeyId{Index: Right, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyLeft                 = KeyId{Index: Left, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyUp                   = KeyId{Index: Up, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyDown                 = KeyId{Index: Down, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadDivide         = KeyId{Index: KeyPadDivide, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadMultiply       = KeyId{Index: KeyPadMultiply, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadSubtract       = KeyId{Index: KeyPadSubtract, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadAdd            = KeyId{Index: KeyPadAdd, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadEnter          = KeyId{Index: KeyPadEnter, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadDecimal        = KeyId{Index: KeyPadDecimal, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPadEquals         = KeyId{Index: KeyPadEquals, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad0              = KeyId{Index: KeyPad0, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad1              = KeyId{Index: KeyPad1, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad2              = KeyId{Index: KeyPad2, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad3              = KeyId{Index: KeyPad3, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad4              = KeyId{Index: KeyPad4, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad5              = KeyId{Index: KeyPad5, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad6              = KeyId{Index: KeyPad6, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad7              = KeyId{Index: KeyPad7, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad8              = KeyId{Index: KeyPad8, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPad9              = KeyId{Index: KeyPad9, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyDelete            = KeyId{Index: KeyDelete, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyHome              = KeyId{Index: KeyHome, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyInsert            = KeyId{Index: KeyInsert, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyEnd               = KeyId{Index: KeyEnd, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPageUp            = KeyId{Index: KeyPageUp, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyKeyPageDown          = KeyId{Index: KeyPageDown, Device: DeviceId{Type: DeviceTypeKeyboard, Index: 0}}
-	AnyMouseXAxis           = KeyId{Index: MouseXAxis, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
-	AnyMouseYAxis           = KeyId{Index: MouseYAxis, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
-	AnyMouseWheelVertical   = KeyId{Index: MouseWheelVertical, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
-	AnyMouseWheelHorizontal = KeyId{Index: MouseWheelHorizontal, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
-	AnyMouseLButton         = KeyId{Index: MouseLButton, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
-	AnyMouseRButton         = KeyId{Index: MouseRButton, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
-	AnyMouseMButton         = KeyId{Index: MouseMButton, Device: DeviceId{Type: DeviceTypeMouse, Index: 0}}
+	AnyAnyKey               = KeyId{Index: AnyKey, Device: DeviceId{Type: DeviceTypeAny, Index: DeviceIndexAny}}
+	AnySpace                = KeyId{Index: Space, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyBackspace            = KeyId{Index: Backspace, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyTab                  = KeyId{Index: Tab, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyReturn               = KeyId{Index: Return, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyEscape               = KeyId{Index: Escape, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyA                 = KeyId{Index: KeyA, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyB                 = KeyId{Index: KeyB, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyC                 = KeyId{Index: KeyC, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyD                 = KeyId{Index: KeyD, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyE                 = KeyId{Index: KeyE, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyF                 = KeyId{Index: KeyF, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyG                 = KeyId{Index: KeyG, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyH                 = KeyId{Index: KeyH, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyI                 = KeyId{Index: KeyI, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyJ                 = KeyId{Index: KeyJ, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyK                 = KeyId{Index: KeyK, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyL                 = KeyId{Index: KeyL, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyM                 = KeyId{Index: KeyM, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyN                 = KeyId{Index: KeyN, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyO                 = KeyId{Index: KeyO, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyP                 = KeyId{Index: KeyP, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyQ                 = KeyId{Index: KeyQ, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyR                 = KeyId{Index: KeyR, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyS                 = KeyId{Index: KeyS, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyT                 = KeyId{Index: KeyT, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyU                 = KeyId{Index: KeyU, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyV                 = KeyId{Index: KeyV, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyW                 = KeyId{Index: KeyW, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyX                 = KeyId{Index: KeyX, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyY                 = KeyId{Index: KeyY, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyZ                 = KeyId{Index: KeyZ, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF1                   = KeyId{Index: F1, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF2                   = KeyId{Index: F2, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF3                   = KeyId{Index: F3, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF4                   = KeyId{Index: F4, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF5                   = KeyId{Index: F5, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF6                   = KeyId{Index: F6, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF7                   = KeyId{Index: F7, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF8                   = KeyId{Index: F8, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF9                   = KeyId{Index: F9, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF10                  = KeyId{Index: F10, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF11                  = KeyId{Index: F11, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyF12                  = KeyId{Index: F12, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyCapsLock             = KeyId{Index: CapsLock, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyNumLock              = KeyId{Index: NumLock, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyScrollLock           = KeyId{Index: ScrollLock, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyPrintScreen          = KeyId{Index: PrintScreen, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyPause                = KeyId{Index: Pause, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyLeftShift            = KeyId{Index: LeftShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyRightShift           = KeyId{Index: RightShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyLeftControl          = KeyId{Index: LeftControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyRightControl         = KeyId{Index: RightControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyLeftAlt              = KeyId{Index: LeftAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyRightAlt             = KeyId{Index: RightAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyLeftGui              = KeyId{Index: LeftGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyRightGui             = KeyId{Index: RightGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyRight                = KeyId{Index: Right, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyLeft                 = KeyId{Index: Left, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyUp                   = KeyId{Index: Up, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyDown                 = KeyId{Index: Down, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadDivide         = KeyId{Index: KeyPadDivide, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadMultiply       = KeyId{Index: KeyPadMultiply, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadSubtract       = KeyId{Index: KeyPadSubtract, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadAdd            = KeyId{Index: KeyPadAdd, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadEnter          = KeyId{Index: KeyPadEnter, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadDecimal        = KeyId{Index: KeyPadDecimal, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPadEquals         = KeyId{Index: KeyPadEquals, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad0              = KeyId{Index: KeyPad0, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad1              = KeyId{Index: KeyPad1, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad2              = KeyId{Index: KeyPad2, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad3              = KeyId{Index: KeyPad3, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad4              = KeyId{Index: KeyPad4, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad5              = KeyId{Index: KeyPad5, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad6              = KeyId{Index: KeyPad6, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad7              = KeyId{Index: KeyPad7, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad8              = KeyId{Index: KeyPad8, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPad9              = KeyId{Index: KeyPad9, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyDelete            = KeyId{Index: KeyDelete, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyHome              = KeyId{Index: KeyHome, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyInsert            = KeyId{Index: KeyInsert, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyEnd               = KeyId{Index: KeyEnd, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPageUp            = KeyId{Index: KeyPageUp, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyKeyPageDown          = KeyId{Index: KeyPageDown, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}
+	AnyMouseXAxis           = KeyId{Index: MouseXAxis, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
+	AnyMouseYAxis           = KeyId{Index: MouseYAxis, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
+	AnyMouseWheelVertical   = KeyId{Index: MouseWheelVertical, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
+	AnyMouseWheelHorizontal = KeyId{Index: MouseWheelHorizontal, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
+	AnyMouseLButton         = KeyId{Index: MouseLButton, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
+	AnyMouseRButton         = KeyId{Index: MouseRButton, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
+	AnyMouseMButton         = KeyId{Index: MouseMButton, Device: DeviceId{Type: DeviceTypeMouse, Index: DeviceIndexAny}}
 )
 
 const (
@@ -221,19 +221,9 @@ func (c *cursor) Point() (int, int) {
 }
 
 type OsEvent struct {
-	// TODO: rename index to KeyId or something more appropriate
 	KeyId     KeyId
 	Press_amt float64
-
-	// For all cursor-based events this is the location of the cursor in window
-	// coordinates when the event happened.  For mouse motion and mouse clicks this
-	// is the location of the mouse.  For non-cursor-based events these values are
-	// meaningless
-	X, Y int
-
 	Timestamp int64
-	Num_lock  int
-	Caps_lock int
 }
 
 // Everything 'global' is put inside a struct so that tests can be run without stepping
@@ -469,9 +459,9 @@ func (input *Input) GetKey(id KeyId) Key {
 			// family.GetKey().  We should find a way to avoid this and have all
 			// additions to all_keys be in the same place.
 			// input.all_keys = append(input.all_keys, key)
-		} else if id.Index == AnyKey || id.Device.Type == DeviceTypeAny || id.Device.Index == 0 {
+		} else if id.Index == AnyKey || id.Device.Type == DeviceTypeAny || id.Device.Index == DeviceIndexAny {
 			// If we're looking for a general key we know how to create those
-			if id.Device.Type == DeviceTypeAny && id.Device.Index != 0 {
+			if id.Device.Type == DeviceTypeAny && id.Device.Index != DeviceIndexAny {
 				panic("Cannot specify a Device Index but not a Device Type.")
 			}
 			input.key_map[id] = &generalDerivedKey{
@@ -525,7 +515,7 @@ func (input *Input) GetKeyByName(name string) Key {
 func (input *Input) informDeps(event Event, group *EventGroup) {
 	id := event.Key.Id()
 	any_device := id.Device
-	any_device.Index = 0
+	any_device.Index = DeviceIndexAny
 	deps := input.id_to_deps[id]
 	for _, dep := range input.id_to_deps[KeyId{Index: id.Index, Device: any_device}] {
 		deps = append(deps, dep)
@@ -547,13 +537,13 @@ func (input *Input) informDeps(event Event, group *EventGroup) {
 func (input *Input) pressKey(k Key, amt float64, cause Event, group *EventGroup) {
 	event := k.SetPressAmt(amt, group.Timestamp, cause)
 	input.informDeps(event, group)
-	if k.Id().Index != AnyKey && k.Id().Device.Type != DeviceTypeAny && k.Id().Device.Type != DeviceTypeDerived && k.Id().Device.Index != 0 {
+	if k.Id().Index != AnyKey && k.Id().Device.Type != DeviceTypeAny && k.Id().Device.Type != DeviceTypeDerived && k.Id().Device.Index != DeviceIndexAny {
 		general_keys := []Key{
 			input.GetKeyFlat(AnyKey, k.Id().Device.Type, k.Id().Device.Index),
-			input.GetKeyFlat(AnyKey, k.Id().Device.Type, 0),
-			input.GetKeyFlat(AnyKey, DeviceTypeAny, 0),
-			input.GetKeyFlat(k.Id().Index, k.Id().Device.Type, 0),
-			input.GetKeyFlat(k.Id().Index, DeviceTypeAny, 0),
+			input.GetKeyFlat(AnyKey, k.Id().Device.Type, DeviceIndexAny),
+			input.GetKeyFlat(AnyKey, DeviceTypeAny, DeviceIndexAny),
+			input.GetKeyFlat(k.Id().Index, k.Id().Device.Type, DeviceIndexAny),
+			input.GetKeyFlat(k.Id().Index, DeviceTypeAny, DeviceIndexAny),
 		}
 		for _, general_key := range general_keys {
 			input.pressKey(general_key, amt, cause, group)

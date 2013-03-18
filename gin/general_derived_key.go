@@ -72,7 +72,7 @@ func (gdk *generalDerivedKey) CurPressAmt() float64 {
 		if key.Id().Index == AnyKey ||
 			key.Id().Device.Type == DeviceTypeAny ||
 			key.Id().Device.Type == DeviceTypeDerived ||
-			key.Id().Device.Index == 0 {
+			key.Id().Device.Index == DeviceIndexAny {
 			continue
 		}
 		if gdk.Id().Index != AnyKey && key.Id().Index != gdk.Id().Index {
@@ -84,7 +84,7 @@ func (gdk *generalDerivedKey) CurPressAmt() float64 {
 			// Not the appropriate device type
 			continue
 		}
-		if gdk.Id().Device.Index != 0 &&
+		if gdk.Id().Device.Index != DeviceIndexAny &&
 			key.Id().Device.Index != gdk.Id().Device.Index {
 			// Not the appropriate device index
 			continue

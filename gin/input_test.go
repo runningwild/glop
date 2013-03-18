@@ -327,10 +327,10 @@ func DeviceSpec(c gospec.Context) {
 	A2 := input.BindDerivedKey("A2", A2_binding)
 	A3 := input.BindDerivedKey("A3", A3_binding)
 
-	keya_any := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, 0)
+	keya_any := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 	AAny_binding := input.MakeBinding(keya_any.Id(), nil, nil)
 	AAny := input.BindDerivedKey("AAny", AAny_binding)
-	keyb_any := input.GetKeyFlat(gin.KeyB, gin.DeviceTypeKeyboard, 0)
+	keyb_any := input.GetKeyFlat(gin.KeyB, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 	BAny_binding := input.MakeBinding(keyb_any.Id(), nil, nil)
 	BAny := input.BindDerivedKey("BAny", BAny_binding)
 
@@ -344,7 +344,7 @@ func DeviceSpec(c gospec.Context) {
 	any_key_on_3_binding := input.MakeBinding(any_key_on_3.Id(), nil, nil)
 	Any3 := input.BindDerivedKey("Any3", any_key_on_3_binding)
 
-	the_any_key := input.GetKeyFlat(gin.AnyKey, gin.DeviceTypeAny, 0)
+	the_any_key := input.GetKeyFlat(gin.AnyKey, gin.DeviceTypeAny, gin.DeviceIndexAny)
 	the_any_key_binding := input.MakeBinding(the_any_key.Id(), nil, nil)
 	Any_key := input.BindDerivedKey("Any Key", the_any_key_binding)
 
@@ -551,7 +551,7 @@ func EventSpec(c gospec.Context) {
 			for _, event := range groups[i].Events {
 				if event.Key.Id().Index == gin.AnyKey ||
 					event.Key.Id().Device.Type == gin.DeviceTypeAny ||
-					event.Key.Id().Device.Index == 0 {
+					event.Key.Id().Device.Index == gin.DeviceIndexAny {
 					continue
 				}
 				natural_events++

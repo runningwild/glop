@@ -239,8 +239,7 @@ const (
 	// {KeyA, DeviceTypeKeyboard, DeviceIndexSame}
 	// Any keyboard can do this, but Space must be pressed while A is down on the
 	// same keyboard.
-	DeviceIndexSame DeviceIndex = -1
-	DeviceIndexAny  DeviceIndex = 0
+	DeviceIndexAny DeviceIndex = -1
 )
 
 type DeviceType int
