@@ -5,6 +5,7 @@
 #import <stdio.h>
 
 #include <ApplicationServices/ApplicationServices.h>
+#include <IOKit/hid/IOHIDLib.h>
 
 // TODO: This requires OSX 10.6 or higher, just for getting uptime.
 // if we bother to fix linking on osx such that 10.5 is acceptable we 
@@ -44,7 +45,7 @@ long long NSTimeIntervalToMS(NSTimeInterval t) {
   return (long long)((double)(t) * 1000.0 + 0.5);
 }
 
-void ClearEvent(KeyEvent* event, NSEvent* ns_event) {
+void ClearEvent(KeyEventOld* event, NSEvent* ns_event) {
   event->timestamp = NSTimeIntervalToMS([ns_event timestamp]);
   event->press_amt = 0;
   event->cursor_x = inputState.mouse_x;
@@ -63,7 +64,7 @@ CGPoint lock_mouse;
 // and then grab the events as a batch in a synchronously.
 // TODO: Would be nice to have an auto-expanding array here
 typedef struct {
-  KeyEvent events[1000];
+  KeyEventOld events[1000];
   int length;
 } EventGroup;
 
@@ -73,7 +74,7 @@ EventGroup *current_event_buffer;
 pthread_mutex_t event_group_mutex;
 
 // Safely adds the event to current event buffer and increments its length
-void AddEvent(KeyEvent* event) {
+void AddEvent(KeyEventOld* event) {
   pthread_mutex_lock(&event_group_mutex);
 
   current_event_buffer->events[current_event_buffer->length] = *event;
@@ -85,7 +86,7 @@ void AddEvent(KeyEvent* event) {
 // Returns a pointer to all of the current events as well as the number of events in the buffer
 // Swaps the current buffer so that new events go into the other buffer, the events returned
 // by this function should be used before the next time this function is called.
-void GetEvents(KeyEvent** events, int* length, long long* horizon) {
+void GetEventsOld(KeyEventOld** events, int* length, long long* horizon) {
   pthread_mutex_lock(&event_group_mutex);
 
   *events = current_event_buffer->events;
@@ -100,6 +101,73 @@ void GetEvents(KeyEvent** events, int* length, long long* horizon) {
 
   *horizon = NSTimeIntervalToMS(osx_horizon);
   pthread_mutex_unlock(&event_group_mutex);
+}
+
+typedef struct {
+  IOHIDDeviceRef* devices;
+  int num_devices;
+  int max_devices;
+  IOHIDManagerRef manager;
+  pthread_mutex_t mutex;
+} glopHidManagerStruct;
+glopHidManagerStruct glop_hid_manager;
+void hidCallbackInsert(
+    void* context,
+    IOReturn result,
+    void* sender,
+    IOHIDDeviceRef device) {
+  pthread_mutex_lock(&glop_hid_manager.mutex);
+  if (glop_hid_manager.num_devices == glop_hid_manager.max_devices) {
+    glop_hid_manager.max_devices *= 2;
+    glop_hid_manager.devices =
+        (IOHIDDeviceRef*)realloc(
+            glop_hid_manager.devices,
+            sizeof(IOHIDDeviceRef*) * glop_hid_manager.max_devices);
+    }
+  glop_hid_manager.devices[glop_hid_manager.num_devices] = device;
+  glop_hid_manager.num_devices++;
+  pthread_mutex_unlock(&glop_hid_manager.mutex);
+}
+void hidCallbackRemove(
+    void* context,
+    IOReturn result,
+    void* sender,
+    IOHIDDeviceRef device) {
+  pthread_mutex_lock(&glop_hid_manager.mutex);
+  int i;
+  for (i = 0; i < glop_hid_manager.num_devices; i++) {
+    if (glop_hid_manager.devices[i] == device) {
+      glop_hid_manager.devices[i] = glop_hid_manager.devices[glop_hid_manager.num_devices - 1];
+      glop_hid_manager.num_devices--;
+      break;
+    }
+  }
+  pthread_mutex_unlock(&glop_hid_manager.mutex);
+}
+void initGlopHidManager() {
+  // Make an IOHID manager and get it ready to respond to HID plugins and
+  // removals.
+  glop_hid_manager.manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+  if (glop_hid_manager.manager == NULL) {
+    printf("Failed to init IOHID manager.\n");
+    return;
+  }
+  pthread_mutex_init(&glop_hid_manager.mutex, NULL);
+  glop_hid_manager.devices = (IOHIDDeviceRef*)malloc(sizeof(IOHIDDeviceRef*) * 10);
+  glop_hid_manager.num_devices = 0;
+  glop_hid_manager.max_devices = 10;
+
+  // Match everything, because why not?
+  IOHIDManagerSetDeviceMatching(glop_hid_manager.manager, NULL);
+  IOHIDManagerRegisterDeviceMatchingCallback(glop_hid_manager.manager, hidCallbackInsert, NULL);
+  IOHIDManagerRegisterDeviceRemovalCallback(glop_hid_manager.manager, hidCallbackRemove, NULL);
+
+  // Now open the IO HID Manager reference
+  IOReturn io_return = IOHIDManagerOpen(glop_hid_manager.manager, kIOHIDOptionsTypeNone);
+  if (io_return != 0) {
+    printf("Failed to open IOHID manager.\n");
+  }
+  IOHIDManagerScheduleWithRunLoop(glop_hid_manager.manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 }
 
 void Init() {
@@ -125,6 +193,9 @@ void Init() {
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];
   pthread_mutex_init(&event_group_mutex, NULL);
   lock_mouse.x = -1;
+
+  initGlopHidManager();
+
   [glop_app finishLaunching];
 }
 
@@ -244,7 +315,7 @@ int* getInputStateVal(int flag) {
     for (i = 0; i < 8; i++) {
       int* val = getInputStateVal(flag[i]);
       if ((*val != 0) != ((flag[i] & flags) == flag[i])) {
-        KeyEvent key_event;
+        KeyEventOld key_event;
         ClearEvent(&key_event, event);
         key_event.index = glopKeyCode[i];
         if (*val == 0) {
@@ -265,7 +336,7 @@ int* getInputStateVal(int flag) {
     }
     inputState.mouse_x = cursor_pos.x;
     inputState.mouse_y = cursor_pos.y;
-    KeyEvent scroll_event;
+    KeyEventOld scroll_event;
     ClearEvent(&scroll_event, event);
     scroll_event.press_amt = [event deltaY];
     scroll_event.index = kMouseWheelVertical;
@@ -288,7 +359,7 @@ int* getInputStateVal(int flag) {
     }
     inputState.mouse_x = cursor_pos.x;
     inputState.mouse_y = cursor_pos.y;
-    KeyEvent key_x_event;
+    KeyEventOld key_x_event;
     ClearEvent(&key_x_event, event);
     key_x_event.index = kMouseXAxis;
     key_x_event.press_amt = [event deltaX];
@@ -297,7 +368,7 @@ int* getInputStateVal(int flag) {
       AddEvent(&key_x_event);
     }
 
-    KeyEvent key_y_event;
+    KeyEventOld key_y_event;
     ClearEvent(&key_y_event, event);
     key_y_event.index = kMouseYAxis;
     key_y_event.press_amt = [event deltaY];
@@ -307,7 +378,7 @@ int* getInputStateVal(int flag) {
     }
   } else if ([event type] == NSKeyDown ||
              [event type] == NSKeyUp) {
-    KeyEvent key_event;
+    KeyEventOld key_event;
     ClearEvent(&key_event, event);
     key_event.index = key_map[[event keyCode]];
     key_event.press_amt = 0;
@@ -319,7 +390,7 @@ int* getInputStateVal(int flag) {
              [event type] == NSLeftMouseUp    ||
              [event type] == NSRightMouseDown ||
              [event type] == NSRightMouseUp) {
-    KeyEvent key_event;
+    KeyEventOld key_event;
     ClearEvent(&key_event, event);
     key_event.index = -1;
     if ([event type] == NSLeftMouseDown || [event type] == NSLeftMouseUp) {
@@ -396,7 +467,14 @@ int Think() {
 }
 
 void GetInputEvents(void** _key_events, int* length, long long* horizon) {
-  GetEvents((KeyEvent**)_key_events, length, horizon);
+  // Loop over all IOHID queues and turn each event into a keyevent
+  // GetEvents((KeyEventOld**)_key_events, length, horizon);
+  *length = 0;
+  *horizon = 0;
+}
+
+void GetInputEventsOld(void** _key_events, int* length, long long* horizon) {
+  GetEventsOld((KeyEventOld**)_key_events, length, horizon);
 }
 
 void CreateWindow(void** _window, void** _context, int x, int y, int width, int height) {
