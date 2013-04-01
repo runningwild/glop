@@ -96,6 +96,13 @@ typedef struct {
   int cursor_y;
   int num_lock;
   int caps_lock;
+} KeyEventOld;
+typedef struct {
+  int key_index;
+  int device_type;
+  int device_index;
+  float press_amt;
+  long long timestamp;
 } KeyEvent;
 void GetInputEvents(void**, int*, long long*);
 // GetInputEvents(KeyEvent**, length*, horizon*);
