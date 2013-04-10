@@ -83,7 +83,6 @@ type derivedKey struct {
 }
 
 func (dk *derivedKey) Think(ms int64) (bool, float64) {
-	fmt.Printf("Thinking on dk %v\n", dk.id)
 	return dk.keyState.Think(ms)
 }
 
@@ -114,6 +113,7 @@ func (dk *derivedKey) numBindingsDown() int {
 }
 
 func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
+	fmt.Printf("dk.SetPressAmt()\n")
 	index := -1
 	for i, binding := range dk.Bindings {
 		if cause.Key.Id() == binding.PrimaryKey {
@@ -181,9 +181,16 @@ type derivedKeyFamily struct {
 }
 
 func (input *Input) BindDerivedKeyFamily(name string, bindings ...BindingFamily) KeyIndex {
+	return input.bindDerivedKeyFamilyWithIndex(
+		name,
+		genDerivedKeyIndex(),
+		bindings...)
+}
+
+func (input *Input) bindDerivedKeyFamilyWithIndex(name string, index KeyIndex, bindings ...BindingFamily) KeyIndex {
 	dkf := derivedKeyFamily{
 		name:             name,
-		index:            genDerivedKeyIndex(),
+		index:            index,
 		binding_families: bindings,
 		input:            input,
 	}
@@ -233,9 +240,6 @@ func (dkf *derivedKeyFamily) GetKey(device DeviceId) Key {
 //   Modifiers: []KeyIndex{KeyB},
 //   Down: []bool{false},
 // }
-// bf will be down 
-// A BindingFamily is considered down if PrimaryKey is down and all Modifiers' IsDown()s match the
-// corresponding entry in Down
 type BindingFamily struct {
 	PrimaryIndex KeyIndex
 	Modifiers    []KeyIndex

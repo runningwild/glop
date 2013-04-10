@@ -191,8 +191,17 @@ const (
 	MouseRButton                  = 305
 	MouseMButton                  = 306
 
+	// ControllerButton0 + N is ControllerButtonN, plenty of space is reserved
+	// between this and the next index so that any number of controller buttons
+	// could theoretically be supported.  All buttons beyond ControllerButton0 are
+	// implicitly defined.
+	ControllerButton0 = 500
+
+	ControllerAxis0Positive = 70000
+	ControllerAxis0Negative = 80000
+
 	// standard derived keys start here
-	EitherShift = 1000 + iota
+	EitherShift = 100000 + iota
 	EitherControl
 	EitherAlt
 	EitherGui
@@ -355,7 +364,68 @@ func Make() *Input {
 	input.registerKeyIndex(MouseRButton, aggregatorTypeStandard, "MouseRButton")
 	input.registerKeyIndex(MouseMButton, aggregatorTypeStandard, "MouseMButton")
 
-	// input.bindDerivedKeyWithId("Shift", EitherShift, input.MakeBinding(LeftShift, nil, nil), input.MakeBinding(RightShift, nil, nil))
+	for i := 0; i < 10; i++ {
+		input.registerKeyIndex(ControllerAxis0Positive+KeyIndex(i), aggregatorTypeStandard, fmt.Sprintf("Axis%d+", i))
+		input.registerKeyIndex(ControllerAxis0Negative+KeyIndex(i), aggregatorTypeStandard, fmt.Sprintf("Axis%d-", i))
+	}
+
+	for i := 0; i < 65535; i++ {
+		input.registerKeyIndex(ControllerButton0+KeyIndex(i), aggregatorTypeStandard, fmt.Sprintf("Button %d", i))
+	}
+
+	input.bindDerivedKeyWithIndex(
+		"EitherShift",
+		EitherShift,
+		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
+		input.MakeBinding(KeyId{Index: LeftShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBinding(KeyId{Index: RightShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+	)
+	input.bindDerivedKeyWithIndex(
+		"EitherControl",
+		EitherControl,
+		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
+		input.MakeBinding(KeyId{Index: LeftControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBinding(KeyId{Index: RightControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+	)
+	input.bindDerivedKeyWithIndex(
+		"EitherAlt",
+		EitherAlt,
+		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
+		input.MakeBinding(KeyId{Index: LeftAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBinding(KeyId{Index: RightAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+	)
+	input.bindDerivedKeyWithIndex(
+		"EitherGui",
+		EitherGui,
+		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
+		input.MakeBinding(KeyId{Index: LeftGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBinding(KeyId{Index: RightGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+	)
+	// input.bindDerivedKeyFamilyWithIndex(
+	// 	"AnyShift",
+	// 	AnyShift,
+	// 	input.MakeBindingFamily(LeftShift, nil, nil),
+	// 	input.MakeBindingFamily(RightShift, nil, nil))
+	// input.bindDerivedKeyFamilyWithIndex(
+	// 	"AnyControl",
+	// 	AnyControl,
+	// 	input.MakeBindingFamily(LeftControl, nil, nil),
+	// 	input.MakeBindingFamily(RightControl, nil, nil))
+	// input.bindDerivedKeyFamilyWithIndex(
+	// 	"AnyAlt",
+	// 	AnyAlt,
+	// 	input.MakeBindingFamily(LeftAlt, nil, nil),
+	// 	input.MakeBindingFamily(RightAlt, nil, nil))
+	// input.bindDerivedKeyFamilyWithIndex(
+	// 	"AnyGui",
+	// 	AnyGui,
+	// 	input.MakeBindingFamily(LeftGui, nil, nil),
+	// 	input.MakeBindingFamily(RightGui, nil, nil))
+
+	// input.
+	// 	input.bindDerivedKeyWithId("Shift", EitherShift, input.MakeBinding(AnyLeftShift, nil, nil), input.MakeBinding(AnyRightShift, nil, nil))
+	// input.BindDerivedKey()
+	// bindDerivedKeyWithIndex("AnyShift", AnyShift, DeviceId{Type:DeviceTypeDerived, bindings ...Binding) Key {
 	// input.bindDerivedKeyWithId("Control", EitherControl, input.MakeBinding(LeftControl, nil, nil), input.MakeBinding(RightControl, nil, nil))
 	// input.bindDerivedKeyWithId("Alt", EitherAlt, input.MakeBinding(LeftAlt, nil, nil), input.MakeBinding(RightAlt, nil, nil))
 	// input.bindDerivedKeyWithId("Gui", EitherGui, input.MakeBinding(LeftGui, nil, nil), input.MakeBinding(RightGui, nil, nil))
@@ -575,10 +645,6 @@ func (input *Input) RegisterEventListener(listener Listener) {
 func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []EventGroup {
 	// If we have lost focus, clear all key state. Note that down_keys_frame_ is rebuilt every frame
 	// regardless, so we do not need to worry about it here.
-	fmt.Printf("DEPOS\n")
-	for a, b := range input.id_to_deps {
-		fmt.Printf("id(%v): %v\n", a, b)
-	}
 	if lost_focus {
 		//    clearAllKeyState()
 	}
@@ -590,7 +656,6 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
 		group := EventGroup{
 			Timestamp: os_event.Timestamp,
 		}
-		fmt.Printf("Raw press key (%v): %v\n", os_event.KeyId, os_event.Press_amt)
 		input.pressKey(
 			input.GetKey(os_event.KeyId),
 			os_event.Press_amt,
@@ -619,7 +684,6 @@ func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []Event
 	}
 
 	for _, key := range input.all_keys {
-		fmt.Printf("Loop think on %v\n", key.Id())
 		gen, amt := key.Think(t)
 		if !gen {
 			continue

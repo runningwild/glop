@@ -357,6 +357,7 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(A2.IsDown(), Equals, false)
 		c.Expect(A3.IsDown(), Equals, false)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 4)
 		input.Think(5, false, events)
@@ -364,13 +365,13 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(A2.IsDown(), Equals, true)
 		c.Expect(A3.IsDown(), Equals, false)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 6)
 		injectEvent(&events, gin.KeyA, 3, gin.DeviceTypeKeyboard, 1, 7)
 		input.Think(8, false, events)
 		c.Expect(A1.IsDown(), Equals, false)
 		c.Expect(A2.IsDown(), Equals, false)
 		c.Expect(A3.IsDown(), Equals, true)
-		events = events[0:0]
 	})
 
 	c.Specify("Derived key can specify a specific key on any device.", func() {
@@ -381,18 +382,21 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(AAny.IsDown(), Equals, true)
 		c.Expect(BAny.IsDown(), Equals, false)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 4)
 		input.Think(5, false, events)
 		c.Expect(AAny.IsDown(), Equals, true)
 		c.Expect(BAny.IsDown(), Equals, false)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 6)
 		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 1, 7)
 		input.Think(8, false, events)
 		c.Expect(AAny.IsDown(), Equals, false)
 		c.Expect(BAny.IsDown(), Equals, true)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 0, 9)
 		injectEvent(&events, gin.KeyB, 2, gin.DeviceTypeKeyboard, 1, 10)
 		input.Think(11, false, events)
@@ -410,6 +414,7 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(Any2.IsDown(), Equals, false)
 		c.Expect(Any3.IsDown(), Equals, false)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 3)
 		input.Think(4, false, events)
@@ -417,14 +422,13 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(Any2.IsDown(), Equals, true)
 		c.Expect(Any3.IsDown(), Equals, false)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 5)
 		injectEvent(&events, gin.KeyA, 3, gin.DeviceTypeKeyboard, 1, 5)
 		input.Think(6, false, events)
 		c.Expect(Any1.IsDown(), Equals, false)
 		c.Expect(Any2.IsDown(), Equals, false)
 		c.Expect(Any3.IsDown(), Equals, true)
-
-		events = events[0:0]
 	})
 
 	c.Specify("Derived key can specify the any key.", func() {
@@ -436,24 +440,26 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(Any_key.FramePressCount(), Equals, 1)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 0)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 2, gin.DeviceTypeKeyboard, 1, 3)
 		input.Think(4, false, events)
 		c.Expect(Any_key.IsDown(), Equals, true)
 		c.Expect(Any_key.FramePressCount(), Equals, 0)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 0)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 5)
 		input.Think(6, false, events)
 		c.Expect(Any_key.IsDown(), Equals, true)
 		c.Expect(Any_key.FramePressCount(), Equals, 0)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 0)
 
+		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 2, gin.DeviceTypeKeyboard, 0, 7)
 		input.Think(8, false, events)
 		c.Expect(Any_key.IsDown(), Equals, false)
 		c.Expect(Any_key.FramePressCount(), Equals, 0)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 1)
-		events = events[0:0]
 	})
 }
 
@@ -602,6 +608,41 @@ func EventSpec(c gospec.Context) {
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 5)
 		injectEvent(&events, 'd', 1, gin.DeviceTypeKeyboard, 1, 6)
 		check(1, 2, 1, 1, 3, 1)
+	})
+}
+
+func GeneralSpec(c gospec.Context) {
+	input := gin.Make()
+	a_x := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	a_1 := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, 1)
+	a_2 := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, 2)
+	c.Specify("General keys work like they should.", func() {
+		events := make([]gin.OsEvent, 0)
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0.5, 1)
+		input.Think(10, false, events)
+		c.Expect(a_x.IsDown(), Equals, true)
+		c.Expect(a_1.IsDown(), Equals, true)
+		c.Expect(a_2.IsDown(), Equals, false)
+		events = events[0:0]
+
+		input.Think(20, false, events)
+		c.Expect(a_x.FramePressSum(), Equals, 5.0)
+		c.Expect(a_1.FramePressSum(), Equals, 5.0)
+		c.Expect(a_2.FramePressSum(), Equals, 0.0)
+		events = events[0:0]
+
+		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1.0, 25)
+		input.Think(30, false, events)
+		c.Expect(a_x.FramePressSum(), Equals, 7.5)
+		c.Expect(a_1.FramePressSum(), Equals, 7.5)
+		c.Expect(a_2.FramePressSum(), Equals, 0.0)
+		c.Expect(a_x.FramePressAvg(), Equals, 0.75)
+		c.Expect(a_1.FramePressAvg(), Equals, 0.75)
+		c.Expect(a_2.FramePressAvg(), Equals, 0.0)
+		c.Expect(a_x.FramePressAmt(), Equals, 1.0)
+		c.Expect(a_1.FramePressAmt(), Equals, 1.0)
+		c.Expect(a_2.FramePressAmt(), Equals, 0.0)
+		events = events[0:0]
 	})
 }
 
