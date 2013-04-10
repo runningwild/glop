@@ -1,6 +1,5 @@
 #import <Cocoa/Cocoa.h>
 #import <OpenGL/gl.h>
-#import <glop.h>
 #import <mach/mach_time.h>
 #import <stdio.h>
 
@@ -14,7 +13,11 @@
 #include <Foundation/NSProcessInfo.h>
 
 #include <map>
+#include <vector>
 using namespace std;
+
+extern "C" {
+#include <glop.h>
 
 @interface GlopApplication : NSApplication {
   int should_stop;
@@ -107,7 +110,6 @@ void GetEventsOld(KeyEventOld** events, int* length, long long* horizon) {
   pthread_mutex_unlock(&event_group_mutex);
 }
 
-enum { deviceTypeInvalid, deviceTypeKeyboard, deviceTypeMouse, deviceTypeController };
 typedef struct deviceStats {
   IOHIDQueueRef queue;
   int device_type;
@@ -127,78 +129,81 @@ typedef struct {
 } glopHidManagerStruct;
 glopHidManagerStruct glop_hid_manager;
 
-int hidToGlopKeyboard(int hid) {
-  if (hid < 0x04) {
-    return 0;
+int hidToGlopKeyboard(int page, int usage) {
+  if (page != 0x07) {
+    return -1;
   }
-  if (hid >= 0x04 && hid <= 0x1d) {
-    return 'a' + (hid - 0x04);
+  if (usage < 0x04) {
+    return -1;
   }
-  if (hid >= 0x1e && hid <= 0x26) {
-    return '1' + (hid - 0x1e);
+  if (usage >= 0x04 && usage <= 0x1d) {
+    return 'a' + (usage - 0x04);
   }
-  if (hid == 0x27) {
+  if (usage >= 0x1e && usage <= 0x26) {
+    return '1' + (usage - 0x1e);
+  }
+  if (usage == 0x27) {
     return '0';
   }
-  if (hid == 0x28) { // return
+  if (usage == 0x28) { // return
     return 13;
   }
-  if (hid == 0x29) { // escape
+  if (usage == 0x29) { // escape
     return 27;
   }
-  if (hid == 0x2a) { // delete
+  if (usage == 0x2a) { // delete
     return 190;
   }
-  if (hid == 0x2b) { // "\t"
+  if (usage == 0x2b) { // "\t"
     return 9;
   }
-  if (hid == 0x2c) { // " "
+  if (usage == 0x2c) { // " "
     return 32;
   }
-  if (hid == 0x2d) { // "-"
+  if (usage == 0x2d) { // "-"
     return 45;
   }
-  if (hid == 0x2e) { // "="
+  if (usage == 0x2e) { // "="
     return 61;
   }
-  if (hid == 0x2f) { // "["
+  if (usage == 0x2f) { // "["
     return 91;
   }
-  if (hid == 0x30) { // "]"
+  if (usage == 0x30) { // "]"
     return 93;
   }
-  if (hid == 0x31) { // "\\"
+  if (usage == 0x31) { // "\\"
     return 92;
   }
   // Skipped 'Keyboard Non-US # and ~2', whatever that is
-  if (hid == 0x33) { // ';'
+  if (usage == 0x33) { // ';'
     return 59;
   }
-  if (hid == 0x34) { // "'"
+  if (usage == 0x34) { // "'"
     return 39;
   }
-  if (hid == 0x35) { // '`'
+  if (usage == 0x35) { // '`'
     return 96;
   }
-  if (hid == 0x36) { // ','
+  if (usage == 0x36) { // ','
     return 44;
   }
-  if (hid == 0x37) { // '.'
+  if (usage == 0x37) { // '.'
     return 46;
   }
-  if (hid == 0x38) { // '/'
+  if (usage == 0x38) { // '/'
     return 47;
   }
-  if (hid == 0x39) { // caps lock
+  if (usage == 0x39) { // caps lock
     return 150;
   }
-  if (hid >= 0x3a && hid <= 0x45) { // f1 - f12
-    return 129 + (hid - 0x3a);
+  if (usage >= 0x3a && usage <= 0x45) { // f1 - f12
+    return 129 + (usage - 0x3a);
   }
   // skipped print-screen
   // skipped scroll-lock
   // skipped pause
-  if (hid == 0x49) { // insert
+  if (usage == 0x49) { // insert
     return 192;
   }
 
@@ -207,7 +212,37 @@ int hidToGlopKeyboard(int hid) {
   return -1;
 }
 
-void getEvents() {
+int hidToGlopMouse(int page, int usage) {
+  // Mice events should be on page 0x1 (for dx, dy, and mouse wheels),
+  // and page 0x9 for buttons.
+  if (page == 0x01) {
+    if (usage == 0x30) {
+      return kMouseXAxis;
+    }
+    if (usage == 0x31) {
+      return kMouseYAxis;
+    }
+    if (usage == 0x38) {
+      return kMouseWheelVertical;
+    }
+    return -1;
+  }
+  if (page == 0x09) {
+    if (usage == 0x01) {
+      return kMouseLButton;
+    }
+    if (usage == 0x02) {
+      return kMouseRButton;
+    }
+    if (usage == 0x03) {
+      return kMouseMButton;
+    }
+    return -1;
+  }
+  return -1;
+}
+
+void getEvents(vector<KeyEvent>* events) {
   pthread_mutex_lock(&glop_hid_manager.mutex);
   deviceMap::iterator it;
   for (it = glop_hid_manager.device_to_queue.begin();
@@ -217,19 +252,66 @@ void getEvents() {
     deviceStats stats = it->second;
     IOHIDValueRef value = IOHIDQueueCopyNextValueWithTimeout(stats.queue, 0);
     while (value) {
-      if (stats.device_type != deviceTypeKeyboard) {
-        int page = IOHIDElementGetUsagePage(IOHIDValueGetElement(value));
-        int usage = IOHIDElementGetUsage(IOHIDValueGetElement(value));
-        // Just double-check that this is a keyboard event, I suppose it's
-        // possible for a keyboard to send an event that isn't from a keyboard
-        // usage page, so just avoid that in case it ever happens.
-        if (page == 0x07) {
+      int page = IOHIDElementGetUsagePage(IOHIDValueGetElement(value));
+      int usage = IOHIDElementGetUsage(IOHIDValueGetElement(value));
+      if (stats.device_type == deviceTypeKeyboard) {
+        int index = hidToGlopKeyboard(page, usage);
+        if (index != -1) {
           KeyEvent event;
-          event.key_index = hidToGlopKeyboard(usage);
+          event.key_index = index;
           event.device_type = stats.device_type;
           event.device_index = int((long long)(device));
           event.press_amt = IOHIDValueGetScaledValue(value, kIOHIDValueScaleTypePhysical);
           event.timestamp = IOHIDValueGetTimeStamp(value);
+          events->push_back(event);
+        }
+      }
+      if (stats.device_type == deviceTypeMouse) {
+        int index = hidToGlopMouse(page, usage);
+        if (index != -1) {
+          KeyEvent event;
+          event.key_index = index;
+          event.device_type = stats.device_type;
+          event.device_index = int((long long)(device));
+          event.press_amt = IOHIDValueGetScaledValue(value, kIOHIDValueScaleTypePhysical);
+          event.timestamp = IOHIDValueGetTimeStamp(value);
+          events->push_back(event);
+        }
+      }
+      if (stats.device_type == deviceTypeController) {
+        if (page == 0x09) {
+          KeyEvent event;
+          event.key_index = kControllerButton0 + usage;
+          event.device_type = stats.device_type;
+          event.device_index = int((long long)(device));
+          event.press_amt = IOHIDValueGetScaledValue(value, kIOHIDValueScaleTypePhysical);
+          event.timestamp = IOHIDValueGetTimeStamp(value);
+          events->push_back(event);
+        } else if (page == 0x01) {
+          if (usage >= 0x30 && usage <= 0x35) {
+            float min = (float)(IOHIDElementGetLogicalMin(IOHIDValueGetElement(value)));
+            float max = (float)(IOHIDElementGetLogicalMax(IOHIDValueGetElement(value)));
+            float mid = (max + min) / 2.0;
+            float press_amt = IOHIDValueGetScaledValue(value, kIOHIDValueScaleTypePhysical);
+            float negative_amt = 0.0;
+            float positive_amt = 0.0;
+            if (press_amt < mid) {
+              negative_amt = (mid - press_amt) / (mid - min);
+            } else {
+              positive_amt = (press_amt - mid) / (mid - min);
+            }
+            KeyEvent event;
+            event.key_index = kControllerAxis0Positive + (usage - 0x30);
+            event.device_type = stats.device_type;
+            event.device_index = int((long long)(device));
+            event.press_amt = positive_amt;
+            event.timestamp = IOHIDValueGetTimeStamp(value);
+            events->push_back(event);
+
+            event.key_index = kControllerAxis0Negative + (usage - 0x30);
+            event.press_amt = negative_amt;
+            events->push_back(event);
+          }
         }
       }
       value = IOHIDQueueCopyNextValueWithTimeout(stats.queue, 0);
@@ -260,6 +342,16 @@ void hidCallbackInsert(
     IOHIDQueueStart(stats.queue);
     stats.device_type = device_type;
     CFArrayRef array = IOHIDDeviceCopyMatchingElements(device, NULL, kIOHIDOptionsTypeNone);
+    CFIndex index;
+    CFIndex count = CFArrayGetCount(array);
+    for (CFIndex index = 0; index < count; index++) {
+      IOHIDElementRef elem = (IOHIDElementRef)CFArrayGetValueAtIndex(array, index);
+      if (elem == NULL) {
+        // Is this something that can happen?
+        continue;
+      }
+      IOHIDQueueAddElement(stats.queue, elem);
+    }
     glop_hid_manager.device_to_queue[device] = stats;
   }
   pthread_mutex_unlock(&glop_hid_manager.mutex);
@@ -274,6 +366,9 @@ void hidCallbackRemove(
   IOHIDQueueStop(glop_hid_manager.device_to_queue[device].queue);
   pthread_mutex_unlock(&glop_hid_manager.mutex);
 }
+
+KeyEvent* new_event_buffer;
+int new_event_buffer_cap;
 void initGlopHidManager() {
   // Make an IOHID manager and get it ready to respond to HID plugins and
   // removals.
@@ -295,6 +390,8 @@ void initGlopHidManager() {
     printf("Failed to open IOHID manager.\n");
   }
   IOHIDManagerScheduleWithRunLoop(glop_hid_manager.manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+  new_event_buffer_cap = 1000;
+  new_event_buffer = (KeyEvent*)malloc(sizeof(KeyEvent)*new_event_buffer_cap);
 }
 
 void Init() {
@@ -595,9 +692,22 @@ int Think() {
 
 void GetInputEvents(void** _key_events, int* length, long long* horizon) {
   // Loop over all IOHID queues and turn each event into a keyevent
-  // GetEvents((KeyEventOld**)_key_events, length, horizon);
-  *length = 0;
-  *horizon = 0;
+  KeyEvent** key_events = (KeyEvent**)(_key_events);
+  *key_events = new_event_buffer;
+  vector<KeyEvent> events;
+  getEvents(&events);
+  if (events.size() > new_event_buffer_cap) {
+    new_event_buffer = (KeyEvent*)realloc(new_event_buffer, sizeof(KeyEvent)*events.size());
+    new_event_buffer_cap = events.size();
+  }
+  for (int i = 0; i < events.size(); i++) {
+    new_event_buffer[i] = events[i];
+    new_event_buffer[i].timestamp /= 1000000;
+  }
+  *_key_events = (void*)(new_event_buffer);
+  *length = events.size();
+  NSTimeInterval uptime = [[NSProcessInfo processInfo] systemUptime];
+  *horizon = int(uptime*1000);
 }
 
 void GetInputEventsOld(void** _key_events, int* length, long long* horizon) {
@@ -695,3 +805,4 @@ void EnableVSync(void* _context, int set_vsync) {
   [context setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
 }
 
+} // extern "C"

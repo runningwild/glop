@@ -56,23 +56,39 @@ func (osx *osxSystemObject) Think() {
 //       newest timestemp from the events from the previous call to GetInputEvents
 //       Actually that should be in system
 func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
-	return nil, 0
-	// var first_event *C.KeyEvent
-	// cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
-	// var length C.int
-	// var horizon C.longlong
-	// C.GetInputEvents(cp, &length, &horizon)
-	// osx.horizon = int64(horizon)
-	// c_events := (*[1000]C.KeyEvent)(unsafe.Pointer(first_event))[:length]
-	// events := make([]gin.OsEvent, length)
-	// for i := range c_events {
-	// 	events[i] = gin.OsEvent{
-	// 		KeyId:     gin.KeyId(c_events[i].index),
-	// 		Press_amt: float64(c_events[i].press_amt),
-	// 		Timestamp: int64(c_events[i].timestamp),
-	// 	}
-	// }
-	// return events, osx.horizon
+	var first_event *C.KeyEvent
+	cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
+	var length C.int
+	var horizon C.longlong
+	C.GetInputEvents(cp, &length, &horizon)
+	osx.horizon = int64(horizon)
+	c_events := (*[1000]C.KeyEvent)(unsafe.Pointer(first_event))[:length]
+	events := make([]gin.OsEvent, length)
+	for i := range c_events {
+		var device_type gin.DeviceType
+		switch c_events[i].device_type {
+		case C.deviceTypeKeyboard:
+			device_type = gin.DeviceTypeKeyboard
+		case C.deviceTypeMouse:
+			device_type = gin.DeviceTypeMouse
+		case C.deviceTypeController:
+			device_type = gin.DeviceTypeController
+		default:
+			panic("Unknown device type")
+		}
+		events[i] = gin.OsEvent{
+			KeyId: gin.KeyId{
+				Device: gin.DeviceId{
+					Index: gin.DeviceIndex(c_events[i].device_index),
+					Type:  device_type,
+				},
+				Index: gin.KeyIndex(c_events[i].key_index),
+			},
+			Press_amt: float64(c_events[i].press_amt),
+			Timestamp: int64(c_events[i].timestamp) / 1000000,
+		}
+	}
+	return events, osx.horizon
 }
 
 func (osx *osxSystemObject) rawCursorToWindowCoords(x, y int) (int, int) {

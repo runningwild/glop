@@ -80,12 +80,11 @@
 #define kMouseRButton         305
 #define kMouseMButton         306
 
+#define kControllerButton0 500
+#define kControllerAxis0Positive 70000
+#define kControllerAxis0Negative 80000
 
-
-
-void Init();
-void CreateWindow(void**, void**, int, int, int, int);
-
+enum { deviceTypeInvalid, deviceTypeKeyboard, deviceTypeMouse, deviceTypeController };
 
 typedef struct {
   short index;
@@ -104,6 +103,10 @@ typedef struct {
   float press_amt;
   long long timestamp;
 } KeyEvent;
+
+void Init();
+void CreateWindow(void**, void**, int, int, int, int);
+
 void GetInputEvents(void**, int*, long long*);
 // GetInputEvents(KeyEvent**, length*, horizon*);
 
