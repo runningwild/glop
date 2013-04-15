@@ -362,8 +362,8 @@ void hidCallbackRemove(
     void* sender,
     IOHIDDeviceRef device) {
   pthread_mutex_lock(&glop_hid_manager.mutex);
-  glop_hid_manager.device_to_queue.erase(device);
   IOHIDQueueStop(glop_hid_manager.device_to_queue[device].queue);
+  glop_hid_manager.device_to_queue.erase(device);
   pthread_mutex_unlock(&glop_hid_manager.mutex);
 }
 
