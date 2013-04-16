@@ -26,6 +26,7 @@ type System interface {
 	GetWindowDims() (x, y, dx, dy int)
 
 	SwapBuffers()
+	GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex
 	GetInputEvents() []gin.EventGroup
 
 	EnableVSync(bool)
@@ -67,6 +68,10 @@ type Os interface {
 
 	// Swap the OpenGl buffers on this window
 	SwapBuffers()
+
+	// Returns a mapping from DeviceType to a slice of all of the DeviceIndexes
+	// of active devices of that type.
+	GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex
 
 	// Returns all of the events in the order that they happened since the last call to
 	// this function.  The events do not have to be in order according to KeyEvent.Timestamp,
@@ -118,6 +123,9 @@ func (sys *sysObj) GetWindowDims() (int, int, int, int) {
 }
 func (sys *sysObj) SwapBuffers() {
 	sys.os.SwapBuffers()
+}
+func (sys *sysObj) GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex {
+	return sys.os.GetActiveDevices()
 }
 func (sys *sysObj) GetInputEvents() []gin.EventGroup {
 	return sys.events

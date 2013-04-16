@@ -51,6 +51,21 @@ func (osx *osxSystemObject) Think() {
 	C.Think()
 }
 
+func (osx *osxSystemObject) GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex {
+	var first_device_id *C.DeviceId
+	fdip := (*unsafe.Pointer)(unsafe.Pointer(&first_device_id))
+	var length C.int
+	C.GetActiveDevices(fdip, &length)
+	c_ids := (*[1000]C.DeviceId)(unsafe.Pointer(first_device_id))[:length]
+	ret := make(map[gin.DeviceType][]gin.DeviceIndex, length)
+	for _, c_id := range c_ids {
+		dt := gin.DeviceType(c_id.Type)
+		di := gin.DeviceIndex(c_id.Index)
+		ret[dt] = append(ret[dt], di)
+	}
+	return ret
+}
+
 // TODO: Make sure that events are given in sorted order (by timestamp)
 // TODO: Adjust timestamp on events so that the oldest timestamp is newer than the
 //       newest timestemp from the events from the previous call to GetInputEvents

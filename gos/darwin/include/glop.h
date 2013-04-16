@@ -104,9 +104,14 @@ typedef struct {
   long long timestamp;
 } KeyEvent;
 
+typedef struct {
+  int Type;
+  int Index;
+} DeviceId;
+
 void Init();
 void CreateWindow(void**, void**, int, int, int, int);
-
+void GetActiveDevices(void** _device_ids, int* length);
 void GetInputEvents(void**, int*, long long*);
 // GetInputEvents(KeyEvent**, length*, horizon*);
 

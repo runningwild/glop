@@ -90,26 +90,6 @@ void AddEvent(KeyEventOld* event) {
   pthread_mutex_unlock(&event_group_mutex);
 }
 
-// Returns a pointer to all of the current events as well as the number of events in the buffer
-// Swaps the current buffer so that new events go into the other buffer, the events returned
-// by this function should be used before the next time this function is called.
-void GetEventsOld(KeyEventOld** events, int* length, long long* horizon) {
-  pthread_mutex_lock(&event_group_mutex);
-
-  *events = current_event_buffer->events;
-  *length = current_event_buffer->length;
-
-  if (current_event_buffer == &event_buffer_1) {
-    current_event_buffer = &event_buffer_2;
-  } else {
-    current_event_buffer = &event_buffer_1;
-  }
-  current_event_buffer->length = 0;
-
-  *horizon = NSTimeIntervalToMS(osx_horizon);
-  pthread_mutex_unlock(&event_group_mutex);
-}
-
 typedef struct deviceStats {
   IOHIDQueueRef queue;
   int device_type;
@@ -369,6 +349,7 @@ void hidCallbackRemove(
 
 KeyEvent* new_event_buffer;
 int new_event_buffer_cap;
+DeviceId* device_buffer;
 void initGlopHidManager() {
   // Make an IOHID manager and get it ready to respond to HID plugins and
   // removals.
@@ -392,6 +373,7 @@ void initGlopHidManager() {
   IOHIDManagerScheduleWithRunLoop(glop_hid_manager.manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
   new_event_buffer_cap = 1000;
   new_event_buffer = (KeyEvent*)malloc(sizeof(KeyEvent)*new_event_buffer_cap);
+  device_buffer = (DeviceId*)malloc(sizeof(DeviceId)*1000);
 }
 
 void Init() {
@@ -710,8 +692,20 @@ void GetInputEvents(void** _key_events, int* length, long long* horizon) {
   *horizon = int(uptime*1000);
 }
 
-void GetInputEventsOld(void** _key_events, int* length, long long* horizon) {
-  GetEventsOld((KeyEventOld**)_key_events, length, horizon);
+void GetActiveDevices(void** _device_ids, int* length) {
+  DeviceId** device_ids = (DeviceId**)_device_ids;
+  *device_ids = device_buffer;
+  pthread_mutex_lock(&glop_hid_manager.mutex);
+  *length = 0;
+  deviceMap::iterator it;
+  for (it = glop_hid_manager.device_to_queue.begin();
+       it != glop_hid_manager.device_to_queue.end();
+       it++) {
+    device_buffer[*length].Type = it->second.device_type;
+    device_buffer[*length].Index = int((long long)(it->first));
+    (*length)++;
+  }
+  pthread_mutex_unlock(&glop_hid_manager.mutex);
 }
 
 void CreateWindow(void** _window, void** _context, int x, int y, int width, int height) {
