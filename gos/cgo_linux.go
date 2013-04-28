@@ -1,8 +1,10 @@
-// #cgo LDFLAGS: -Llinux/lib -lglop -lX11 -lGL
-// #include "linux/include/glop.h"
 package gos
 
+// #cgo LDFLAGS: -Llinux/lib -lglop -lX11 -lGL
+// #include "linux/include/glop.h"
 import "C"
+
+// #cgo LDFLAGS: -L/home/darthur/src/github.com/runningwild/glop/gos/linux/lib -lglop -lX11 -lGL
 
 import (
 	"github.com/runningwild/glop/gin"
@@ -43,9 +45,12 @@ func (linux *linuxSystemObject) SwapBuffers() {
 	C.GlopSwapBuffers()
 }
 
-func (linux *linuxSystemObject) Think() bool {
+func (linux *linuxSystemObject) Think() {
 	C.GlopThink()
-	return true
+}
+
+func (linux *linuxSystemObject) GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex {
+	return nil
 }
 
 // TODO: Make sure that events are given in sorted order (by timestamp)
@@ -53,7 +58,7 @@ func (linux *linuxSystemObject) Think() bool {
 //       newest timestemp from the events from the previous call to GetInputEvents
 //       Actually that should be in system
 func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
-	var first_event *C.GlopKeyEvent
+	/*var first_event *C.GlopKeyEvent
 	cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
 	var length C.int
 	var horizon C.longlong
@@ -61,7 +66,7 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 	linux.horizon = int64(horizon)
 	c_events := (*[1000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
 	events := make([]gin.OsEvent, length)
-	for i := range c_events {
+	for  := range c_events {
 		wx, wy := linux.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
 		events[i] = gin.OsEvent{
 			KeyId:     gin.KeyId(c_events[i].index),
@@ -71,7 +76,8 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 			Y:         wy,
 		}
 	}
-	return events, linux.horizon
+	return events, linux.horizon*/
+	return nil, 0
 }
 
 func (linux *linuxSystemObject) HideCursor(hide bool) {
