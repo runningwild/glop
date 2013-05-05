@@ -58,7 +58,7 @@ func (linux *linuxSystemObject) GetActiveDevices() map[gin.DeviceType][]gin.Devi
 //       newest timestemp from the events from the previous call to GetInputEvents
 //       Actually that should be in system
 func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
-	/*var first_event *C.GlopKeyEvent
+	var first_event *C.GlopKeyEvent
 	cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
 	var length C.int
 	var horizon C.longlong
@@ -66,18 +66,21 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 	linux.horizon = int64(horizon)
 	c_events := (*[1000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
 	events := make([]gin.OsEvent, length)
-	for  := range c_events {
-		wx, wy := linux.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
+	for i := range c_events {
 		events[i] = gin.OsEvent{
-			KeyId:     gin.KeyId(c_events[i].index),
+			KeyId: gin.KeyId{
+				Device: gin.DeviceId{
+					Index: 5,
+					Type:  gin.DeviceTypeKeyboard,
+				},
+				Index: gin.KeyIndex(c_events[i].index),
+			},
 			Press_amt: float64(c_events[i].press_amt),
-			Timestamp: int64(c_events[i].timestamp),
-			X:         wx,
-			Y:         wy,
+			Timestamp: int64(c_events[i].timestamp) / 1000000,
 		}
 	}
-	return events, linux.horizon*/
-	return nil, 0
+	return events, linux.horizon
+	// return nil, 0
 }
 
 func (linux *linuxSystemObject) HideCursor(hide bool) {
