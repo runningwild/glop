@@ -49,6 +49,9 @@ struct OsWindowData {
 };
 
 void GlopInit() {
+  if (XInitThreads() == 0) {
+    printf("Unable to call XInitThreads()!\n");
+  }
   display = XOpenDisplay(NULL);
 //  ASSERT(display);
   
