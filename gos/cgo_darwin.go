@@ -144,5 +144,5 @@ func (osx *osxSystemObject) EnableVSync(enable bool) {
 func (osx *osxSystemObject) HasFocus() bool {
 	var has_focus C.int
 	C.HasFocus(&has_focus)
-	return bool(has_focus == 1)
+	return has_focus == 1
 }

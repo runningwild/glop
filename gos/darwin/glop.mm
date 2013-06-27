@@ -800,7 +800,7 @@ void EnableVSync(void* _context, int set_vsync) {
 }
 
 void HasFocus(int* _has_focus) {
-  if ([glop_app mainWindow] != nil) {
+  if ([glop_app isActive]) {
     *_has_focus = 1;
   } else {
     *_has_focus = 0;
