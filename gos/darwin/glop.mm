@@ -799,4 +799,12 @@ void EnableVSync(void* _context, int set_vsync) {
   [context setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
 }
 
+void HasFocus(int* _has_focus) {
+  if ([glop_app mainWindow] != nil) {
+    *_has_focus = 1;
+  } else {
+    *_has_focus = 0;
+  }
+}
+
 } // extern "C"

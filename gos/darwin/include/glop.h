@@ -125,5 +125,6 @@ void LockCursor(int);
 void HideCursor(int);
 void GetWindowDims(void* _window, int* x, int* y, int* dx, int* dy);
 void EnableVSync(void* _context, int set_vsync);
+void HasFocus(int* _has_focus);
 
 #endif

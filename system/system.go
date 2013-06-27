@@ -81,6 +81,9 @@ type Os interface {
 
 	EnableVSync(bool)
 
+	// Returns true iff the application currently is in focus.
+	HasFocus() bool
+
 	// These probably shouldn't be here, probably always want to do the Think() approach
 	//  Run()
 	//  Quit()
@@ -107,7 +110,7 @@ func (sys *sysObj) Think() {
 	for i := range events {
 		events[i].Timestamp -= sys.start_ms
 	}
-	sys.events = gin.In().Think(horizon-sys.start_ms, false, events)
+	sys.events = gin.In().Think(horizon-sys.start_ms, sys.os.HasFocus(), events)
 }
 func (sys *sysObj) CreateWindow(x, y, width, height int) {
 	sys.os.CreateWindow(x, y, width, height)

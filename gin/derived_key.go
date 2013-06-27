@@ -1,9 +1,5 @@
 package gin
 
-import (
-	"fmt"
-)
-
 var (
 	next_derived_key_index KeyIndex
 )
@@ -78,7 +74,7 @@ type derivedKey struct {
 
 	Bindings []Binding
 
-	// We store the down state of all of our bindings so that things 
+	// We store the down state of all of our bindings so that things
 	bindings_down []bool
 }
 
@@ -113,7 +109,6 @@ func (dk *derivedKey) numBindingsDown() int {
 }
 
 func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
-	fmt.Printf("dk.SetPressAmt()\n")
 	index := -1
 	for i, binding := range dk.Bindings {
 		if cause.Key.Id() == binding.PrimaryKey {
@@ -126,7 +121,6 @@ func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Eve
 		event.Type = Release
 	}
 	if amt != 0 && index != -1 && dk.numBindingsDown() == 0 && !dk.bindings_down[index] {
-		fmt.Printf("(%p) Generated press event for %v\n", dk, dk.Id())
 		event.Type = Press
 	}
 	if index != -1 {
@@ -223,7 +217,7 @@ func (dkf *derivedKeyFamily) GetKey(device DeviceId) Key {
 		dkf.input.bindDerivedKeyWithIndex(dkf.name, dkf.index, device, bindings...)
 
 		// On second thought i don't think i need any of this - it's done in the above
-		// function call		
+		// function call
 		// TODO: Maybe should set the key in the map here, it gets set elsewhere and
 		// it might be nice to have that all in one place.
 		// dkf.input.key_map[id] = key

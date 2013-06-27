@@ -105,3 +105,8 @@ func (win32 *win32SystemObject) EnableVSync(enable bool) {
 
 func (win32 *win32SystemObject) HideCursor(hide bool) {
 }
+
+func (win32 *win32SystemObject) HasFocus() bool {
+	// TODO: Implement me!
+	return true
+}

@@ -140,3 +140,9 @@ func (osx *osxSystemObject) EnableVSync(enable bool) {
 	}
 	C.EnableVSync(unsafe.Pointer(osx.context), _enable)
 }
+
+func (osx *osxSystemObject) HasFocus() bool {
+	var has_focus C.int
+	C.HasFocus(&has_focus)
+	return bool(has_focus == 1)
+}

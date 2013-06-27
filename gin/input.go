@@ -642,11 +642,20 @@ func (input *Input) RegisterEventListener(listener Listener) {
 	input.listeners = append(input.listeners, listener)
 }
 
-func (input *Input) Think(t int64, lost_focus bool, os_events []OsEvent) []EventGroup {
-	// If we have lost focus, clear all key state. Note that down_keys_frame_ is rebuilt every frame
-	// regardless, so we do not need to worry about it here.
-	if lost_focus {
-		//    clearAllKeyState()
+func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventGroup {
+	// If we have lost focus, clear all key state.
+	if !has_focus {
+		// clearAllKeyState()
+		os_events = nil
+		for _, key := range input.all_keys {
+			if key.IsDown() {
+				os_events = append(os_events, OsEvent{
+					KeyId:     key.Id(),
+					Press_amt: 0,
+					Timestamp: t,
+				})
+			}
+		}
 	}
 	// Generate all key events here.  Derived keys are handled through pressKey and all
 	// events are aggregated into one array.  Events in this array will necessarily be in

@@ -110,3 +110,8 @@ func (linux *linuxSystemObject) EnableVSync(enable bool) {
 	}
 	C.GlopEnableVSync(_enable)
 }
+
+func (linux *linuxSystemObject) HasFocus() bool {
+	// TODO: Implement me!
+	return true
+}

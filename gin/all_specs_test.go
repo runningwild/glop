@@ -16,5 +16,6 @@ func TestAllSpecs(t *testing.T) {
 	r.AddSpec(GeneralSpec)
 	r.AddSpec(AxisSpec)
 	r.AddSpec(EventListenerSpec)
+	r.AddSpec(FocusSpec)
 	gospec.MainGoTest(r, t)
 }

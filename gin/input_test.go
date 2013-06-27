@@ -31,7 +31,7 @@ func NaturalKeySpec(c gospec.Context) {
 
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 5)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(keya.FramePressCount(), Equals, 1)
 		c.Expect(keya.FrameReleaseCount(), Equals, 0)
 		c.Expect(keyb.FramePressCount(), Equals, 0)
@@ -39,7 +39,7 @@ func NaturalKeySpec(c gospec.Context) {
 
 		events = events[0:0]
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 15)
-		input.Think(20, false, events)
+		input.Think(20, true, events)
 		c.Expect(keya.FramePressCount(), Equals, 0)
 		c.Expect(keya.FrameReleaseCount(), Equals, 0)
 		c.Expect(keyb.FramePressCount(), Equals, 1)
@@ -47,7 +47,7 @@ func NaturalKeySpec(c gospec.Context) {
 
 		events = events[0:0]
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 25)
-		input.Think(30, false, events)
+		input.Think(30, true, events)
 		c.Expect(keya.FramePressCount(), Equals, 0)
 		c.Expect(keya.FrameReleaseCount(), Equals, 1)
 		c.Expect(keyb.FramePressCount(), Equals, 0)
@@ -62,7 +62,7 @@ func NaturalKeySpec(c gospec.Context) {
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 7)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 8)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 9)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(keya.FramePressCount(), Equals, 3)
 		c.Expect(keya.FrameReleaseCount(), Equals, 2)
 		c.Expect(keyb.FramePressCount(), Equals, 1)
@@ -77,7 +77,7 @@ func NaturalKeySpec(c gospec.Context) {
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 7)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 8)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 9)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(keya.FramePressCount(), Equals, 1)
 		c.Expect(keya.FrameReleaseCount(), Equals, 1)
 	})
@@ -85,41 +85,41 @@ func NaturalKeySpec(c gospec.Context) {
 	c.Specify("Key.FramePressSum() works.", func() {
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 3)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 14)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 16)
-		input.Think(20, false, events)
+		input.Think(20, true, events)
 		c.Expect(keya.FramePressSum(), Equals, 8.0)
 
 		events = events[0:0]
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 22)
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 0, 24)
-		input.Think(30, false, events)
+		input.Think(30, true, events)
 		c.Expect(keyb.FramePressSum(), Equals, 2.0)
 
 		events = events[0:0]
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 35)
-		input.Think(40, false, events)
+		input.Think(40, true, events)
 		c.Expect(keyb.FramePressSum(), Equals, 5.0)
 	})
 
 	c.Specify("Key.FramePressAvg() works.", func() {
 		events := make([]gin.OsEvent, 0)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 10)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 12)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 14)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 16)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 18)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 20)
-		input.Think(20, false, events)
+		input.Think(20, true, events)
 		c.Expect(keya.FramePressAvg(), Equals, 0.6)
 
 		events = events[0:0]
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 25)
-		input.Think(30, false, events)
+		input.Think(30, true, events)
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 0, 35)
-		input.Think(40, false, events)
+		input.Think(40, true, events)
 		c.Expect(keyb.FramePressAvg(), Equals, 0.5)
 	})
 }
@@ -156,7 +156,7 @@ func DerivedKeySpec(c gospec.Context) {
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 1)
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 1)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(ABc_Ef.FramePressAmt(), Equals, 1.0)
 		c.Expect(ABc_Ef.IsDown(), Equals, true)
 		c.Expect(ABc_Ef.FramePressCount(), Equals, 1)
@@ -164,7 +164,7 @@ func DerivedKeySpec(c gospec.Context) {
 
 		c.Specify("Release happens once primary key is released", func() {
 			injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 11)
-			input.Think(20, false, events)
+			input.Think(20, true, events)
 			c.Expect(ABc_Ef.IsDown(), Equals, false)
 			c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 			c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 1)
@@ -172,7 +172,7 @@ func DerivedKeySpec(c gospec.Context) {
 
 		c.Specify("Key remains down when when a down modifier is released", func() {
 			injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 0, 11)
-			input.Think(20, false, events)
+			input.Think(20, true, events)
 			c.Expect(ABc_Ef.IsDown(), Equals, true)
 			c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 			c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 0)
@@ -180,7 +180,7 @@ func DerivedKeySpec(c gospec.Context) {
 
 		c.Specify("Key remains down when an up modifier is pressed", func() {
 			injectEvent(&events, 'c', 1, gin.DeviceTypeKeyboard, 1, 11)
-			input.Think(20, false, events)
+			input.Think(20, true, events)
 			c.Expect(ABc_Ef.IsDown(), Equals, true)
 			c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 			c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 0)
@@ -189,7 +189,7 @@ func DerivedKeySpec(c gospec.Context) {
 			c.Specify("releasing b", func() {
 				injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 0, 11)
 				injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 11)
-				input.Think(20, false, events)
+				input.Think(20, true, events)
 				c.Expect(ABc_Ef.IsDown(), Equals, false)
 				c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 				c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 1)
@@ -197,7 +197,7 @@ func DerivedKeySpec(c gospec.Context) {
 			c.Specify("pressing c", func() {
 				injectEvent(&events, 'c', 1, gin.DeviceTypeKeyboard, 1, 11)
 				injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 11)
-				input.Think(20, false, events)
+				input.Think(20, true, events)
 				c.Expect(ABc_Ef.IsDown(), Equals, false)
 				c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 				c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 1)
@@ -206,7 +206,7 @@ func DerivedKeySpec(c gospec.Context) {
 
 		c.Specify("Pressing a second binding should not generate another press on the derived key", func() {
 			injectEvent(&events, 'e', 1, gin.DeviceTypeKeyboard, 1, 11)
-			input.Think(20, false, events)
+			input.Think(20, true, events)
 			c.Expect(ABc_Ef.IsDown(), Equals, true)
 			c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 			c.Expect(ABc_Ef.FrameReleaseCount(), Equals, 0)
@@ -218,14 +218,14 @@ func DerivedKeySpec(c gospec.Context) {
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 0, 21)
 		injectEvent(&events, 'c', 1, gin.DeviceTypeKeyboard, 0, 21)
 		injectEvent(&events, 'e', 1, gin.DeviceTypeKeyboard, 0, 21)
-		input.Think(30, false, events)
+		input.Think(30, true, events)
 		c.Expect(ABc_Ef.FramePressAmt(), Equals, 0.0)
 		c.Expect(ABc_Ef.IsDown(), Equals, false)
 
 		// Test that second binding can trigger a press
 		events = events[0:0]
 		injectEvent(&events, 'e', 1, gin.DeviceTypeKeyboard, 1, 31)
-		input.Think(40, false, events)
+		input.Think(40, true, events)
 		c.Expect(ABc_Ef.FramePressAmt(), Equals, 1.0)
 		c.Expect(ABc_Ef.IsDown(), Equals, true)
 		c.Expect(ABc_Ef.FramePressCount(), Equals, 1)
@@ -233,13 +233,13 @@ func DerivedKeySpec(c gospec.Context) {
 		// Reset keys
 		events = events[0:0]
 		injectEvent(&events, 'e', 1, gin.DeviceTypeKeyboard, 0, 41)
-		input.Think(50, false, events)
+		input.Think(50, true, events)
 
 		// Test that first binding doesn't trigger a press if modifiers aren't set first
 		events = events[0:0]
 		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 51)
 		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 51)
-		input.Think(60, false, events)
+		input.Think(60, true, events)
 		c.Expect(ABc_Ef.IsDown(), Equals, false)
 		c.Expect(ABc_Ef.FramePressCount(), Equals, 0)
 	})
@@ -261,7 +261,7 @@ func DeviceFamilySpec(c gospec.Context) {
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 1)
-		input.Think(2, false, events)
+		input.Think(2, true, events)
 		c.Expect(monkey1.IsDown(), Equals, false)
 		c.Expect(monkey1.FramePressCount(), Equals, 0)
 		c.Expect(monkey2.IsDown(), Equals, false)
@@ -272,7 +272,7 @@ func DeviceFamilySpec(c gospec.Context) {
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 3)
-		input.Think(4, false, events)
+		input.Think(4, true, events)
 		c.Expect(monkey1.IsDown(), Equals, false)
 		c.Expect(monkey1.FramePressCount(), Equals, 0)
 		c.Expect(monkey2.IsDown(), Equals, false)
@@ -283,7 +283,7 @@ func DeviceFamilySpec(c gospec.Context) {
 		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 1, 5)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 5)
-		input.Think(6, false, events)
+		input.Think(6, true, events)
 		c.Expect(monkey1.IsDown(), Equals, true)
 		c.Expect(monkey1.FramePressCount(), Equals, 1)
 		c.Expect(monkey2.IsDown(), Equals, false)
@@ -293,7 +293,7 @@ func DeviceFamilySpec(c gospec.Context) {
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 7)
-		input.Think(8, false, events)
+		input.Think(8, true, events)
 		c.Expect(monkey1.IsDown(), Equals, false)
 		c.Expect(monkey1.FrameReleaseCount(), Equals, 1)
 		c.Expect(monkey2.IsDown(), Equals, false)
@@ -303,7 +303,7 @@ func DeviceFamilySpec(c gospec.Context) {
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 9)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(monkey1.IsDown(), Equals, true)
 		c.Expect(monkey1.FramePressCount(), Equals, 1)
 		c.Expect(monkey2.IsDown(), Equals, false)
@@ -352,7 +352,7 @@ func DeviceSpec(c gospec.Context) {
 		// Test that first binding can trigger a press
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
-		input.Think(2, false, events)
+		input.Think(2, true, events)
 		c.Expect(A1.IsDown(), Equals, true)
 		c.Expect(A2.IsDown(), Equals, false)
 		c.Expect(A3.IsDown(), Equals, false)
@@ -360,7 +360,7 @@ func DeviceSpec(c gospec.Context) {
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 4)
-		input.Think(5, false, events)
+		input.Think(5, true, events)
 		c.Expect(A1.IsDown(), Equals, false)
 		c.Expect(A2.IsDown(), Equals, true)
 		c.Expect(A3.IsDown(), Equals, false)
@@ -368,7 +368,7 @@ func DeviceSpec(c gospec.Context) {
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 6)
 		injectEvent(&events, gin.KeyA, 3, gin.DeviceTypeKeyboard, 1, 7)
-		input.Think(8, false, events)
+		input.Think(8, true, events)
 		c.Expect(A1.IsDown(), Equals, false)
 		c.Expect(A2.IsDown(), Equals, false)
 		c.Expect(A3.IsDown(), Equals, true)
@@ -378,28 +378,28 @@ func DeviceSpec(c gospec.Context) {
 		// Test that first binding can trigger a press
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
-		input.Think(2, false, events)
+		input.Think(2, true, events)
 		c.Expect(AAny.IsDown(), Equals, true)
 		c.Expect(BAny.IsDown(), Equals, false)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 4)
-		input.Think(5, false, events)
+		input.Think(5, true, events)
 		c.Expect(AAny.IsDown(), Equals, true)
 		c.Expect(BAny.IsDown(), Equals, false)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 6)
 		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 1, 7)
-		input.Think(8, false, events)
+		input.Think(8, true, events)
 		c.Expect(AAny.IsDown(), Equals, false)
 		c.Expect(BAny.IsDown(), Equals, true)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 1, gin.DeviceTypeKeyboard, 0, 9)
 		injectEvent(&events, gin.KeyB, 2, gin.DeviceTypeKeyboard, 1, 10)
-		input.Think(11, false, events)
+		input.Think(11, true, events)
 		c.Expect(AAny.IsDown(), Equals, false)
 		c.Expect(BAny.IsDown(), Equals, true)
 		events = events[0:0]
@@ -409,7 +409,7 @@ func DeviceSpec(c gospec.Context) {
 		// Test that first binding can trigger a press
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
-		input.Think(2, false, events)
+		input.Think(2, true, events)
 		c.Expect(Any1.IsDown(), Equals, true)
 		c.Expect(Any2.IsDown(), Equals, false)
 		c.Expect(Any3.IsDown(), Equals, false)
@@ -417,7 +417,7 @@ func DeviceSpec(c gospec.Context) {
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 1, 3)
-		input.Think(4, false, events)
+		input.Think(4, true, events)
 		c.Expect(Any1.IsDown(), Equals, false)
 		c.Expect(Any2.IsDown(), Equals, true)
 		c.Expect(Any3.IsDown(), Equals, false)
@@ -425,7 +425,7 @@ func DeviceSpec(c gospec.Context) {
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 5)
 		injectEvent(&events, gin.KeyA, 3, gin.DeviceTypeKeyboard, 1, 5)
-		input.Think(6, false, events)
+		input.Think(6, true, events)
 		c.Expect(Any1.IsDown(), Equals, false)
 		c.Expect(Any2.IsDown(), Equals, false)
 		c.Expect(Any3.IsDown(), Equals, true)
@@ -435,28 +435,28 @@ func DeviceSpec(c gospec.Context) {
 		// Test that first binding can trigger a press
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1, 1)
-		input.Think(2, false, events)
+		input.Think(2, true, events)
 		c.Expect(Any_key.IsDown(), Equals, true)
 		c.Expect(Any_key.FramePressCount(), Equals, 1)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 0)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 2, gin.DeviceTypeKeyboard, 1, 3)
-		input.Think(4, false, events)
+		input.Think(4, true, events)
 		c.Expect(Any_key.IsDown(), Equals, true)
 		c.Expect(Any_key.FramePressCount(), Equals, 0)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 0)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 5)
-		input.Think(6, false, events)
+		input.Think(6, true, events)
 		c.Expect(Any_key.IsDown(), Equals, true)
 		c.Expect(Any_key.FramePressCount(), Equals, 0)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 0)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyB, 2, gin.DeviceTypeKeyboard, 0, 7)
-		input.Think(8, false, events)
+		input.Think(8, true, events)
 		c.Expect(Any_key.IsDown(), Equals, false)
 		c.Expect(Any_key.FramePressCount(), Equals, 0)
 		c.Expect(Any_key.FrameReleaseCount(), Equals, 1)
@@ -475,7 +475,7 @@ func NestedDerivedKeySpec(c gospec.Context) {
 	events := make([]gin.OsEvent, 0)
 
 	check := func(order string) {
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		if strings.Index(order, "b") < strings.Index(order, "a") {
 			c.Expect(AB.IsDown(), Equals, true)
 			c.Expect(AB.FramePressCount(), Equals, 1)
@@ -547,7 +547,7 @@ func EventSpec(c gospec.Context) {
 	events := make([]gin.OsEvent, 0)
 
 	check := func(lengths ...int) {
-		groups := input.Think(10, false, events)
+		groups := input.Think(10, true, events)
 		c.Assume(len(groups), Equals, len(lengths))
 		for i, length := range lengths {
 			// To make it more clear what each test is doing we only check for the
@@ -619,20 +619,20 @@ func GeneralSpec(c gospec.Context) {
 	c.Specify("General keys work like they should.", func() {
 		events := make([]gin.OsEvent, 0)
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0.5, 1)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(a_x.IsDown(), Equals, true)
 		c.Expect(a_1.IsDown(), Equals, true)
 		c.Expect(a_2.IsDown(), Equals, false)
 		events = events[0:0]
 
-		input.Think(20, false, events)
+		input.Think(20, true, events)
 		c.Expect(a_x.FramePressSum(), Equals, 5.0)
 		c.Expect(a_1.FramePressSum(), Equals, 5.0)
 		c.Expect(a_2.FramePressSum(), Equals, 0.0)
 		events = events[0:0]
 
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 1.0, 25)
-		input.Think(30, false, events)
+		input.Think(30, true, events)
 		c.Expect(a_x.FramePressSum(), Equals, 7.5)
 		c.Expect(a_1.FramePressSum(), Equals, 7.5)
 		c.Expect(a_2.FramePressSum(), Equals, 0.0)
@@ -657,25 +657,25 @@ func AxisSpec(c gospec.Context) {
 		injectEvent(&events, x.Id().Index, 1, gin.DeviceTypeMouse, 1, 5)
 		injectEvent(&events, x.Id().Index, 1, gin.DeviceTypeMouse, 10, 6)
 		injectEvent(&events, x.Id().Index, 1, gin.DeviceTypeMouse, -3, 7)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		c.Expect(x.FramePressAmt(), Equals, -3.0)
 		c.Expect(x.FramePressSum(), Equals, 8.0)
 	})
 
 	c.Specify("Axes can sum to zero and still be down.", func() {
-		input.Think(0, false, events)
+		input.Think(0, true, events)
 		events = events[0:0]
 		c.Expect(x.FramePressSum(), Equals, 0.0)
 		c.Expect(x.IsDown(), Equals, false)
 
 		injectEvent(&events, x.Id().Index, 1, gin.DeviceTypeMouse, 5, 5)
 		injectEvent(&events, x.Id().Index, 1, gin.DeviceTypeMouse, -5, 6)
-		input.Think(10, false, events)
+		input.Think(10, true, events)
 		events = events[0:0]
 		c.Expect(x.FramePressSum(), Equals, 0.0)
 		c.Expect(x.IsDown(), Equals, true)
 
-		input.Think(20, false, events)
+		input.Think(20, true, events)
 		c.Expect(x.FramePressSum(), Equals, 0.0)
 		c.Expect(x.IsDown(), Equals, false)
 	})
@@ -741,7 +741,7 @@ func EventListenerSpec(c gospec.Context) {
 			la.ExpectPressCounts(1, 1, 1, 2, 2, 2)
 			la.ExpectReleaseCounts(0, 1, 1, 1, 1, 2)
 			la.ExpectPressAmts(1, 0, 0, 1, 1, 0)
-			input.Think(0, false, events)
+			input.Think(0, true, events)
 		})
 		c.Specify("Test b", func() {
 			lb := &listener{
@@ -753,7 +753,7 @@ func EventListenerSpec(c gospec.Context) {
 			lb.ExpectPressCounts(0, 0, 1, 1, 1, 1)
 			lb.ExpectReleaseCounts(0, 0, 0, 0, 1, 1)
 			lb.ExpectPressAmts(0, 0, 1, 1, 0, 0)
-			input.Think(0, false, events)
+			input.Think(0, true, events)
 		})
 		c.Specify("Test ab", func() {
 			lab := &listener{
@@ -765,7 +765,45 @@ func EventListenerSpec(c gospec.Context) {
 			lab.ExpectPressCounts(0, 0, 0, 1, 1, 1)
 			lab.ExpectReleaseCounts(0, 0, 0, 0, 0, 1)
 			lab.ExpectPressAmts(0, 0, 0, 1, 1, 0)
-			input.Think(0, false, events)
+			input.Think(0, true, events)
 		})
+	})
+}
+
+func FocusSpec(c gospec.Context) {
+	input := gin.Make()
+	keya := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, 1)
+	keyb := input.GetKeyFlat(gin.KeyB, gin.DeviceTypeKeyboard, 1)
+	events := make([]gin.OsEvent, 0)
+
+	c.Specify("Check that key press events don't happen without focus", func() {
+		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 1)
+		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 2)
+		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 0, 3)
+		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 0, 4)
+		input.Think(10, false, events)
+		c.Expect(keya.FramePressCount(), Equals, 0)
+		c.Expect(keya.FrameReleaseCount(), Equals, 0)
+		c.Expect(keya.FramePressAmt(), Equals, 0.0)
+		c.Expect(keya.FramePressSum(), Equals, 0.0)
+		c.Expect(keyb.FramePressCount(), Equals, 0)
+		c.Expect(keyb.FrameReleaseCount(), Equals, 0)
+		c.Expect(keyb.FramePressAmt(), Equals, 0.0)
+		c.Expect(keyb.FramePressSum(), Equals, 0.0)
+	})
+
+	c.Specify("Check that losing focus forces a key release on all pressed keys.", func() {
+		injectEvent(&events, 'a', 1, gin.DeviceTypeKeyboard, 1, 1)
+		injectEvent(&events, 'b', 1, gin.DeviceTypeKeyboard, 1, 2)
+		input.Think(10, true, events)
+		c.Expect(keya.FramePressCount(), Equals, 1)
+		c.Expect(keya.FrameReleaseCount(), Equals, 0)
+		c.Expect(keyb.FramePressCount(), Equals, 1)
+		c.Expect(keyb.FrameReleaseCount(), Equals, 0)
+		input.Think(20, false, events)
+		c.Expect(keya.FramePressCount(), Equals, 0)
+		c.Expect(keya.FrameReleaseCount(), Equals, 1)
+		c.Expect(keyb.FramePressCount(), Equals, 0)
+		c.Expect(keyb.FrameReleaseCount(), Equals, 1)
 	})
 }
