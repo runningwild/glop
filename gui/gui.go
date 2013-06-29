@@ -1,8 +1,8 @@
 package gui
 
 import (
+	gl "github.com/chsc/gogl/gl21"
 	"github.com/runningwild/glop/gin"
-	"github.com/runningwild/opengl/gl"
 )
 
 type Point struct {
@@ -106,13 +106,13 @@ var clippers []Region
 // because we have to take the address of it to pass it to opengl.  By having
 // it here we avoid that allocation - it amounts to a lot of someone is calling
 // this every frame.
-var eqs [4][4]float64
+var eqs [4][4]gl.Double
 
 func (r Region) setClipPlanes() {
-	eqs[0][0], eqs[0][1], eqs[0][2], eqs[0][3] = 1, 0, 0, -float64(r.X)
-	eqs[1][0], eqs[1][1], eqs[1][2], eqs[1][3] = -1, 0, 0, float64(r.X+r.Dx)
-	eqs[2][0], eqs[2][1], eqs[2][2], eqs[2][3] = 0, 1, 0, -float64(r.Y)
-	eqs[3][0], eqs[3][1], eqs[3][2], eqs[3][3] = 0, -1, 0, float64(r.Y+r.Dy)
+	eqs[0][0], eqs[0][1], eqs[0][2], eqs[0][3] = 1, 0, 0, -gl.Double(r.X)
+	eqs[1][0], eqs[1][1], eqs[1][2], eqs[1][3] = -1, 0, 0, gl.Double(r.X+r.Dx)
+	eqs[2][0], eqs[2][1], eqs[2][2], eqs[2][3] = 0, 1, 0, -gl.Double(r.Y)
+	eqs[3][0], eqs[3][1], eqs[3][2], eqs[3][3] = 0, -1, 0, gl.Double(r.Y+r.Dy)
 	gl.ClipPlane(gl.CLIP_PLANE0, &eqs[0][0])
 	gl.ClipPlane(gl.CLIP_PLANE1, &eqs[1][0])
 	gl.ClipPlane(gl.CLIP_PLANE2, &eqs[2][0])
@@ -399,10 +399,10 @@ type Gui struct {
 }
 
 func Make(dispatcher gin.EventDispatcher, dims Dims, font_path string) (*Gui, error) {
-	err := LoadFontAs(font_path, "standard")
-	if err != nil {
-		return nil, err
-	}
+	// err := LoadFontAs(font_path, "standard")
+	// if err != nil {
+	// 	return nil, err
+	// }
 	var g Gui
 	g.root.EmbeddedWidget = &BasicWidget{CoreWidget: &g.root}
 	g.root.Request_dims = dims
@@ -415,7 +415,7 @@ func (g *Gui) Draw() {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
 	region := g.root.Render_region
-	gl.Ortho(float64(region.X), float64(region.X+region.Dx), float64(region.Y), float64(region.Y+region.Dy), 1000, -1000)
+	gl.Ortho(gl.Double(region.X), gl.Double(region.X+region.Dx), gl.Double(region.Y), gl.Double(region.Y+region.Dy), 1000, -1000)
 	gl.ClearColor(0, 0, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.MatrixMode(gl.MODELVIEW)
