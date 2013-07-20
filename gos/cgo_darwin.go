@@ -7,6 +7,7 @@ import "C"
 import (
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/system"
+	"sync"
 	"unsafe"
 )
 
@@ -18,6 +19,7 @@ type osxSystemObject struct {
 
 var (
 	osx_system_object osxSystemObject
+	globalLock        sync.Mutex
 )
 
 // Call after runtime.LockOSThread(), *NOT* in an init function
@@ -26,6 +28,8 @@ func (osx *osxSystemObject) Startup() {
 }
 
 func GetSystemInterface() system.Os {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	return &osx_system_object
 }
 
@@ -38,20 +42,28 @@ func (osx *osxSystemObject) Quit() {
 }
 
 func (osx *osxSystemObject) CreateWindow(x, y, width, height int) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	w := (*unsafe.Pointer)(unsafe.Pointer(&osx.window))
 	c := (*unsafe.Pointer)(unsafe.Pointer(&osx.context))
 	C.CreateWindow(w, c, C.int(x), C.int(y), C.int(width), C.int(height))
 }
 
 func (osx *osxSystemObject) SwapBuffers() {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	C.SwapBuffers(unsafe.Pointer(osx.context))
 }
 
 func (osx *osxSystemObject) Think() {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	C.Think()
 }
 
 func (osx *osxSystemObject) GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	var first_device_id *C.DeviceId
 	fdip := (*unsafe.Pointer)(unsafe.Pointer(&first_device_id))
 	var length C.int
@@ -106,18 +118,18 @@ func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 	return events, osx.horizon
 }
 
-func (osx *osxSystemObject) rawCursorToWindowCoords(x, y int) (int, int) {
-	wx, wy, _, _ := osx.GetWindowDims()
-	return x - wx, y - wy
-}
-
 func (osx *osxSystemObject) GetCursorPos() (int, int) {
+	globalLock.Lock()
 	var x, y C.int
 	C.GetMousePos(&x, &y)
-	return osx.rawCursorToWindowCoords(int(x), int(y))
+	globalLock.Unlock()
+	wx, wy, _, _ := osx.GetWindowDims()
+	return int(x) - wx, int(y) - wy
 }
 
 func (osx *osxSystemObject) HideCursor(hide bool) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	if hide {
 		C.LockCursor(1)
 		C.HideCursor(1)
@@ -128,12 +140,16 @@ func (osx *osxSystemObject) HideCursor(hide bool) {
 }
 
 func (osx *osxSystemObject) GetWindowDims() (int, int, int, int) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	var x, y, dx, dy C.int
 	C.GetWindowDims(unsafe.Pointer(osx.window), &x, &y, &dx, &dy)
 	return int(x), int(y), int(dx), int(dy)
 }
 
 func (osx *osxSystemObject) EnableVSync(enable bool) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	var _enable C.int
 	if enable {
 		_enable = 1
@@ -142,6 +158,8 @@ func (osx *osxSystemObject) EnableVSync(enable bool) {
 }
 
 func (osx *osxSystemObject) HasFocus() bool {
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	var has_focus C.int
 	C.HasFocus(&has_focus)
 	return has_focus == 1

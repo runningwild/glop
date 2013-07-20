@@ -21,9 +21,7 @@ extern "C" {
 
 @interface GlopApplication : NSApplication {
   int should_stop;
-  int on_correct_thread;
 }
-- (int)onCorrectThread;
 - (void)sendEvent:(NSEvent*)event;
 - (void)stop:(id)id;
 - (void)run;
@@ -472,7 +470,6 @@ int* getInputStateVal(int flag) {
 @implementation GlopApplication
 - (void)clear {
   should_stop = 0;
-  on_correct_thread = 0;
 }
 
 - (void)sendEvent:(NSEvent*)event {
@@ -619,10 +616,6 @@ int* getInputStateVal(int flag) {
   should_stop = 1;
 }
 
-- (int)onCorrectThread {
-  return on_correct_thread;
-}
-
 - (void)run {
 //  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
@@ -635,11 +628,6 @@ int* getInputStateVal(int flag) {
         untilDate:[NSDate distantFuture]
         inMode:NSDefaultRunLoopMode
         dequeue:YES];
-
-    on_correct_thread = ([event type] != 0);
-    if (!on_correct_thread) {
-      return;
-    }
     [self sendEvent:event];
     [self updateWindows];
   } while (!should_stop);
@@ -657,14 +645,8 @@ int Think() {
   // rather than only most of them
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
-  if (![(GlopApplication*)glop_app onCorrectThread]) {
-    return 0;
-  }
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
-  if (![(GlopApplication*)glop_app onCorrectThread]) {
-    return 0;
-  }
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];
   if (lock_mouse.x >= 0) {
     CGWarpMouseCursorPosition(lock_mouse);
