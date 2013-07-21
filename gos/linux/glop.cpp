@@ -178,7 +178,7 @@ static bool SynthKey(const KeySym &sym, bool pushed, const XEvent &event, Window
     case XK_comma: ki = ','; break;
     case XK_period: ki = '.'; break;
     case XK_slash: ki = '/'; break;
-    case XK_space: ki = '/'; break;
+    case XK_space: ki = ' '; break;
   }
   
   if(ki == 0)
