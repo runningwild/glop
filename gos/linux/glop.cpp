@@ -559,8 +559,10 @@ void GlopGetInputEvents(void** _events_ret, void* _num_events, void* _horizon) {
 }
 
 void GlopGetMousePosition(int* x, int* y) { // TBI
-  *x = 0;
-  *y = 0;
+  Window root, child;
+  int childx, childy;
+  unsigned int mods;
+  XQueryPointer(display, windowdata->window, &root, &child, x, y, &childx, &childy, &mods);
 }
 
 
