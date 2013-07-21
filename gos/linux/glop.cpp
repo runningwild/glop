@@ -178,7 +178,7 @@ static bool SynthKey(const KeySym &sym, bool pushed, const XEvent &event, Window
     case XK_comma: ki = ','; break;
     case XK_period: ki = '.'; break;
     case XK_slash: ki = '/'; break;
-    case XK_space: ki = '/'; break;
+    case XK_space: ki = ' '; break;
   }
   
   if(ki == 0)
@@ -559,8 +559,10 @@ void GlopGetInputEvents(void** _events_ret, void* _num_events, void* _horizon) {
 }
 
 void GlopGetMousePosition(int* x, int* y) { // TBI
-  *x = 0;
-  *y = 0;
+  Window root, child;
+  int childx, childy;
+  unsigned int mods;
+  XQueryPointer(display, windowdata->window, &root, &child, x, y, &childx, &childy, &mods);
 }
 
 
