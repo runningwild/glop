@@ -202,8 +202,8 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 	} else {
 		render.EnableShader("glop.font")
 		diff := 20/math.Pow(height, 1.0) + 5*math.Pow(d.data.Scale, 1.0)/math.Pow(height, 1.0)
-		if diff > 0.45 {
-			diff = 0.45
+		if diff > 0.2 {
+			diff = 0.2
 		}
 		render.SetUniformF("glop.font", "dist_min", float32(0.5-diff))
 		render.SetUniformF("glop.font", "dist_max", float32(0.5+diff))
