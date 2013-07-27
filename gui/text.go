@@ -183,13 +183,14 @@ func (d *Dictionary) RenderParagraph(s string, x, y, z, dx, height float64, hali
 	}
 }
 
-func (d *Dictionary) StringWidth(s string) float64 {
+func (d *Dictionary) StringWidth(s string, height float64) float64 {
+	scale := height / float64(d.data.Maxy-d.data.Miny)
 	width := 0.0
 	for _, r := range s {
 		info := d.getInfo(r)
 		width += info.Advance
 	}
-	return width
+	return width * scale
 }
 
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
@@ -202,8 +203,9 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 	} else {
 		render.EnableShader("glop.font")
 		diff := 20/math.Pow(height, 1.0) + 5*math.Pow(d.data.Scale, 1.0)/math.Pow(height, 1.0)
-		if diff > 0.2 {
-			diff = 0.2
+		if diff > 0.4 {
+			// TODO: Need to come up with decent values here
+			diff = 0.4
 		}
 		render.SetUniformF("glop.font", "dist_min", float32(0.5-diff))
 		render.SetUniformF("glop.font", "dist_max", float32(0.5+diff))
@@ -256,10 +258,10 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 		}
 		prev = r
 		info := d.getInfo(r)
-		xleft := x_pos + float32(info.Full_bounds.Min.X)      //- float32(info.Full_bounds.Min.X-info.Bounds.Min.X)
-		xright := x_pos + float32(info.Full_bounds.Max.X)     //+ float32(info.Full_bounds.Max.X-info.Bounds.Max.X)
-		ytop := float32(d.data.Maxy - info.Full_bounds.Max.Y) //- float32(info.Full_bounds.Min.Y-info.Bounds.Min.Y)
-		ybot := float32(d.data.Maxy - info.Full_bounds.Min.Y) //+ float32(info.Full_bounds.Max.X-info.Bounds.Max.X)
+		xleft := x_pos + float32(info.Full_bounds.Min.X)
+		xright := x_pos + float32(info.Full_bounds.Max.X)
+		ytop := float32(info.Full_bounds.Max.Y) + float32(-d.data.Miny)
+		ybot := float32(info.Full_bounds.Min.Y) + float32(-d.data.Miny)
 		start := uint16(len(strbuf.vs))
 		strbuf.is = append(strbuf.is, start+0)
 		strbuf.is = append(strbuf.is, start+1)

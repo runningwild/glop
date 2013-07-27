@@ -123,8 +123,8 @@ func (osx *osxSystemObject) GetCursorPos() (int, int) {
 	var x, y C.int
 	C.GetMousePos(&x, &y)
 	globalLock.Unlock()
-	wx, wy, _, _ := osx.GetWindowDims()
-	return int(x) - wx, int(y) - wy
+	wx, wy, _, dy := osx.GetWindowDims()
+	return int(x) - wx, dy + wy - int(y)
 }
 
 func (osx *osxSystemObject) HideCursor(hide bool) {
