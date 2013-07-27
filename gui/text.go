@@ -14,19 +14,16 @@ import (
 
 // Shader stuff - The font stuff requires that we use some simple shaders
 const font_vertex_shader = `
-	varying vec3 pos;
-
 	void main() {
 	  gl_Position = ftransform();
 	  gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;
-	  gl_FrontColor = gl_Color;
 	  gl_TexCoord[0] = gl_MultiTexCoord0;
 	  gl_TexCoord[1] = gl_MultiTexCoord1;
-	  pos = gl_Vertex.xyz;
 	}
 `
 
 const font_fragment_shader = `
+	uniform vec4 color;
 	uniform sampler2D tex;
 	uniform float dist_min;
 	uniform float dist_max;
@@ -35,7 +32,7 @@ const font_fragment_shader = `
 	  vec2 tpos = gl_TexCoord[0].xy;
 	  float dist = texture2D(tex, tpos).a;
 	  float alpha = smoothstep(dist_min, dist_max, dist);
-	  gl_FragColor = gl_Color * vec4(1.0, 1.0, 1.0, alpha);
+	  gl_FragColor = color * vec4(1.0, 1.0, 1.0, alpha);
 	}
 `
 
@@ -191,6 +188,11 @@ func (d *Dictionary) StringWidth(s string, height float64) float64 {
 		width += info.Advance
 	}
 	return width * scale
+}
+
+func SetFontColor(r, g, b, a float32) {
+	render.EnableShader("glop.font")
+	render.SetUniform4F("glop.font", "color", []float32{r, g, b, a})
 }
 
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
