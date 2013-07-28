@@ -123,6 +123,18 @@ int hidToGlopKeyboard(int page, int usage) {
   if (usage == 0x27) {
     return '0';
   }
+  if (usage == 0x4F) { // right
+    return 166;
+  }
+  if (usage == 0x50) { // left
+    return 167;
+  }
+  if (usage == 0x51) { // down
+    return 169;
+  }
+  if (usage == 0x52) { // up
+    return 168;
+  }
   if (usage == 0x28) { // return
     return 13;
   }
