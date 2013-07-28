@@ -269,7 +269,56 @@ void getEvents(vector<KeyEvent>* events) {
         }
       }
       if (stats.device_type == deviceTypeController) {
-        if (page == 0x09) {
+        if (page == 0x01 && usage == 0x39) { // hat switch
+          float max = (float)(IOHIDElementGetLogicalMax(IOHIDValueGetElement(value)));
+          float press_amt = IOHIDValueGetScaledValue(value, kIOHIDValueScaleTypePhysical);
+          // TODO: max gives the number of different values that can be returned
+          // as press_amt, but here we're just assuming that things are in degrees
+          // and just use them that way.  We need to test, at some point, with a
+          // controller that only does four directions.
+          // press_amt is given is given in degrees, with up being 0 degrees
+          // and rotating clockwise.  We'll assume at best 45 degree resolution.
+          // 360 degrees indicates that the hat switch was released.
+          KeyEvent event;
+          {
+            // Send a release event for every direction
+            KeyEvent release;
+            release.device_type = stats.device_type;
+            release.device_index = int((long long)(device));
+            release.timestamp = IOHIDValueGetTimeStamp(value);
+            release.press_amt = 0.0;
+            for (int i = kControllerHatSwitchUp; i <= kControllerHatSwitchUpLeft; i++) {
+              release.key_index = i;
+              events->push_back(release);
+            }
+          }
+          event.device_type = stats.device_type;
+          event.device_index = int((long long)(device));
+          if (press_amt == 0.0) {
+            event.key_index = kControllerHatSwitchUp;
+          } else if (press_amt == 45.0) {
+            event.key_index = kControllerHatSwitchUpRight;
+          } else if (press_amt == 90.0) {
+            event.key_index = kControllerHatSwitchRight;
+          } else if (press_amt == 135.0) {
+            event.key_index = kControllerHatSwitchDownRight;
+          } else if (press_amt == 180.0) {
+            event.key_index = kControllerHatSwitchDown;
+          } else if (press_amt == 225.0) {
+            event.key_index = kControllerHatSwitchDownLeft;
+          } else if (press_amt == 270.0) {
+            event.key_index = kControllerHatSwitchLeft;
+          } else if (press_amt == 315.0) {
+            event.key_index = kControllerHatSwitchUpLeft;
+          } else if (press_amt == 360.0) {
+            // Nothing - we already released all of the other keys.
+          }
+          if (press_amt != 360.0) {
+            event.press_amt = 1.0;
+            event.timestamp = IOHIDValueGetTimeStamp(value);
+            events->push_back(event);
+          }
+        } else if (page == 0x09) {
           KeyEvent event;
           event.key_index = kControllerButton0 + usage;
           event.device_type = stats.device_type;

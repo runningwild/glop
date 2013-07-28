@@ -220,6 +220,15 @@ const (
 	ControllerAxis0Positive = 70000
 	ControllerAxis0Negative = 80000
 
+	ControllerHatSwitchUp        = 90000
+	ControllerHatSwitchUpRight   = 90001
+	ControllerHatSwitchRight     = 90002
+	ControllerHatSwitchDownRight = 90003
+	ControllerHatSwitchDown      = 90004
+	ControllerHatSwitchDownLeft  = 90005
+	ControllerHatSwitchLeft      = 90006
+	ControllerHatSwitchUpLeft    = 90007
+
 	// standard derived keys start here
 	EitherShift = 100000 + iota
 	EitherControl
@@ -392,6 +401,15 @@ func Make() *Input {
 	for i := 0; i < 65535; i++ {
 		input.registerKeyIndex(ControllerButton0+KeyIndex(i), aggregatorTypeStandard, fmt.Sprintf("Button %d", i))
 	}
+
+	input.registerKeyIndex(ControllerHatSwitchUp, aggregatorTypeStandard, "HatSwitchUp")
+	input.registerKeyIndex(ControllerHatSwitchUpRight, aggregatorTypeStandard, "HatSwitchUpRight")
+	input.registerKeyIndex(ControllerHatSwitchRight, aggregatorTypeStandard, "HatSwitchRight")
+	input.registerKeyIndex(ControllerHatSwitchDownRight, aggregatorTypeStandard, "HatSwitchDownRight")
+	input.registerKeyIndex(ControllerHatSwitchDown, aggregatorTypeStandard, "HatSwitchDown")
+	input.registerKeyIndex(ControllerHatSwitchDownLeft, aggregatorTypeStandard, "HatSwitchDownLeft")
+	input.registerKeyIndex(ControllerHatSwitchLeft, aggregatorTypeStandard, "HatSwitchLeft")
+	input.registerKeyIndex(ControllerHatSwitchUpLeft, aggregatorTypeStandard, "HatSwitchUpLeft")
 
 	input.bindDerivedKeyWithIndex(
 		"EitherShift",

@@ -83,6 +83,14 @@
 #define kControllerButton0 500
 #define kControllerAxis0Positive 70000
 #define kControllerAxis0Negative 80000
+#define kControllerHatSwitchUp         90000
+#define kControllerHatSwitchUpRight    90001
+#define kControllerHatSwitchRight      90002
+#define kControllerHatSwitchDownRight  90003
+#define kControllerHatSwitchDown       90004
+#define kControllerHatSwitchDownLeft   90005
+#define kControllerHatSwitchLeft       90006
+#define kControllerHatSwitchUpLeft     90007
 
 enum { deviceTypeInvalid, deviceTypeKeyboard, deviceTypeMouse, deviceTypeController };
 
