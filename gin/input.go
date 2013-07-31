@@ -2,6 +2,7 @@ package gin
 
 import (
 	"fmt"
+	"github.com/runningwild/glop/util/algorithm"
 )
 
 var (
@@ -674,10 +675,16 @@ type Listener interface {
 }
 type EventDispatcher interface {
 	RegisterEventListener(Listener)
+	UnregisterEventListener(Listener)
 }
 
+// TODO: These two functions should be synchronized
 func (input *Input) RegisterEventListener(listener Listener) {
 	input.listeners = append(input.listeners, listener)
+}
+
+func (input *Input) UnregisterEventListener(listener Listener) {
+	algorithm.Choose(&input.listeners, func(l Listener) bool { return l != listener })
 }
 
 func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventGroup {
@@ -745,8 +752,10 @@ func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventG
 		}
 	}
 
-	for _, listener := range input.listeners {
+	for i, listener := range input.listeners {
+		fmt.Printf("Posting to listener %d/%d: %v\n", i, len(input.listeners), listener)
 		listener.Think(t)
+		fmt.Printf("Posted\n")
 	}
 	return groups
 }

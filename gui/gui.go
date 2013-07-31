@@ -411,6 +411,10 @@ func Make(dispatcher gin.EventDispatcher, dims Dims, font_path string) (*Gui, er
 	return &g, nil
 }
 
+func Unmake(dispatcher gin.EventDispatcher, g *Gui) {
+	dispatcher.UnregisterEventListener(g)
+}
+
 func (g *Gui) Draw() {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
