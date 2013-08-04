@@ -752,10 +752,8 @@ func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventG
 		}
 	}
 
-	for i, listener := range input.listeners {
-		fmt.Printf("Posting to listener %d/%d: %v\n", i, len(input.listeners), listener)
+	for _, listener := range input.listeners {
 		listener.Think(t)
-		fmt.Printf("Posted\n")
 	}
 	return groups
 }
