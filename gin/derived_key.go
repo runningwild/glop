@@ -161,7 +161,11 @@ func (b *Binding) CurPressAmt() float64 {
 			return 0
 		}
 	}
-	if !b.Input.key_map[b.PrimaryKey].IsDown() {
+	// If the key isn't found in the map it's because there is a generalDerivedKey
+	// that could affect this key but has never been pressed, so it hasn't been
+	// added to the map yet.  In that case we can safely assume that the press amt
+	// is 0.
+	if key, ok := b.Input.key_map[b.PrimaryKey]; !ok || !key.IsDown() {
 		return 0
 	}
 	return b.Input.key_map[b.PrimaryKey].CurPressAmt()

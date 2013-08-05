@@ -8,6 +8,7 @@ import (
 func TestAllSpecs(t *testing.T) {
 	r := gospec.NewRunner()
 	r.AddSpec(NaturalKeySpec)
+	r.AddSpec(DerivedKeyBugSpec)
 	r.AddSpec(DerivedKeySpec)
 	r.AddSpec(DeviceSpec)
 	r.AddSpec(DeviceFamilySpec)

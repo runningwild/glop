@@ -412,33 +412,29 @@ func Make() *Input {
 	input.registerKeyIndex(ControllerHatSwitchLeft, aggregatorTypeStandard, "HatSwitchLeft")
 	input.registerKeyIndex(ControllerHatSwitchUpLeft, aggregatorTypeStandard, "HatSwitchUpLeft")
 
-	input.bindDerivedKeyWithIndex(
+	input.bindDerivedKeyFamilyWithIndex(
 		"EitherShift",
 		EitherShift,
-		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
-		input.MakeBinding(KeyId{Index: LeftShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
-		input.MakeBinding(KeyId{Index: RightShift, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBindingFamily(LeftShift, nil, nil),
+		input.MakeBindingFamily(RightShift, nil, nil),
 	)
-	input.bindDerivedKeyWithIndex(
-		"EitherControl",
-		EitherControl,
-		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
-		input.MakeBinding(KeyId{Index: LeftControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
-		input.MakeBinding(KeyId{Index: RightControl, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
-	)
-	input.bindDerivedKeyWithIndex(
+	input.bindDerivedKeyFamilyWithIndex(
 		"EitherAlt",
 		EitherAlt,
-		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
-		input.MakeBinding(KeyId{Index: LeftAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
-		input.MakeBinding(KeyId{Index: RightAlt, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBindingFamily(LeftAlt, nil, nil),
+		input.MakeBindingFamily(RightAlt, nil, nil),
 	)
-	input.bindDerivedKeyWithIndex(
+	input.bindDerivedKeyFamilyWithIndex(
+		"EitherControl",
+		EitherControl,
+		input.MakeBindingFamily(LeftControl, nil, nil),
+		input.MakeBindingFamily(RightControl, nil, nil),
+	)
+	input.bindDerivedKeyFamilyWithIndex(
 		"EitherGui",
 		EitherGui,
-		DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny},
-		input.MakeBinding(KeyId{Index: LeftGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
-		input.MakeBinding(KeyId{Index: RightGui, Device: DeviceId{Type: DeviceTypeKeyboard, Index: DeviceIndexAny}}, nil, nil),
+		input.MakeBindingFamily(LeftGui, nil, nil),
+		input.MakeBindingFamily(RightGui, nil, nil),
 	)
 	// input.bindDerivedKeyFamilyWithIndex(
 	// 	"AnyShift",
@@ -576,7 +572,7 @@ func (input *Input) GetKey(id KeyId) Key {
 			input.key_map[id] = &generalDerivedKey{
 				keyState: keyState{
 					id:         id,
-					name:       "Name me?",
+					name:       fmt.Sprintf("generalDerivedKey(%v)", id),
 					aggregator: &standardAggregator{},
 				},
 				input: input,

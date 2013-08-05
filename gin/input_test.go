@@ -124,6 +124,49 @@ func NaturalKeySpec(c gospec.Context) {
 	})
 }
 
+// One-off checks for bugs.
+func DerivedKeyBugSpec(c gospec.Context) {
+	input := gin.Make()
+	either := input.BindDerivedKeyFamily("EitherShift",
+		gin.In().MakeBindingFamily(gin.RightShift, nil, nil),
+		gin.In().MakeBindingFamily(gin.LeftShift, nil, nil))
+	k123 := input.GetKeyFlat(either, gin.DeviceTypeKeyboard, 123)
+	k500 := input.GetKeyFlat(either, gin.DeviceTypeKeyboard, 500)
+	kany := input.GetKeyFlat(either, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
+	c.Specify("Simple case shouldn't crash.", func() {
+		// Test that first binding can trigger a press
+		events := make([]gin.OsEvent, 0)
+		injectEvent(&events, gin.LeftShift, 123, gin.DeviceTypeKeyboard, 1, 2)
+		input.Think(10, true, events)
+		c.Expect(k123.IsDown(), Equals, true)
+		c.Expect(k123.FramePressCount(), Equals, 1)
+		c.Expect(k500.IsDown(), Equals, false)
+		c.Expect(k500.FramePressCount(), Equals, 0)
+		c.Expect(kany.IsDown(), Equals, true)
+		c.Expect(kany.FramePressCount(), Equals, 1)
+		events = events[0:0]
+	})
+}
+
+func SimpleDerivedKeySpec2(c gospec.Context) {
+	input := gin.Make()
+	either := input.BindDerivedKey("EitherShift",
+		gin.In().MakeBinding(gin.KeyId{Index: gin.LeftShift, Device: gin.DeviceId{Type: gin.DeviceTypeKeyboard, Index: gin.DeviceIndexAny}}, nil, nil),
+		gin.In().MakeBinding(gin.KeyId{Index: gin.RightShift, Device: gin.DeviceId{Type: gin.DeviceTypeKeyboard, Index: gin.DeviceIndexAny}}, nil, nil))
+
+	c.Specify("Derived key presses happen only when a primary key is pressed after all modifiers are set.", func() {
+		// Test that first binding can trigger a press
+		events := make([]gin.OsEvent, 0)
+		injectEvent(&events, gin.LeftShift, 123, gin.DeviceTypeKeyboard, 1, 1)
+		injectEvent(&events, gin.RightShift, 123, gin.DeviceTypeKeyboard, 1, 2)
+		input.Think(10, true, events)
+		c.Expect(either.FramePressAmt(), Equals, 2.0)
+		c.Expect(either.IsDown(), Equals, true)
+		c.Expect(either.FramePressCount(), Equals, 1)
+		events = events[0:0]
+	})
+}
+
 func DerivedKeySpec(c gospec.Context) {
 	input := gin.Make()
 	keya := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, 1)
@@ -326,6 +369,7 @@ func DeviceSpec(c gospec.Context) {
 	A1 := input.BindDerivedKey("A1", A1_binding)
 	A2 := input.BindDerivedKey("A2", A2_binding)
 	A3 := input.BindDerivedKey("A3", A3_binding)
+	A13 := input.BindDerivedKey("A13", A1_binding, A3_binding)
 
 	keya_any := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, gin.DeviceIndexAny)
 	AAny_binding := input.MakeBinding(keya_any.Id(), nil, nil)
@@ -356,6 +400,7 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(A1.IsDown(), Equals, true)
 		c.Expect(A2.IsDown(), Equals, false)
 		c.Expect(A3.IsDown(), Equals, false)
+		c.Expect(A13.IsDown(), Equals, true)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 1, gin.DeviceTypeKeyboard, 0, 3)
@@ -364,6 +409,7 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(A1.IsDown(), Equals, false)
 		c.Expect(A2.IsDown(), Equals, true)
 		c.Expect(A3.IsDown(), Equals, false)
+		c.Expect(A13.IsDown(), Equals, false)
 
 		events = events[0:0]
 		injectEvent(&events, gin.KeyA, 2, gin.DeviceTypeKeyboard, 0, 6)
@@ -372,6 +418,7 @@ func DeviceSpec(c gospec.Context) {
 		c.Expect(A1.IsDown(), Equals, false)
 		c.Expect(A2.IsDown(), Equals, false)
 		c.Expect(A3.IsDown(), Equals, true)
+		c.Expect(A13.IsDown(), Equals, true)
 	})
 
 	c.Specify("Derived key can specify a specific key on any device.", func() {

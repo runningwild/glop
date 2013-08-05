@@ -197,6 +197,31 @@ int hidToGlopKeyboard(int page, int usage) {
     return 192;
   }
 
+  if (usage == 0xe0) { // left control
+    return 157;
+  }
+  if (usage == 0xe1) { // left shift
+    return 155;
+  }
+  if (usage == 0xe2) { // left alt
+    return 159;
+  }
+  if (usage == 0xe3) { // left gui
+    return 161;
+  }
+  if (usage == 0xe4) { // right control
+    return 158;
+  }
+  if (usage == 0xe5) { // right shift
+    return 156;
+  }
+  if (usage == 0xe6) { // right alt
+    return 160;
+  }
+  if (usage == 0xe7) { // right gui
+    return 162;
+  }
+
   // TODO: Implement the rest of these, they can be found at
   // http://www.usb.org/developers/devclass_docs/Hut1_11.pdf
   return -1;
