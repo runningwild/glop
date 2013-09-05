@@ -4,7 +4,6 @@ package gos
 // #include "linux/include/glop.h"
 import "C"
 
-// #cgo LDFLAGS: -L/home/darthur/src/github.com/runningwild/glop/gos/linux/lib -lglop -lX11 -lGL
 
 import (
 	"github.com/runningwild/glop/gin"
@@ -76,7 +75,7 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 				Index: gin.KeyIndex(c_events[i].index),
 			},
 			Press_amt: float64(c_events[i].press_amt),
-			Timestamp: int64(c_events[i].timestamp) / 1000000,
+			Timestamp: int64(c_events[i].timestamp),
 		}
 	}
 	return events, linux.horizon
@@ -87,8 +86,8 @@ func (linux *linuxSystemObject) HideCursor(hide bool) {
 }
 
 func (linux *linuxSystemObject) rawCursorToWindowCoords(x, y int) (int, int) {
-	wx, wy, _, wdy := linux.GetWindowDims()
-	return x - wx, wy + wdy - y
+	wx, wy, _, _ := linux.GetWindowDims()
+	return x - wx, y - wy
 }
 
 func (linux *linuxSystemObject) GetCursorPos() (int, int) {

@@ -32,7 +32,8 @@ static long long gtm() {
   return (long long)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 static int gt() {
-  return gtm() / 1000;
+  int val = gtm() / 1000;
+  return val;
 }
 
 struct OsWindowData {
