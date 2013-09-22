@@ -104,7 +104,7 @@ func (sys *sysObj) Startup() {
 	sys.os.Startup()
 	_, sys.start_ms = sys.os.GetInputEvents()
 }
-func (sys *sysObj) Think() {
+func (sys *sysObj) thinkInternal() {
 	sys.os.Think()
 	events, horizon := sys.os.GetInputEvents()
 	for i := range events {
