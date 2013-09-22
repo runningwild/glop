@@ -1,7 +1,7 @@
-// #cgo LDFLAGS: -Lwindows/lib -lglop
-// #include "windows/include/glop.h"
 package gos
 
+// #cgo LDFLAGS: -Lwindows/lib -lglop
+// #include "windows/include/glop.h"
 import "C"
 
 import (
@@ -28,6 +28,10 @@ func GetSystemInterface() system.Os {
 	return &win32_system_object
 }
 
+func (win32 *win32SystemObject) GetActiveDevices() map[gin.DeviceType][]gin.DeviceIndex {
+	return nil
+}
+
 func (win32 *win32SystemObject) Run() {
 	//  C.Run()
 }
@@ -37,7 +41,7 @@ func (win32 *win32SystemObject) Quit() {
 }
 
 func (win32 *win32SystemObject) CreateWindow(x, y, width, height int) {
-	title := []byte("Mob Rules")
+	title := []byte("Glop")
 	title = append(title, 0)
 	win32.window = uintptr(unsafe.Pointer(C.GlopCreateWindow(
 		unsafe.Pointer(&title[0]),
@@ -68,11 +72,15 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 	for i := range c_events {
 		wx, wy := win32.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
 		events[i] = gin.OsEvent{
-			KeyId:     gin.KeyId(c_events[i].index),
+			KeyId: gin.KeyId{
+				Device: gin.DeviceId{
+					Index: 5,
+					Type:  gin.DeviceTypeKeyboard,
+				},
+				Index: gin.KeyIndex(c_events[i].index),
+			},
 			Press_amt: float64(c_events[i].press_amt),
 			Timestamp: int64(c_events[i].timestamp),
-			X:         wx,
-			Y:         wy,
 		}
 	}
 	return events, win32.horizon
