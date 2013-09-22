@@ -70,7 +70,7 @@ func (win32 *win32SystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 	c_events := (*[10000]C.GlopKeyEvent)(unsafe.Pointer(first_event))[:length]
 	events := make([]gin.OsEvent, length)
 	for i := range c_events {
-		wx, wy := win32.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
+		// wx, wy := win32.rawCursorToWindowCoords(int(c_events[i].cursor_x), int(c_events[i].cursor_y))
 		events[i] = gin.OsEvent{
 			KeyId: gin.KeyId{
 				Device: gin.DeviceId{
