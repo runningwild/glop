@@ -111,7 +111,7 @@ func (dk *derivedKey) numBindingsDown() int {
 func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Event) {
 	index := -1
 	for i, binding := range dk.Bindings {
-		if cause.Key.Id() == binding.PrimaryKey {
+		if cause.Key != nil && cause.Key.Id() == binding.PrimaryKey {
 			index = i
 		}
 	}

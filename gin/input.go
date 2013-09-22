@@ -689,6 +689,9 @@ func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventG
 		// clearAllKeyState()
 		os_events = nil
 		for _, key := range input.all_keys {
+			if !key.Id().IsNatural() {
+				continue
+			}
 			if key.IsDown() {
 				os_events = append(os_events, OsEvent{
 					KeyId:     key.Id(),

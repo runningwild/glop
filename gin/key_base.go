@@ -215,6 +215,14 @@ type KeyId struct {
 	Index  KeyIndex
 }
 
+// IsNatural returns true iff the id represents a physical key - i.e. it is not
+// a derived key, and is not a family of keys.
+func (k KeyId) IsNatural() bool {
+	return k.Device.Index != DeviceIndexAny &&
+		k.Device.Type != DeviceTypeAny &&
+		k.Index != AnyKey
+}
+
 type DeviceId struct {
 	Type  DeviceType
 	Index DeviceIndex
