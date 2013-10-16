@@ -703,22 +703,40 @@ int* getInputStateVal(int flag) {
 }
 
 - (void)run {
-//  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-  do {
-//    [pool release];
-//    pool = [[NSAutoreleasePool alloc] init];
+  while (true) {
     NSEvent *event =
-      [self
-        nextEventMatchingMask:NSAnyEventMask
-        untilDate:[NSDate distantFuture]
-        inMode:NSDefaultRunLoopMode
-        dequeue:YES];
-    [self sendEvent:event];
-    [self updateWindows];
-  } while (!should_stop);
-  should_stop = 0;
-//  [pool release];
+        [self
+            nextEventMatchingMask:NSAnyEventMask
+            untilDate:[NSDate distantFuture]
+            inMode:NSDefaultRunLoopMode
+            dequeue:YES];
+    if ([event type] == NSApplicationDefined) {
+      break;
+    }
+    if (!(
+        [event type] == NSFlagsChanged      ||
+        [event type] == NSScrollWheel       ||
+        [event type] == NSMouseMoved        ||
+        [event type] == NSLeftMouseDragged  ||
+        [event type] == NSRightMouseDragged ||
+        [event type] == NSOtherMouseDragged ||
+        [event type] == NSKeyDown           ||
+        [event type] == NSKeyUp             ||
+        [event type] == NSKeyDown           ||
+        [event type] == NSLeftMouseDown     ||
+        [event type] == NSLeftMouseUp       ||
+        [event type] == NSRightMouseDown    ||
+        [event type] == NSRightMouseUp      ||
+        [event type] == NSLeftMouseDown     ||
+        [event type] == NSLeftMouseUp       ||
+        [event type] == NSRightMouseDown    ||
+        [event type] == NSRightMouseUp      ||
+        [event type] == NSLeftMouseDown     ||
+        [event type] == NSRightMouseDown)) {
+      [super sendEvent:event];
+    }
+  };
+  [self updateWindows];
 }
 @end
 
@@ -729,8 +747,8 @@ void Quit() {
 int Think() {
   // TODO: This is retarded, but it does seem to get all of the evnts out of the queue
   // rather than only most of them
-  [glop_app postEvent:terminator atStart:FALSE];
-  [glop_app run];
+  // [glop_app postEvent:terminator atStart:FALSE];
+  // [glop_app run];
   [glop_app postEvent:terminator atStart:FALSE];
   [glop_app run];
   osx_horizon = [[NSProcessInfo processInfo] systemUptime];

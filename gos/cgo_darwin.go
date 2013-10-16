@@ -87,7 +87,11 @@ func (osx *osxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 	cp := (*unsafe.Pointer)(unsafe.Pointer(&first_event))
 	var length C.int
 	var horizon C.longlong
+
+	globalLock.Lock()
 	C.GetInputEvents(cp, &length, &horizon)
+	globalLock.Unlock()
+
 	osx.horizon = int64(horizon)
 	c_events := (*[1000]C.KeyEvent)(unsafe.Pointer(first_event))[:length]
 	events := make([]gin.OsEvent, length)
