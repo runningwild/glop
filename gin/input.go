@@ -667,7 +667,7 @@ type EventHandler interface {
 }
 type Listener interface {
 	EventHandler
-	Think(int64)
+	Think()
 }
 type EventDispatcher interface {
 	RegisterEventListener(Listener)
@@ -752,7 +752,7 @@ func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventG
 	}
 
 	for _, listener := range input.listeners {
-		listener.Think(t)
+		listener.Think()
 	}
 	return groups
 }

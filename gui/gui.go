@@ -431,8 +431,8 @@ func (g *Gui) Draw() {
 }
 
 // TODO: Shouldn't be exposing this
-func (g *Gui) Think(t int64) {
-	g.root.Think(g, t)
+func (g *Gui) Think() {
+	g.root.Think(g, 0)
 }
 
 // TODO: Shouldn't be exposing this
