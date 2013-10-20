@@ -4,10 +4,14 @@ package gos
 // #include "linux/include/glop.h"
 import "C"
 
-
 import (
+	"fmt"
 	"github.com/runningwild/glop/gin"
 	"github.com/runningwild/glop/system"
+	"os"
+	"sort"
+	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -17,11 +21,14 @@ type linuxSystemObject struct {
 
 var (
 	linux_system_object linuxSystemObject
+	jsCollect           chan jsInput
 )
 
 // Call after runtime.LockOSThread(), *NOT* in an init function
 func (linux *linuxSystemObject) Startup() {
 	C.GlopInit()
+	jsCollect = make(chan jsInput, 100)
+	go trackJoysticks(jsCollect)
 }
 
 func GetSystemInterface() system.Os {
@@ -52,6 +59,97 @@ func (linux *linuxSystemObject) GetActiveDevices() map[gin.DeviceType][]gin.Devi
 	return nil
 }
 
+type jsInput struct {
+	TimestampMs uint32
+	Value       int16
+	Type        uint8
+	Key         uint8
+	Index       int
+}
+
+func parsejsInput(b []byte) (jsInput, error) {
+	var js jsInput
+	if len(b) != 8 {
+		return js, fmt.Errorf("Expected 8 bytes, got %d.", len(b))
+	}
+	js.TimestampMs = uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
+	js.Value = int16(b[4]) | int16(b[5])<<8
+	js.Type = b[6]
+	js.Key = b[7]
+	return js, nil
+}
+
+func pollJoysticks(index int, jsCollect chan<- jsInput, onDeath func(int)) {
+	defer onDeath(index)
+
+	f, err := os.Open(fmt.Sprintf("/dev/input/js%d", index))
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	buf := make([]byte, 1024)
+	for {
+		n, err := f.Read(buf)
+		if err != nil {
+			return
+		}
+		tmp := buf[0:n]
+		for len(tmp) >= 8 {
+			js, err := parsejsInput(tmp[0:8])
+			if err != nil {
+				continue
+			}
+			tmp = tmp[8:]
+			js.Index = index
+			jsCollect <- js
+		}
+	}
+}
+
+func trackJoysticks(jsCollect chan<- jsInput) error {
+	defer close(jsCollect)
+	var jsMutex sync.Mutex
+	active := make(map[int]bool)
+	onDeath := func(index int) {
+		jsMutex.Lock()
+		delete(active, index)
+		jsMutex.Unlock()
+	}
+	for {
+		f, err := os.Open("/dev/input")
+		if err != nil {
+			return err
+		}
+		names, err := f.Readdirnames(0)
+		f.Close()
+		if err != nil {
+			return err
+		}
+		for _, name := range names {
+			var index int
+			_, err = fmt.Sscanf(name, "js%d", &index)
+			if err != nil {
+				continue
+			}
+			jsMutex.Lock()
+			if !active[index] {
+				active[index] = true
+				go pollJoysticks(index, jsCollect, onDeath)
+			}
+			jsMutex.Unlock()
+		}
+		time.Sleep(time.Second * 5)
+	}
+	return nil
+}
+
+type osEventSlice []gin.OsEvent
+
+func (oes osEventSlice) Len() int           { return len(oes) }
+func (oes osEventSlice) Swap(i, j int)      { oes[i], oes[j] = oes[j], oes[i] }
+func (oes osEventSlice) Less(i, j int) bool { return oes[i].Timestamp < oes[j].Timestamp }
+
 // TODO: Make sure that events are given in sorted order (by timestamp)
 // TODO: Adjust timestamp on events so that the oldest timestamp is newer than the
 //       newest timestemp from the events from the previous call to GetInputEvents
@@ -78,6 +176,25 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 			Timestamp: int64(c_events[i].timestamp),
 		}
 	}
+	for {
+		select {
+		case event := <-jsCollect:
+			events = append(events, gin.OsEvent{
+				KeyId: gin.KeyId{
+					Device: gin.DeviceId{
+						Index: gin.DeviceIndex(event.Index),
+						Type:  gin.DeviceTypeController,
+					},
+					Index: gin.KeyIndex(event.Key),
+				},
+				Press_amt: float64(event.Value),
+				Timestamp: int64(event.TimestampMs),
+			})
+		default:
+			break
+		}
+	}
+	sort.Sort(osEventSlice(events))
 	return events, linux.horizon
 	// return nil, 0
 }
