@@ -10,6 +10,7 @@ import (
 	"github.com/runningwild/glop/system"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -63,9 +64,28 @@ type jsInput struct {
 	TimestampMs uint32
 	Value       int16
 	Type        uint8
-	Key         uint8
-	Index       int
+
+	// This is read from an 8-bit value, but glop supports more values so it
+	// gets read into a 32 bit int.
+	Key uint32
+
+	// Since we translate axis values into floats we want this value here for that.
+	FValue float64
+
+	Index int
 }
+
+const kControllerButton0 = 500
+const kControllerAxis0Positive = 70000
+const kControllerAxis0Negative = 80000
+const kControllerHatSwitchUp = 90000
+const kControllerHatSwitchUpRight = 90001
+const kControllerHatSwitchRight = 90002
+const kControllerHatSwitchDownRight = 90003
+const kControllerHatSwitchDown = 90004
+const kControllerHatSwitchDownLeft = 90005
+const kControllerHatSwitchLeft = 90006
+const kControllerHatSwitchUpLeft = 90007
 
 func parsejsInput(b []byte) (jsInput, error) {
 	var js jsInput
@@ -75,19 +95,18 @@ func parsejsInput(b []byte) (jsInput, error) {
 	js.TimestampMs = uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
 	js.Value = int16(b[4]) | int16(b[5])<<8
 	js.Type = b[6]
-	js.Key = b[7]
+	js.Key = uint32(b[7])
 	return js, nil
 }
 
-func pollJoysticks(index int, jsCollect chan<- jsInput, onDeath func(int)) {
-	defer onDeath(index)
+func pollJoysticks(name string, index int, jsCollect chan<- jsInput, onDeath func(string)) {
+	defer onDeath(name)
 
-	f, err := os.Open(fmt.Sprintf("/dev/input/js%d", index))
+	f, err := os.Open("/dev/input/by-path/" + name)
 	if err != nil {
 		return
 	}
 	defer f.Close()
-
 	buf := make([]byte, 1024)
 	for {
 		n, err := f.Read(buf)
@@ -101,6 +120,23 @@ func pollJoysticks(index int, jsCollect chan<- jsInput, onDeath func(int)) {
 				continue
 			}
 			tmp = tmp[8:]
+			switch js.Type {
+			case 1: // A regular button
+				js.Key += kControllerButton0
+				js.FValue = float64(js.Value)
+
+			case 2: // An Axis value
+				if js.Value < 0 {
+					js.Key += kControllerAxis0Negative
+					js.FValue = float64(-js.Value) / 32768
+				} else {
+					js.Key += kControllerAxis0Positive
+					js.FValue = float64(js.Value) / 32768
+				}
+
+			default:
+				continue
+			}
 			js.Index = index
 			jsCollect <- js
 		}
@@ -110,14 +146,15 @@ func pollJoysticks(index int, jsCollect chan<- jsInput, onDeath func(int)) {
 func trackJoysticks(jsCollect chan<- jsInput) error {
 	defer close(jsCollect)
 	var jsMutex sync.Mutex
-	active := make(map[int]bool)
-	onDeath := func(index int) {
+	active := make(map[string]bool)
+	onDeath := func(name string) {
 		jsMutex.Lock()
-		delete(active, index)
+		delete(active, name)
 		jsMutex.Unlock()
 	}
+	index := 0
 	for {
-		f, err := os.Open("/dev/input")
+		f, err := os.Open("/dev/input/by-path")
 		if err != nil {
 			return err
 		}
@@ -127,15 +164,14 @@ func trackJoysticks(jsCollect chan<- jsInput) error {
 			return err
 		}
 		for _, name := range names {
-			var index int
-			_, err = fmt.Sscanf(name, "js%d", &index)
-			if err != nil {
+			if strings.Contains(name, "event") {
 				continue
 			}
 			jsMutex.Lock()
-			if !active[index] {
-				active[index] = true
-				go pollJoysticks(index, jsCollect, onDeath)
+			if !active[name] {
+				active[name] = true
+				index++
+				go pollJoysticks(name, index, jsCollect, onDeath)
 			}
 			jsMutex.Unlock()
 		}
@@ -176,22 +212,23 @@ func (linux *linuxSystemObject) GetInputEvents() ([]gin.OsEvent, int64) {
 			Timestamp: int64(c_events[i].timestamp),
 		}
 	}
-	for {
+	done := false
+	for !done {
 		select {
 		case event := <-jsCollect:
 			events = append(events, gin.OsEvent{
 				KeyId: gin.KeyId{
 					Device: gin.DeviceId{
-						Index: gin.DeviceIndex(event.Index),
+						Index: gin.DeviceIndex(event.Index + 1),
 						Type:  gin.DeviceTypeController,
 					},
 					Index: gin.KeyIndex(event.Key),
 				},
-				Press_amt: float64(event.Value),
+				Press_amt: event.FValue,
 				Timestamp: int64(event.TimestampMs),
 			})
 		default:
-			break
+			done = true
 		}
 	}
 	sort.Sort(osEventSlice(events))
