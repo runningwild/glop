@@ -399,7 +399,7 @@ func Make() *Input {
 		input.registerKeyIndex(ControllerAxis0Negative+KeyIndex(i), aggregatorTypeStandard, fmt.Sprintf("Axis%d-", i))
 	}
 
-	for i := 0; i < 65535; i++ {
+	for i := 0; i < 256; i++ {
 		input.registerKeyIndex(ControllerButton0+KeyIndex(i), aggregatorTypeStandard, fmt.Sprintf("Button %d", i))
 	}
 
