@@ -400,9 +400,9 @@ void hidCallbackInsert(
   if (IOHIDDeviceConformsTo(device, 0x01, 0x06)) {
     device_type = deviceTypeKeyboard;
   }
-  if (device_type != deviceTypeInvalid) {
+  if (true) // (device_type != deviceTypeInvalid) {
     deviceStats stats;
-    stats.queue = IOHIDQueueCreate(NULL, device, 1000, kIOHIDOptionsTypeNone);
+    stats.queue = IOHIDQueueStarteCreate(NULL, device, 1000, kIOHIDOptionsTypeNone);
     IOHIDQueueStart(stats.queue);
     stats.device_type = device_type;
     CFArrayRef array = IOHIDDeviceCopyMatchingElements(device, NULL, kIOHIDOptionsTypeNone);
@@ -414,6 +414,7 @@ void hidCallbackInsert(
         // Is this something that can happen?
         continue;
       }
+  printf("%d %d\n", IOHIDElementGetUsagePage(elem), IOHIDElementGetUsage(elem));
       IOHIDQueueAddElement(stats.queue, elem);
     }
     glop_hid_manager.device_to_queue[device] = stats;
