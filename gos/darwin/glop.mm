@@ -391,18 +391,19 @@ void hidCallbackInsert(
     IOHIDDeviceRef device) {
   pthread_mutex_lock(&glop_hid_manager.mutex);
   int device_type = deviceTypeInvalid;
+  device_type = deviceTypeController;
   if (IOHIDDeviceConformsTo(device, 0x01, 0x02)) {
     device_type = deviceTypeMouse;
-  }
-  if (IOHIDDeviceConformsTo(device, 0x01, 0x04)) {
-    device_type = deviceTypeController;
   }
   if (IOHIDDeviceConformsTo(device, 0x01, 0x06)) {
     device_type = deviceTypeKeyboard;
   }
-  if (true) // (device_type != deviceTypeInvalid) {
+  if (IOHIDDeviceConformsTo(device, 0x01, 0x04)) {
+    device_type = deviceTypeController;
+  }
+  if (true) {// (device_type != deviceTypeInvalid) {
     deviceStats stats;
-    stats.queue = IOHIDQueueStarteCreate(NULL, device, 1000, kIOHIDOptionsTypeNone);
+    stats.queue = IOHIDQueueCreate(NULL, device, 1000, kIOHIDOptionsTypeNone);
     IOHIDQueueStart(stats.queue);
     stats.device_type = device_type;
     CFArrayRef array = IOHIDDeviceCopyMatchingElements(device, NULL, kIOHIDOptionsTypeNone);
