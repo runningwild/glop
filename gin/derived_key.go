@@ -123,6 +123,9 @@ func (dk *derivedKey) SetPressAmt(amt float64, ms int64, cause Event) (event Eve
 	if amt != 0 && index != -1 && dk.numBindingsDown() == 0 && !dk.bindings_down[index] {
 		event.Type = Press
 	}
+	if event.Type == NoEvent && index != -1 && dk.numBindingsDown() != 0 {
+		event.Type = Adjust
+	}
 	if index != -1 {
 		dk.bindings_down[index] = dk.Bindings[index].CurPressAmt() != 0
 	}

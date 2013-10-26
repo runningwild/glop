@@ -1,8 +1,9 @@
 package gin_test
 
 import (
-	. "github.com/orfjackal/gospec/src/gospec"
+	"fmt"
 	"github.com/orfjackal/gospec/src/gospec"
+	. "github.com/orfjackal/gospec/src/gospec"
 	"github.com/runningwild/glop/gin"
 	"strings"
 )
@@ -579,6 +580,101 @@ func NestedDerivedKeySpec(c gospec.Context) {
 	})
 }
 
+type listenerPRA struct {
+	input   *gin.Input
+	keyId   gin.KeyId
+	context gospec.Context
+
+	eventTypes []gin.EventType
+	index      int
+}
+
+func (l *listenerPRA) ExpectPRA(eventTypes []gin.EventType) {
+	l.eventTypes = eventTypes
+}
+func (l *listenerPRA) HandleEventGroup(eg gin.EventGroup) {
+	found, event := eg.FindEvent(l.keyId)
+	l.context.Expect(found, Equals, true)
+	l.index++
+	if !found {
+		return
+	}
+	l.context.Expect(len(l.eventTypes), Not(Equals), 0)
+	if len(l.eventTypes) == 0 {
+		return
+	}
+	l.context.Expect(event.Type, Equals, l.eventTypes[0])
+	l.eventTypes = l.eventTypes[1:]
+}
+func (l *listenerPRA) Think() {
+	l.context.Expect(len(l.eventTypes), Equals, 0)
+	l.index = 0
+}
+
+func NestedDerivedKey2Spec(c gospec.Context) {
+	input := gin.Make()
+	ab := input.BindDerivedKey(
+		"ab",
+		input.MakeBinding(gin.AnyKeyA, nil, nil),
+		input.MakeBinding(gin.AnyKeyB, nil, nil))
+	cd := input.BindDerivedKey(
+		"cd",
+		input.MakeBinding(gin.AnyKeyC, nil, nil),
+		input.MakeBinding(gin.AnyKeyD, nil, nil))
+	ab_cd := input.BindDerivedKey(
+		"ab_cd",
+		input.MakeBinding(ab.Id(), nil, nil),
+		input.MakeBinding(cd.Id(), nil, nil))
+
+	c.Specify("Nested derived keys work like normal derived keys.", func() {
+		// Test that first binding can trigger a press
+		events := make([]gin.OsEvent, 0)
+		paj := &listenerPRA{
+			input:   input,
+			keyId:   ab_cd.Id(),
+			context: c,
+		}
+		input.RegisterEventListener(paj)
+		paj.ExpectPRA([]gin.EventType{
+			gin.Press,
+			gin.Release,
+			gin.Press,
+			gin.Release,
+			gin.Press,
+			gin.Release,
+			gin.Press,
+			gin.Release,
+		})
+		keyboardIndex := gin.DeviceIndex(1)
+		// Really simple stuff, only one key down at a time.
+		if false {
+			injectEvent(&events, gin.KeyA, keyboardIndex, gin.DeviceTypeKeyboard, 1, 1)
+			injectEvent(&events, gin.KeyA, keyboardIndex, gin.DeviceTypeKeyboard, 0, 2)
+			injectEvent(&events, gin.KeyB, keyboardIndex, gin.DeviceTypeKeyboard, 1, 3)
+			injectEvent(&events, gin.KeyB, keyboardIndex, gin.DeviceTypeKeyboard, 0, 4)
+			injectEvent(&events, gin.KeyC, keyboardIndex, gin.DeviceTypeKeyboard, 1, 5)
+			injectEvent(&events, gin.KeyC, keyboardIndex, gin.DeviceTypeKeyboard, 0, 6)
+			injectEvent(&events, gin.KeyD, keyboardIndex, gin.DeviceTypeKeyboard, 1, 7)
+			injectEvent(&events, gin.KeyD, keyboardIndex, gin.DeviceTypeKeyboard, 0, 8)
+			input.Think(10, true, events)
+			c.Expect(false, Equals, true)
+		}
+		// Really simple stuff, only one key down at a time.
+		paj.ExpectPRA([]gin.EventType{
+			gin.Press,
+			gin.Adjust,
+			gin.Adjust,
+			gin.Release,
+		})
+		events = events[0:0]
+		injectEvent(&events, gin.KeyA, keyboardIndex, gin.DeviceTypeKeyboard, 1, 11)
+		injectEvent(&events, gin.KeyB, keyboardIndex, gin.DeviceTypeKeyboard, 1, 12)
+		injectEvent(&events, gin.KeyA, keyboardIndex, gin.DeviceTypeKeyboard, 0, 13)
+		injectEvent(&events, gin.KeyB, keyboardIndex, gin.DeviceTypeKeyboard, 0, 14)
+		input.Think(20, true, events)
+	})
+}
+
 func EventSpec(c gospec.Context) {
 	input := gin.Make()
 	keya := input.GetKeyFlat(gin.KeyA, gin.DeviceTypeKeyboard, 1)
@@ -609,7 +705,7 @@ func EventSpec(c gospec.Context) {
 				}
 				natural_events++
 			}
-			c.Assume(natural_events, Equals, length)
+			c.Assume(length, Equals, natural_events)
 		}
 	}
 
@@ -756,7 +852,7 @@ func (l *listener) HandleEventGroup(eg gin.EventGroup) {
 	l.release_count = l.release_count[1:]
 	l.press_amt = l.press_amt[1:]
 }
-func (l *listener) Think(ms int64) {
+func (l *listener) Think() {
 	l.context.Expect(len(l.press_count), Equals, 0)
 	l.context.Expect(len(l.release_count), Equals, 0)
 	l.context.Expect(len(l.press_amt), Equals, 0)

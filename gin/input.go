@@ -622,9 +622,6 @@ func (input *Input) informDeps(event Event, group *EventGroup) {
 	any_device := id.Device
 	any_device.Index = DeviceIndexAny
 	deps := input.id_to_deps[id]
-	for _, dep := range input.id_to_deps[KeyId{Index: id.Index, Device: any_device}] {
-		deps = append(deps, dep)
-	}
 	if id.Device.Type != DeviceTypeDerived && id.Device.Index != DeviceIndexAny {
 		for _, family_dep := range input.index_to_family_deps[id.Index] {
 			key := family_dep.GetKey(id.Device)
@@ -714,20 +711,6 @@ func (input *Input) Think(t int64, has_focus bool, os_events []OsEvent) []EventG
 			os_event.Press_amt,
 			Event{},
 			&group)
-		// Sets the cursor position if this is a cursor based event.
-		// TODO: Currently only the mouse is supported as a cursor, but if we want to support
-		//       joysticks as cursor_keys, since they don't naturally have a position associated
-		//       with them, we will need to somehow associate cursor_keys with axes and treat the
-		//       mouse and joysticks separately.
-		// if cursor := input.cursor_keys[os_event.KeyId]; cursor != nil {
-		// 	cursor.X = os_event.X
-		// 	cursor.Y = os_event.Y
-		// }
-
-		//    for i := range group.Events {
-		//      group.Events[i].Mouse = os_event.Mouse
-		//    }
-
 		if len(group.Events) > 0 {
 			groups = append(groups, group)
 			for _, listener := range input.listeners {

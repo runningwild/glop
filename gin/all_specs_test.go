@@ -13,6 +13,7 @@ func TestAllSpecs(t *testing.T) {
 	r.AddSpec(DeviceSpec)
 	r.AddSpec(DeviceFamilySpec)
 	r.AddSpec(NestedDerivedKeySpec)
+	r.AddSpec(NestedDerivedKey2Spec)
 	r.AddSpec(EventSpec)
 	r.AddSpec(GeneralSpec)
 	r.AddSpec(AxisSpec)
