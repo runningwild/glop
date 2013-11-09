@@ -193,6 +193,7 @@ func (d *Dictionary) StringWidth(s string, height float64) float64 {
 func SetFontColor(r, g, b, a float32) {
 	render.EnableShader("glop.font")
 	render.SetUniform4F("glop.font", "color", []float32{r, g, b, a})
+	render.EnableShader("")
 }
 
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justification) {
@@ -250,6 +251,7 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 
 		gl.DisableClientState(gl.VERTEX_ARRAY)
 		gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
+		gl.Disable(gl.TEXTURE_2D)
 		return
 	}
 	x_pos = 0
