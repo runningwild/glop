@@ -2,12 +2,12 @@ package gui
 
 import (
 	"encoding/gob"
-	gl "github.com/chsc/gogl/gl21"
+	"github.com/errcw/glow/gl-core/3.3/gl"
 	"github.com/runningwild/glop/render"
 	"image"
 	"io"
 	"math"
-	"runtime"
+	// "runtime"
 	"sync"
 	"unsafe"
 )
@@ -225,33 +225,33 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 		x_pos -= width
 	}
 	if ok {
-		gl.PushMatrix()
-		defer gl.PopMatrix()
-		gl.Translated(gl.Double(x_pos), gl.Double(y), gl.Double(z))
-		gl.Scaled(gl.Double(scale), gl.Double(scale), 1)
+		// gl.PushMatrix()
+		// defer gl.PopMatrix()
+		// gl.Translated(gl.Double(x_pos), gl.Double(y), gl.Double(z))
+		// gl.Scaled(gl.Double(scale), gl.Double(scale), 1)
 
-		gl.PushAttrib(gl.COLOR_BUFFER_BIT)
-		defer gl.PopAttrib()
-		gl.Enable(gl.BLEND)
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		// gl.PushAttrib(gl.COLOR_BUFFER_BIT)
+		// defer gl.PopAttrib()
+		// gl.Enable(gl.BLEND)
+		// gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-		gl.Enable(gl.TEXTURE_2D)
-		gl.BindTexture(gl.TEXTURE_2D, gl.Uint(d.texture))
+		// gl.Enable(gl.TEXTURE_2D)
+		// gl.BindTexture(gl.TEXTURE_2D, gl.Uint(d.texture))
 
-		gl.BindBuffer(gl.ARRAY_BUFFER, gl.Uint(strbuf.vbuffer))
+		// gl.BindBuffer(gl.ARRAY_BUFFER, gl.Uint(strbuf.vbuffer))
 
-		gl.EnableClientState(gl.VERTEX_ARRAY)
-		gl.VertexPointer(2, gl.FLOAT, gl.Sizei(size), nil)
+		// gl.EnableClientState(gl.VERTEX_ARRAY)
+		// gl.VertexPointer(2, gl.FLOAT, gl.Sizei(size), nil)
 
-		gl.EnableClientState(gl.TEXTURE_COORD_ARRAY)
-		gl.TexCoordPointer(2, gl.FLOAT, gl.Sizei(size), gl.Pointer(unsafe.Offsetof(strbuf.vs[0].u)))
+		// gl.EnableClientState(gl.TEXTURE_COORD_ARRAY)
+		// gl.TexCoordPointer(2, gl.FLOAT, gl.Sizei(size), gl.Pointer(unsafe.Offsetof(strbuf.vs[0].u)))
 
-		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.Uint(strbuf.ibuffer))
-		gl.DrawElements(gl.TRIANGLES, gl.Sizei(len(strbuf.is)), gl.UNSIGNED_SHORT, nil)
+		// gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.Uint(strbuf.ibuffer))
+		// gl.DrawElements(gl.TRIANGLES, gl.Sizei(len(strbuf.is)), gl.UNSIGNED_SHORT, nil)
 
-		gl.DisableClientState(gl.VERTEX_ARRAY)
-		gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
-		gl.Disable(gl.TEXTURE_2D)
+		// gl.DisableClientState(gl.VERTEX_ARRAY)
+		// gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
+		// gl.Disable(gl.TEXTURE_2D)
 		return
 	}
 	x_pos = 0
@@ -299,13 +299,13 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, just Justif
 		})
 		x_pos += float32(info.Advance) // - float32((info.Full_bounds.Dx() - info.Bounds.Dx()))
 	}
-	gl.GenBuffers(1, (*gl.Uint)(&strbuf.vbuffer))
-	gl.BindBuffer(gl.ARRAY_BUFFER, gl.Uint(strbuf.vbuffer))
-	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(size)*len(strbuf.vs)), gl.Pointer(&strbuf.vs[0].x), gl.STATIC_DRAW)
+	gl.GenBuffers(1, (&strbuf.vbuffer))
+	gl.BindBuffer(gl.ARRAY_BUFFER, strbuf.vbuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, int(size)*len(strbuf.vs), gl.Ptr(&strbuf.vs[0].x), gl.STATIC_DRAW)
 
-	gl.GenBuffers(1, (*gl.Uint)(&strbuf.ibuffer))
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.Uint(strbuf.ibuffer))
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(strbuf.is[0]))*len(strbuf.is)), gl.Pointer(&strbuf.is[0]), gl.STATIC_DRAW)
+	gl.GenBuffers(1, (&strbuf.ibuffer))
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, strbuf.ibuffer)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, int(unsafe.Sizeof(strbuf.is[0]))*len(strbuf.is), gl.Ptr(&strbuf.is[0]), gl.STATIC_DRAW)
 	d.strs[s] = strbuf
 }
 
@@ -339,17 +339,17 @@ func (d *Dictionary) setupGlStuff() {
 	d.pars = make(map[string]strBuffer)
 
 	// TODO: This finalizer is untested
-	runtime.SetFinalizer(d, func(d *Dictionary) {
-		render.Queue(func() {
-			for _, v := range d.dlists {
-				gl.DeleteLists(gl.Uint(v), 1)
-			}
-		})
-	})
+	// runtime.SetFinalizer(d, func(d *Dictionary) {
+	// 	render.Queue(func() {
+	// 		for _, v := range d.dlists {
+	// 			gl.DeleteLists(gl.Uint(v), 1)
+	// 		}
+	// 	})
+	// })
 
 	render.Queue(func() {
 		gl.Enable(gl.TEXTURE_2D)
-		gl.GenTextures(1, (*gl.Uint)(&d.texture))
+		gl.GenTextures(1, (&d.texture))
 		gl.BindTexture(gl.TEXTURE_2D, gl.Uint(d.texture))
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 		gl.TexEnvf(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)

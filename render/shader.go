@@ -2,20 +2,14 @@ package render
 
 import (
 	"fmt"
-	gl "github.com/chsc/gogl/gl21"
+	"github.com/errcw/glow/gl-core/3.3/gl"
 	"unsafe"
 )
 
-var shader_progs map[string]gl.Uint
+var shader_progs map[string]uint32
 
 func init() {
-	shader_progs = make(map[string]gl.Uint)
-}
-
-type shaderError string
-
-func (err shaderError) Error() string {
-	return string(err)
+	shader_progs = make(map[string]uint32)
 }
 
 func EnableShader(name string) error {
@@ -25,69 +19,83 @@ func EnableShader(name string) error {
 	}
 	prog_obj, ok := shader_progs[name]
 	if !ok {
-		return shaderError(fmt.Sprintf("Tried to use unknown shader '%s'", name))
+		return fmt.Errorf("Tried to use unknown shader '%s'", name)
 	}
 	gl.UseProgram(prog_obj)
 	return nil
 }
 
-func SetUniformI(shader, variable string, n int) error {
+func SetUniformI(shader, variable string, n int32) error {
 	prog, ok := shader_progs[shader]
 	if !ok {
-		return shaderError(fmt.Sprintf("Tried to set a uniform in an unknown shader '%s'", shader))
+		return fmt.Errorf("Tried to set a uniform in an unknown shader '%s'", shader)
 	}
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
-	loc := gl.GetUniformLocation(prog, (*gl.Char)(unsafe.Pointer(&bvariable[0])))
-	gl.Uniform1i(loc, gl.Int(n))
+	loc := gl.GetUniformLocation(prog, (*int8)(unsafe.Pointer(&bvariable[0])))
+	gl.Uniform1i(loc, n)
 	return nil
 }
 
 func SetUniformF(shader, variable string, f float32) error {
 	prog, ok := shader_progs[shader]
 	if !ok {
-		return shaderError(fmt.Sprintf("Tried to set a uniform in an unknown shader '%s'", shader))
+		return fmt.Errorf("Tried to set a uniform in an unknown shader '%s'", shader)
 	}
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
-	loc := gl.GetUniformLocation(prog, (*gl.Char)(unsafe.Pointer(&bvariable[0])))
-	gl.Uniform1f(loc, gl.Float(f))
+	loc := gl.GetUniformLocation(prog, (*int8)(unsafe.Pointer(&bvariable[0])))
+	gl.Uniform1f(loc, f)
 	return nil
 }
 
 func SetUniform4F(shader, variable string, vs []float32) error {
 	prog, ok := shader_progs[shader]
 	if !ok {
-		return shaderError(fmt.Sprintf("Tried to set a uniform in an unknown shader '%s'", shader))
+		return fmt.Errorf("Tried to set a uniform in an unknown shader '%s'", shader)
 	}
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
-	loc := gl.GetUniformLocation(prog, (*gl.Char)(unsafe.Pointer(&bvariable[0])))
-	gl.Uniform4f(loc, gl.Float(vs[0]), gl.Float(vs[1]), gl.Float(vs[2]), gl.Float(vs[3]))
+	loc := gl.GetUniformLocation(prog, (*int8)(unsafe.Pointer(&bvariable[0])))
+	gl.Uniform4f(loc, vs[0], vs[1], vs[2], vs[3])
 	return nil
 }
 
 func RegisterShader(name string, vertex, fragment []byte) error {
 	if _, ok := shader_progs[name]; ok {
-		return shaderError(fmt.Sprintf("Tried to register a shader called '%s' twice", name))
+		return fmt.Errorf("Tried to register a shader called '%s' twice", name)
 	}
 
 	vertex_id := gl.CreateShader(gl.VERTEX_SHADER)
 	pointer := &vertex[0]
-	length := gl.Int(len(vertex))
-	gl.ShaderSource(vertex_id, 1, (**gl.Char)(unsafe.Pointer(&pointer)), &length)
+	length := int32(len(vertex))
+	gl.ShaderSource(vertex_id, 1, (**int8)(unsafe.Pointer(&pointer)), &length)
 	gl.CompileShader(vertex_id)
-	var param gl.Int
+	var param int32
 	gl.GetShaderiv(vertex_id, gl.COMPILE_STATUS, &param)
 	if param == 0 {
-		return shaderError(fmt.Sprintf("Failed to compile vertex shader '%s': %v", name, param))
+		buf := make([]byte, 5*1024)
+		var length int32
+		gl.GetShaderInfoLog(vertex_id, int32(len(buf)), &length, (*int8)(unsafe.Pointer(&buf[0])))
+		if length > 0 {
+			length--
+		}
+		maxVersion := gl.GoStr(gl.GetString(gl.SHADING_LANGUAGE_VERSION))
+		return fmt.Errorf("Failed to compile vertex shader (max version supported: %q) %q: %q", maxVersion, name, buf[0:int(length)])
 	}
 
 	fragment_id := gl.CreateShader(gl.FRAGMENT_SHADER)
 	pointer = &fragment[0]
-	length = gl.Int(len(fragment))
-	gl.ShaderSource(fragment_id, 1, (**gl.Char)(unsafe.Pointer(&pointer)), &length)
+	length = int32(len(fragment))
+	gl.ShaderSource(fragment_id, 1, (**int8)(unsafe.Pointer(&pointer)), &length)
 	gl.CompileShader(fragment_id)
 	gl.GetShaderiv(fragment_id, gl.COMPILE_STATUS, &param)
 	if param == 0 {
-		return shaderError(fmt.Sprintf("Failed to compile fragment shader '%s': %v", name, param))
+		buf := make([]byte, 5*1024)
+		var length int32
+		gl.GetShaderInfoLog(fragment_id, int32(len(buf)), &length, (*int8)(unsafe.Pointer(&buf[0])))
+		if length > 0 {
+			length--
+		}
+		maxVersion := gl.GoStr(gl.GetString(gl.SHADING_LANGUAGE_VERSION))
+		return fmt.Errorf("Failed to compile fragment shader (max version supported: %q) %q: %q", maxVersion, name, buf[0:int(length)])
 	}
 
 	// shader successfully compiled - now link
@@ -97,9 +105,25 @@ func RegisterShader(name string, vertex, fragment []byte) error {
 	gl.LinkProgram(program_id)
 	gl.GetProgramiv(program_id, gl.LINK_STATUS, &param)
 	if param == 0 {
-		return shaderError(fmt.Sprintf("Failed to link shader '%s': %v", name, param))
+		return fmt.Errorf("Failed to link shader '%s': %v", name, param)
 	}
 
 	shader_progs[name] = program_id
 	return nil
+}
+
+func GetAttribLocation(shaderName, attribName string) (int32, error) {
+	prog, ok := shader_progs[shaderName]
+	if !ok {
+		return -1, fmt.Errorf("No shader named '%s'", shaderName)
+	}
+	return gl.GetAttribLocation(prog, gl.Str(fmt.Sprintf("%s\x00", attribName))), nil
+}
+
+func GetUniformLocation(shaderName, uniformName string) (int32, error) {
+	prog, ok := shader_progs[shaderName]
+	if !ok {
+		return -1, fmt.Errorf("No shader named '%s'", shaderName)
+	}
+	return gl.GetUniformLocation(prog, gl.Str(fmt.Sprintf("%s\x00", uniformName))), nil
 }
