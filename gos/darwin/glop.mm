@@ -88,7 +88,7 @@ void AddEvent(KeyEventOld* event) {
   pthread_mutex_unlock(&event_group_mutex);
 }
 
-typedef struct deviceStats {
+struct deviceStats {
   IOHIDQueueRef queue;
   int device_type;
 };
@@ -817,6 +817,8 @@ void CreateWindow(void** _window, void** _context, int x, int y, int width, int 
     NSOpenGLPFAColorSize, 32,
     NSOpenGLPFADepthSize, 32,
     NSOpenGLPFAStencilSize, 8,
+    NSOpenGLPFAStencilSize, 8,
+    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
     //    NSOpenGLPFAFullScreen,
     0,
   };
@@ -828,7 +830,7 @@ void CreateWindow(void** _window, void** _context, int x, int y, int width, int 
   }
   NSOpenGLContext* context = [NSOpenGLContext alloc];
   *((NSOpenGLContext**)(_context)) = context;
-  [context initWithFormat:pixel_format shareContext:NO];
+  [context initWithFormat:pixel_format shareContext:nil];
   [context setView:[window contentView]];
   [context makeCurrentContext];
   glClear(GL_COLOR_BUFFER_BIT);
