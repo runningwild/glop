@@ -12,35 +12,35 @@ import (
 )
 
 // Shader stuff - The font stuff requires that we use some simple shaders
-const font_vertex_shader = `
-#version 330
-	void main() {
-	  gl_Position = ftransform();
-	  gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;
-	  gl_TexCoord[0] = gl_MultiTexCoord0;
-	  gl_TexCoord[1] = gl_MultiTexCoord1;
-	}
-`
+// const font_vertex_shader = `
+// #version 330
+// 	void main() {
+// 	  gl_Position = ftransform();
+// 	  gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;
+// 	  gl_TexCoord[0] = gl_MultiTexCoord0;
+// 	  gl_TexCoord[1] = gl_MultiTexCoord1;
+// 	}
+// `
 
-const font_fragment_shader = `
-#version 330
-	uniform vec4 color;
-	uniform sampler2D tex;
-	uniform float dist_min;
-	uniform float dist_max;
+// const font_fragment_shader = `
+// #version 330
+// 	uniform vec4 color;
+// 	uniform sampler2D tex;
+// 	uniform float dist_min;
+// 	uniform float dist_max;
 
-	void main() {
-	  vec2 tpos = gl_TexCoord[0].xy;
-	  float dist = texture2D(tex, tpos).a;
-	  float alpha = smoothstep(dist_min, dist_max, dist);
-	  gl_FragColor = color * vec4(1.0, 1.0, 1.0, alpha);
-	}
-`
+// 	void main() {
+// 	  vec2 tpos = gl_TexCoord[0].xy;
+// 	  float dist = texture2D(tex, tpos).a;
+// 	  float alpha = smoothstep(dist_min, dist_max, dist);
+// 	  gl_FragColor = color * vec4(1.0, 1.0, 1.0, alpha);
+// 	}
+// `
 
 const test_vshader = `
 #version 330
 in vec3 position;
-in vec3 color;
+// in vec3 color;
 in vec2 texCoord;
 
 out vec3 theColor; 
@@ -49,23 +49,22 @@ out vec2 theTexCoord;
 void main() 
 { 
    gl_Position = vec4(position, 1.0); 
-   theColor = color; 
+  // theColor = vec3(1.0, 1.0, 1.0); 
    theTexCoord = texCoord;
 }
 `
 
 const test_fshader = `
 #version 330
-in vec3 theColor;
+// in vec3 theColor;
 in vec2 theTexCoord;
 uniform sampler2D tex;
-out vec4 color;
+out vec4 fragColor;
 void main()
 {
 	vec4 dd = texture(tex, theTexCoord);
-	color = vec4(dd.x+dd.y+dd.z, 0.0, dd.a, 1.0);
+	fragColor = vec4(dd.x+dd.y+dd.z, 0.0, dd.a, 1.0);
 	return;	
-	// gl_FragColor = dd;//vec4(theColor, 1.0);
 }
 `
 
@@ -104,7 +103,7 @@ type Dictionary struct {
 	data dictData
 
 	vaos    [2]uint32
-	vbos    [6]uint32
+	vbos    [4]uint32
 	tex     uint32
 	sampler uint32
 }
@@ -201,7 +200,7 @@ func LoadDictionary(r io.Reader, l *log.Logger) (*Dictionary, error) {
 		if f != 0 {
 			l.Printf("Gl error: %v", f)
 		}
-		gl.GenBuffers(6, &d.vbos[0])
+		gl.GenBuffers(4, &d.vbos[0])
 		l.Printf("%v %v", d.vaos, d.vbos)
 		if d.vaos[0] == 0 || d.vaos[1] == 0 || d.vaos[0] == d.vaos[1] {
 			panic("SDF")
@@ -213,34 +212,24 @@ func LoadDictionary(r io.Reader, l *log.Logger) (*Dictionary, error) {
 			l.Printf("Gl error: %v", f)
 		}
 
-		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[3])
+		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[2])
 		f = gl.GetError()
 		if f != 0 {
 			l.Printf("Gl error: %v", f)
 		}
 		gl.BufferData(gl.ARRAY_BUFFER, len(quad)*int(unsafe.Sizeof(quad[0])), gl.Ptr(&quad[0]), gl.STATIC_DRAW)
-		gl.EnableVertexAttribArray(0)
 		location, _ := render.GetAttribLocation("glop.test", "position")
+		gl.EnableVertexAttribArray(uint32(location))
 		gl.VertexAttribPointer(uint32(location), 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
 
-		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[4])
-		f = gl.GetError()
-		if f != 0 {
-			l.Printf("Gl error: %v", f)
-		}
-		gl.BufferData(gl.ARRAY_BUFFER, len(quadColor)*int(unsafe.Sizeof(quadColor[0])), gl.Ptr(&quadColor[0]), gl.STATIC_DRAW)
-		gl.EnableVertexAttribArray(1)
-		location, _ = render.GetAttribLocation("glop.test", "color")
-		gl.VertexAttribPointer(uint32(location), 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
-
-		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[5])
+		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[3])
 		f = gl.GetError()
 		if f != 0 {
 			l.Printf("Gl error: %v", f)
 		}
 		gl.BufferData(gl.ARRAY_BUFFER, len(quadTexCoords)*int(unsafe.Sizeof(quadTexCoords[0])), gl.Ptr(&quadTexCoords[0]), gl.STATIC_DRAW)
-		gl.EnableVertexAttribArray(2)
 		location, _ = render.GetAttribLocation("glop.test", "texCoord")
+		gl.EnableVertexAttribArray(uint32(location))
 		gl.VertexAttribPointer(uint32(location), 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
 
 		// Setup whole triangle
@@ -256,8 +245,8 @@ func LoadDictionary(r io.Reader, l *log.Logger) (*Dictionary, error) {
 			l.Printf("Gl error: %v", f)
 		}
 		gl.BufferData(gl.ARRAY_BUFFER, len(triangle)*int(unsafe.Sizeof(triangle[0])), gl.Ptr(&triangle[0]), gl.STATIC_DRAW)
-		gl.EnableVertexAttribArray(0)
 		location, _ = render.GetAttribLocation("glop.test", "position")
+		gl.EnableVertexAttribArray(uint32(location))
 		gl.VertexAttribPointer(uint32(location), 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[1])
@@ -265,19 +254,9 @@ func LoadDictionary(r io.Reader, l *log.Logger) (*Dictionary, error) {
 		if f != 0 {
 			l.Printf("Gl error: %v", f)
 		}
-		gl.BufferData(gl.ARRAY_BUFFER, len(triangleColor)*int(unsafe.Sizeof(triangleColor[0])), gl.Ptr(&triangleColor[0]), gl.STATIC_DRAW)
-		gl.EnableVertexAttribArray(1)
-		location, _ = render.GetAttribLocation("glop.test", "color")
-		gl.VertexAttribPointer(uint32(location), 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
-
-		gl.BindBuffer(gl.ARRAY_BUFFER, d.vbos[2])
-		f = gl.GetError()
-		if f != 0 {
-			l.Printf("Gl error: %v", f)
-		}
 		gl.BufferData(gl.ARRAY_BUFFER, len(triangleTexCoords)*int(unsafe.Sizeof(triangleTexCoords[0])), gl.Ptr(&triangleTexCoords[0]), gl.STATIC_DRAW)
-		gl.EnableVertexAttribArray(2)
 		location, _ = render.GetAttribLocation("glop.test", "texCoord")
+		gl.EnableVertexAttribArray(uint32(location))
 		gl.VertexAttribPointer(uint32(location), 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -292,25 +271,40 @@ func LoadDictionary(r io.Reader, l *log.Logger) (*Dictionary, error) {
 		if f != 0 {
 			l.Printf("Gl error: %v", f)
 		}
-
 	})
 	render.Purge()
 	return &d, nil
 }
 
 func (d *Dictionary) RenderString(s string, x, y, z, height float64, l *log.Logger) {
+	f := gl.GetError()
+	if f != 0 {
+		l.Printf("Gl error: %v", f)
+	}
 	render.EnableShader("glop.test")
 	defer render.EnableShader("")
+	f = gl.GetError()
+	if f != 0 {
+		l.Printf("Gl error: %v", f)
+	}
 
 	gl.ActiveTexture(gl.TEXTURE0)
+	f = gl.GetError()
+	if f != 0 {
+		l.Printf("Gl error: %v", f)
+	}
 	gl.BindTexture(gl.TEXTURE_2D, d.tex)
+	f = gl.GetError()
+	if f != 0 {
+		l.Printf("Gl error: %v", f)
+	}
 	location, err := render.GetUniformLocation("glop.test", "tex")
 	l.Printf("Location: %v", location)
 	if err != nil {
 		l.Printf("Error: %v", err)
 	}
 	gl.Uniform1i(location, 0)
-	f := gl.GetError()
+	f = gl.GetError()
 	if f != 0 {
 		l.Printf("Gl error: %v", f)
 	}
@@ -319,8 +313,8 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, l *log.Logg
 	if f != 0 {
 		l.Printf("Gl error: %v", f)
 	}
-	gl.BindVertexArray(d.vaos[0])
-	gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	// gl.BindVertexArray(d.vaos[0])
+	// gl.DrawArrays(gl.TRIANGLES, 0, 3)
 	gl.BindVertexArray(d.vaos[1])
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
