@@ -16,6 +16,7 @@ import (
 
 var path = flag.String("path", "", "Font file to use")
 var runes = flag.String("runes", "abc", "Runes to process")
+var dpi = flag.Float64("dpi", 100, "DPI to render runes at ")
 
 type boundingBoxer struct {
 	boundsStarted bool
@@ -64,7 +65,7 @@ func (bb *boundingBoxer) complete() {
 		delete(bb.crossover, insidePoint)
 	}
 
-	bb.maxDist = math.Sqrt(float64(bb.bounds.Dx()*bb.bounds.Dy())) / 50
+	bb.maxDist = math.Sqrt(float64(bb.bounds.Dx() + bb.bounds.Dy()))
 	fmt.Printf("max: %v\n", bb.maxDist)
 
 	bb.bounds.Min.X -= int(bb.maxDist) + 1
@@ -77,19 +78,35 @@ func (bb *boundingBoxer) complete() {
 		bb.distField[i] = bb.maxDist
 	}
 	max := int(bb.maxDist + 1)
+
+	// offsests will contain the offsets from a crossover point that we should test for, and dists
+	// will contain the distance of that offset.  This way we don't need to recalculate all of this
+	// stuff for every crossover pixel we look at.
+	var offsets []image.Point
+	var dists []float64
+	for dy := -max; dy <= max; dy++ {
+		for dx := -max; dx <= max; dx++ {
+			dist := math.Sqrt(float64(dx*dx + dy*dy))
+			if dist >= bb.maxDist {
+				continue
+			}
+			offsets = append(offsets, image.Point{dx, dy})
+			dists = append(dists, dist)
+		}
+	}
+
+	bbdx := bb.bounds.Dx()
+	bbdy := bb.bounds.Dy()
 	for point := range bb.crossover {
-		for dy := -max; dy <= max; dy++ {
-			for dx := -max; dx <= max; dx++ {
-				x := point.X + dx - bb.bounds.Min.X
-				y := point.Y + dy - bb.bounds.Min.Y
-				if x < 0 || x >= bb.bounds.Dx() || y < 0 || y >= bb.bounds.Dy() {
-					continue
-				}
-				pos := x + y*bb.bounds.Dx()
-				dist := math.Sqrt(float64(dx*dx + dy*dy))
-				if dist < bb.distField[pos] {
-					bb.distField[pos] = dist
-				}
+		for i := range offsets {
+			x := point.X + offsets[i].X - bb.bounds.Min.X
+			y := point.Y + offsets[i].Y - bb.bounds.Min.Y
+			if x < 0 || x >= bbdx || y < 0 || y >= bbdy {
+				continue
+			}
+			pos := x + y*bbdx
+			if dists[i] < bb.distField[pos] {
+				bb.distField[pos] = dists[i]
 			}
 		}
 	}
@@ -163,7 +180,7 @@ func main() {
 	ctx.SetDst(dst)
 	ctx.SetClip(dst.largeBounds)
 	ctx.SetFontSize(250)
-	ctx.SetDPI(2000)
+	ctx.SetDPI(*dpi)
 	ctx.SetFont(f)
 	if err := glyph.Load(f, f.FUnitsPerEm(), f.Index('X'), truetype.FullHinting); err != nil {
 		fmt.Printf("Unable to load glyph: %v\n", err)
