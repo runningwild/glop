@@ -8,6 +8,7 @@ import (
 // List of all specs here
 func TestAllSpecs(t *testing.T) {
 	r := gospec.NewRunner()
-	r.AddSpec(K2Spec)
+	r.AddSpec(PartitionSpec)
+	r.AddSpec(TreeSpec)
 	gospec.MainGoTest(r, t)
 }

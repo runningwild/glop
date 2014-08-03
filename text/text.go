@@ -40,31 +40,27 @@ import (
 const test_vshader = `
 #version 330
 in vec3 position;
-// in vec3 color;
 in vec2 texCoord;
 
-out vec3 theColor; 
-out vec2 theTexCoord; 
+out vec3 theColor;
+out vec2 theTexCoord;
 
-void main() 
-{ 
-   gl_Position = vec4(position, 1.0); 
-  // theColor = vec3(1.0, 1.0, 1.0); 
+void main() {
+   gl_Position = vec4(position, 1.0);
    theTexCoord = texCoord;
 }
 `
 
 const test_fshader = `
 #version 330
-// in vec3 theColor;
 in vec2 theTexCoord;
 uniform sampler2D tex;
 out vec4 fragColor;
-void main()
-{
+void main() {
 	vec4 dd = texture(tex, theTexCoord);
-	fragColor = vec4(dd.x+dd.y+dd.z, 0.0, dd.a, 1.0);
-	return;	
+	float alpha = smoothstep(0.4, 0.6, dd.r);
+	fragColor = vec4(1.0, 1.0, 1.0, alpha);
+	return;
 }
 `
 
@@ -106,6 +102,11 @@ type Dictionary struct {
 	vbos    [4]uint32
 	tex     uint32
 	sampler uint32
+
+	strAo  uint32
+	strBo  [2]uint32 // pos and tex
+	strPos []float32
+	strTex []float32
 }
 
 var triangle = [9]float32{-0.4, 0.1, 0.0, 0.4, 0.1, 0.0, 0.3, 0.7, 0.0}
@@ -205,6 +206,70 @@ func LoadDictionary(r io.Reader, l *log.Logger) (*Dictionary, error) {
 		if d.vaos[0] == 0 || d.vaos[1] == 0 || d.vaos[0] == d.vaos[1] {
 			panic("SDF")
 		}
+		str := "Blarg!"
+		var xPos float32 = -1
+		var scale float32 = 0.003
+		var prev rune = 0
+		for _, r := range str {
+			info := d.data.Info[r]
+			xleft := xPos + float32(info.Full_bounds.Min.X)*scale
+			xright := xPos + float32(info.Full_bounds.Max.X)*scale
+			ytop := (float32(info.Full_bounds.Max.Y) - float32(d.data.Miny)) * scale
+			ybot := (float32(info.Full_bounds.Min.Y) - float32(d.data.Miny)) * scale
+			// ytop -= ybot
+			ybot = 0
+			xPos += float32(info.Advance) * scale
+			if _, ok := d.data.Kerning[prev]; ok {
+				xPos -= float32(d.data.Kerning[prev][r]) * scale
+			}
+			prev = r
+			d.strPos = append(d.strPos, xleft)
+			d.strPos = append(d.strPos, ybot)
+			d.strPos = append(d.strPos, xleft)
+			d.strPos = append(d.strPos, ytop)
+			d.strPos = append(d.strPos, xright)
+			d.strPos = append(d.strPos, ybot)
+			d.strPos = append(d.strPos, xleft)
+			d.strPos = append(d.strPos, ytop)
+			d.strPos = append(d.strPos, xright)
+			d.strPos = append(d.strPos, ybot)
+			d.strPos = append(d.strPos, xright)
+			d.strPos = append(d.strPos, ytop)
+
+			// d.strPos = []float32{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Min.X)/float32(d.data.Dx))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Max.Y)/float32(d.data.Dy))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Min.X)/float32(d.data.Dx))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Min.Y)/float32(d.data.Dy))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Max.X)/float32(d.data.Dx))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Max.Y)/float32(d.data.Dy))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Min.X)/float32(d.data.Dx))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Min.Y)/float32(d.data.Dy))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Max.X)/float32(d.data.Dx))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Max.Y)/float32(d.data.Dy))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Max.X)/float32(d.data.Dx))
+			d.strTex = append(d.strTex, float32(d.data.Info[r].Pos.Min.Y)/float32(d.data.Dy))
+		}
+		gl.GenVertexArrays(1, &d.strAo)
+		gl.GenBuffers(2, &d.strBo[0])
+		gl.BindVertexArray(d.strAo)
+
+		{
+			gl.BindBuffer(gl.ARRAY_BUFFER, d.strBo[0])
+			gl.BufferData(gl.ARRAY_BUFFER, len(d.strPos)*int(unsafe.Sizeof(d.strPos[0])), gl.Ptr(&d.strPos[0]), gl.STATIC_DRAW)
+			location, _ := render.GetAttribLocation("glop.test", "position")
+			gl.EnableVertexAttribArray(uint32(location))
+			gl.VertexAttribPointer(uint32(location), 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
+		}
+		{
+			gl.BindBuffer(gl.ARRAY_BUFFER, d.strBo[1])
+			gl.BufferData(gl.ARRAY_BUFFER, len(d.strTex)*int(unsafe.Sizeof(d.strTex[0])), gl.Ptr(&d.strTex[0]), gl.STATIC_DRAW)
+			location, _ := render.GetAttribLocation("glop.test", "texCoord")
+			gl.EnableVertexAttribArray(uint32(location))
+			gl.VertexAttribPointer(uint32(location), 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
+		}
+
+		return
 		// Setup whole quad
 		gl.BindVertexArray(d.vaos[1])
 		f = gl.GetError()
@@ -313,6 +378,11 @@ func (d *Dictionary) RenderString(s string, x, y, z, height float64, l *log.Logg
 	if f != 0 {
 		l.Printf("Gl error: %v", f)
 	}
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.BindVertexArray(d.strAo)
+	gl.DrawArrays(gl.TRIANGLES, 0, 6*6)
+	return
 	// gl.BindVertexArray(d.vaos[0])
 	// gl.DrawArrays(gl.TRIANGLES, 0, 3)
 	gl.BindVertexArray(d.vaos[1])

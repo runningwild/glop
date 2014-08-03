@@ -5,15 +5,75 @@ import (
 	"math/rand"
 )
 
+const maxPointsPerNode = 10
+
 type k2Tree struct {
-	root *k2Node
+	*k2Node
 }
 
 type k2Node struct {
 	xaxis  bool
+	count  int
 	bounds image.Rectangle
 	points []image.Point
 	kids   [2]*k2Node
+}
+
+func distSqFromPointToPoint(x0, y0, x1, y1 float64) float64 {
+	return (x0-x1)*(x0-x1) + (y0-y1)*(y0-y1)
+}
+
+func (k2 *k2Node) NumPointsOnDisk(x, y, radius float64) int {
+	rsq := radius * radius
+	// Check if the disk completely contains this node, if it does just return the total count.
+	if distSqFromPointToPoint(float64(k2.bounds.Min.X), float64(k2.bounds.Min.Y), x, y) < rsq &&
+		distSqFromPointToPoint(float64(k2.bounds.Min.X), float64(k2.bounds.Max.Y), x, y) < rsq &&
+		distSqFromPointToPoint(float64(k2.bounds.Max.X), float64(k2.bounds.Min.Y), x, y) < rsq &&
+		distSqFromPointToPoint(float64(k2.bounds.Max.X), float64(k2.bounds.Max.Y), x, y) < rsq {
+		return k2.count
+	}
+
+	// If we have no kids, then count each point that we have that's on the disk and return that.
+	if k2.points != nil {
+		count := 0
+		for _, point := range k2.points {
+			if distSqFromPointToPoint(float64(point.X), float64(point.Y), x, y) < rsq {
+				count++
+			}
+		}
+		return count
+	}
+
+	// If we've gotten here then we just let our kids do the work.
+	return k2.kids[0].NumPointsOnDisk(x, y, radius) + k2.kids[1].NumPointsOnDisk(x, y, radius)
+}
+
+func (k2 *k2Node) DistToClosestPoint(x, y float64) float64 {
+	// Starting with dist == 1, do repeated doubling until we find at least one point, then binary
+	// search to find the closest point.
+	dist := 1.0
+	for k2.NumPointsOnDisk(x, y, dist) == 0 {
+		dist *= 2
+	}
+	var min, max float64
+	if dist == 1.0 {
+		// special case if there was already one point within range 1.0.
+		min = 0.0
+		max = 1.0
+	} else {
+		min = dist / 2
+		max = dist
+	}
+
+	for max-min > 1e-9 {
+		mid := (max + min) / 2
+		if k2.NumPointsOnDisk(x, y, mid) == 0 {
+			min = mid
+		} else {
+			max = mid
+		}
+	}
+	return (max + min) / 2
 }
 
 func Partition(x bool, points []image.Point, leftCount int) int {
@@ -60,10 +120,7 @@ func Partition(x bool, points []image.Point, leftCount int) int {
 	}
 }
 
-func makeKdTree(points []image.Point) *k2Tree {
-	if len(points) == 0 {
-		return &k2Tree{}
-	}
+func boundingBoxFromPoints(points []image.Point) image.Rectangle {
 	var bounds image.Rectangle
 	bounds.Min = points[0]
 	bounds.Max = points[0]
@@ -81,5 +138,28 @@ func makeKdTree(points []image.Point) *k2Tree {
 			bounds.Max.Y = point.Y
 		}
 	}
-	return &k2Tree{root: &k2Node{bounds: bounds, points: points}}
+	return bounds
+}
+
+func makek2Node(points []image.Point, x bool) *k2Node {
+	node := k2Node{
+		bounds: boundingBoxFromPoints(points),
+		count:  len(points),
+		xaxis:  x,
+	}
+	if len(points) <= maxPointsPerNode {
+		node.points = points
+		return &node
+	}
+	leftIndex := Partition(x, points, len(points)/2)
+	node.kids[0] = makek2Node(points[0:leftIndex], !x)
+	node.kids[1] = makek2Node(points[leftIndex:], !x)
+	return &node
+}
+
+func MakeKdTree(points []image.Point) *k2Tree {
+	if len(points) == 0 {
+		return &k2Tree{}
+	}
+	return &k2Tree{k2Node: makek2Node(points, true)}
 }

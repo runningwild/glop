@@ -4,9 +4,10 @@ import (
 	"github.com/orfjackal/gospec/src/gospec"
 	"github.com/runningwild/glop/text/tool/kd"
 	"image"
+	"math"
 )
 
-func K2Spec(c gospec.Context) {
+func PartitionSpec(c gospec.Context) {
 	c.Specify("Make sure partitioning works on cases with all unique values", func() {
 		points := []image.Point{
 			image.Point{3, 0},
@@ -191,5 +192,36 @@ func K2Spec(c gospec.Context) {
 			}
 			c.Expect(diff < 10, gospec.Equals, true)
 		})
+	})
+}
+
+func TreeSpec(c gospec.Context) {
+	c.Specify("Trees can count points on a disk.", func() {
+		// Assemble a set of points that contain every unique integer coordinate point in (0,0) to (99,99)
+		var points []image.Point
+		for x := 0; x < 100; x++ {
+			for y := 0; y < 100; y++ {
+				points = append(points, image.Point{x, y})
+			}
+		}
+		tree := kd.MakeKdTree(points)
+		c.Expect(tree.NumPointsOnDisk(-100.1, 50, 100), gospec.Equals, 0)
+		c.Expect(tree.NumPointsOnDisk(50, 50, 100), gospec.Equals, 10000)
+		c.Expect(tree.NumPointsOnDisk(5, 5, 0.5), gospec.Equals, 1)
+		c.Expect(tree.NumPointsOnDisk(5, 5, 1.1), gospec.Equals, 5)
+	})
+	c.Specify("Trees can tell distance to closest point.", func() {
+		// Assemble a set of points that contain every unique integer coordinate point in (0,0) to (99,99)
+		var points []image.Point
+		for x := 0; x < 100; x++ {
+			for y := 0; y < 100; y++ {
+				points = append(points, image.Point{x, y})
+			}
+		}
+		tree := kd.MakeKdTree(points)
+
+		c.Expect(tree.DistToClosestPoint(-100, -100), gospec.IsWithin(1e-9), math.Sqrt(100*100+100*100))
+		c.Expect(tree.DistToClosestPoint(0, 0), gospec.IsWithin(1e-9), 0.0)
+		c.Expect(tree.DistToClosestPoint(0.1, 0.0), gospec.IsWithin(1e-9), 0.1)
 	})
 }
