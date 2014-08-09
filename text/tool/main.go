@@ -1,22 +1,22 @@
 package main
 
 import (
-	"bytes"
 	"code.google.com/p/freetype-go/freetype"
 	"code.google.com/p/freetype-go/freetype/truetype"
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"github.com/runningwild/glop/text"
 	"image"
 	"image/draw"
 	"image/png"
-	"io"
 	"io/ioutil"
 	"os"
 	"sort"
 )
 
 var fontfile = flag.String("file", "", "Font file.")
+var output = flag.String("output", "out.gob", "Output filename.")
 var runes = flag.String("runes", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(),.<>/?'\";:[]{}\\`~|", "Runes to render.")
 var dpi = flag.Float64("dpi", 1000, "Dpi.")
 
@@ -99,15 +99,16 @@ func main() {
 		fmt.Printf("Unable to make output file: %v", err)
 		os.Exit(1)
 	}
-	var buf bytes.Buffer
-	err = png.Encode(io.MultiWriter(f, &buf), atlas)
+	err = png.Encode(f, atlas)
 	if err != nil {
 		fmt.Printf("Unable to encode png: %v", err)
 		os.Exit(1)
 	}
 	f.Close()
 
-	dict.Pix = buf.Bytes()
+	dict.Pix = atlas.Pix
+	dict.Dx = int32(atlas.Bounds().Dx())
+	dict.Dy = int32(atlas.Bounds().Dy())
 	for _, r := range *runes {
 		index := font.Index(r)
 		var ri text.RuneInfo
@@ -127,5 +128,20 @@ func main() {
 		for _, r1 := range *runes {
 			dict.Kerning[text.RunePair{r0, r1}] = int(font.Kerning(font.FUnitsPerEm(), font.Index(r0), font.Index(r1)))
 		}
+	}
+
+	{
+		f, err := os.Create(*output)
+		if err != nil {
+			fmt.Printf("Failed to create output file: %v\n", err)
+			os.Exit(1)
+		}
+		enc := gob.NewEncoder(f)
+		err = enc.Encode(dict)
+		if err != nil {
+			fmt.Printf("Failed to encode data to output file: %v\n", err)
+			os.Exit(1)
+		}
+		f.Close()
 	}
 }
