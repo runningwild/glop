@@ -43,30 +43,49 @@ const font_fshader = `
 #version 330
 in vec2 theTexCoord;
 uniform sampler2D tex;
-uniform float band;
+const float band = 0.025;
+const float low = 0.5 - band;
+const float high = 0.5 + band;
 out vec4 fragColor;
+
+float weight(float a, float b) {
+	if (b < a) {
+		float buf = b;
+		b = a;
+		a = buf;
+	}
+	if (b < low) {
+		return 0.0;
+	}
+	if (a > high) {
+		return 1.0;
+	}
+
+	float midVal = (smoothstep(low, high, a) + smoothstep(low, high, b)) / 2.0;
+	if (a >= low && b <= high) {
+		return midVal;
+	}
+	float midWeight = b - a;
+
+	float lowWeight = 0.0;
+	if (a < low) {
+		lowWeight = low - a;
+		a = low;
+	}
+	float highWeight = 0.0;
+	if (b > high) {
+		highWeight = b - high;
+		b = high;
+	}
+	return (midVal * midWeight + 1.0 * highWeight) / (lowWeight + highWeight + midWeight);
+}
+
 void main() {
 	vec4 t = texture(tex, theTexCoord);
 	float v = t.r;
 	float vdx = dFdx(v);
 	float vdy = dFdy(v);
-	if (v < 0.5) {
-		float xAlpha = 0.0;
-		float yAlpha = 0.0;
-		if (v+vdx > 0.5) {
-			xAlpha = (v+vdx-0.5) / vdx;
-		} else if (v-vdx > 0.5) {
-			xAlpha = (v-vdx-0.5) / -vdx;
-		}
-		if (v+vdy > 0.5) {
-			yAlpha = (v+vdy-0.5) / vdy;
-		} else if (v-vdy > 0.5) {
-			yAlpha = (v-vdy-0.5) / -vdy;
-		}
-		fragColor = vec4(1.0, 1.0, 1.0, sqrt(xAlpha*xAlpha + yAlpha*yAlpha));
-		return;
-	}
-	fragColor = vec4(1.0, 1.0, 1.0, 1.0);
+	fragColor = vec4(1.0, 1.0, 1.0, (weight(v, v+vdx) + weight(v, v+vdy)) / 2.0);
 	return;
 }
 `
