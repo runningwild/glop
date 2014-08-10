@@ -1,3 +1,10 @@
+// Binary tool generates dictionary files that can be used by the text package to render text using
+// the distance field font rendering method.  A .ttf font file must be specified as an input, and an
+// output.png and output.dict file will be generated from it.  The output.png file can be used to
+// see how well packed the atlas is, if there is a significant amount of empty space you may want to
+// retry with a different value for --dpi.  Regardless of what --dpi is used when generating the
+// dictionary the font will always render at the same size because a height parameter is always used
+// when rendering text.  The output.dict file is what should be given to text.LoadDictionary().
 package main
 
 import (
@@ -19,21 +26,28 @@ import (
 
 var fontfile = flag.String("file", "", "Font file.")
 var output = flag.String("output", "output", "Output filename prefix.")
-var runes = flag.String("runes", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(),.<>/?'\";:[]{}\\`~|", "Runes to render.")
-var dpi = flag.Float64("dpi", 1000, "Dpi.")
+var runes = flag.String("runes", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(),.<>/?'\";:[]{}\\`~| ", "Runes to render, 'ALL' to use all avialable runes (< 65535) in this font.")
+var dpi = flag.Float64("dpi", 300, "Dpi.  300 is usually sufficient to look good at all reasonable sizes.")
 var threads = flag.Int("threads", 4, "Number of threads to run simultaneously.")
+var width = flag.Int("width", 1024, "Width of atlas.")
 
+// runeImage is a simple pair of rune and the grayscale image of that rune.
 type runeImage struct {
 	r   rune
 	img *image.Gray
 }
+
+// runeImageSlice is used to sort runeImages to make packing easier.
 type runeImageSlice []runeImage
 
 func (ris runeImageSlice) Len() int {
 	return len(ris)
 }
 func (ris runeImageSlice) Less(i, j int) bool {
-	return ris[i].img.Bounds().Dy() > ris[j].img.Bounds().Dy()
+	if ris[i].img.Bounds().Dy() != ris[j].img.Bounds().Dy() {
+		return ris[i].img.Bounds().Dy() > ris[j].img.Bounds().Dy()
+	}
+	return ris[i].img.Bounds().Dx() < ris[j].img.Bounds().Dx()
 }
 func (ris runeImageSlice) Swap(i, j int) {
 	ris[i], ris[j] = ris[j], ris[i]
@@ -50,6 +64,28 @@ func main() {
 	if err != nil {
 		fmt.Printf("Unable to parse font file: %v", err)
 		os.Exit(1)
+	}
+
+	all := *runes == "ALL"
+	var usable []rune
+	fmt.Printf("This font supports the following runes:\n")
+	fmt.Printf("Rune, Val, Index\n")
+	var gCheck truetype.GlyphBuf
+	for r := rune(1); r < 65535; r++ {
+		index := font.Index(r)
+		if index == 0 {
+			continue
+		}
+		err := gCheck.Load(font, 1, index, truetype.NoHinting)
+		if err == nil {
+			fmt.Printf("'%c': %d, %d\n", r, r, index)
+		}
+		if all {
+			usable = append(usable, r)
+		}
+	}
+	if all {
+		*runes = string(usable)
 	}
 
 	rIn := make(chan rune)
@@ -95,7 +131,12 @@ func main() {
 	}
 	sort.Sort(ris)
 
-	width := 2048
+	// Now that runes are sorted, pack them.  The packing is simple, just fill up a row until the
+	// next rune wouldn't fit, then go to the next row.  The runes are sorted first by largest
+	// height then by smallest width, which isn't necessarily optimal, but it is good in general.
+	// The +2 on several values here is so that there is a small buffer between runes so that we
+	// don't accidentally draw part of one rune while render another.
+	width := *width
 	x, y := 0, 0
 	cdy := ris[0].img.Bounds().Dy() + 2
 	for _, ri := range ris {
@@ -108,11 +149,13 @@ func main() {
 		x += dx
 	}
 	y += cdy
-	fmt.Printf("Finished with %d %d\n", x, y)
 	height := 1
 	for height < y {
 		height *= 2
 	}
+
+	// Now that we know the position of all the runes in the atlas, actually draw them onto a single
+	// image.
 	atlas := image.NewGray(image.Rect(0, 0, width, height))
 	x, y = 0, 0
 	cdy = ris[0].img.Bounds().Dy() + 2
@@ -129,10 +172,8 @@ func main() {
 		draw.Draw(atlas, dict.Runes[ri.r].PixBounds, ri.img, image.Point{}, draw.Over)
 		x += dx
 	}
-	atlas.Set(0, 0, color.Gray{255})
-	atlas.Set(0, 1, color.Gray{255})
-	atlas.Set(1, 1, color.Gray{255})
-	atlas.Set(2, 2, color.Gray{255})
+
+	// Save the output.png file so that we can see what the atlas looks like.
 	f, err := os.Create(fmt.Sprintf("%s.png", *output))
 	if err != nil {
 		fmt.Printf("Unable to make output file: %v", err)
@@ -145,6 +186,8 @@ func main() {
 	}
 	f.Close()
 
+	// There are several more values that need to go into a dictionary, so we'll go through all of
+	// the runes that we're using and look up those values now.
 	dict.Pix = atlas.Pix
 	dict.Dx = int32(atlas.Bounds().Dx())
 	dict.Dy = int32(atlas.Bounds().Dy())
@@ -163,6 +206,8 @@ func main() {
 		ri.GlyphBounds.Max.Y = int(glyph.B.YMax)
 		dict.Runes[r] = ri
 	}
+
+	// Also store a mapping from rune pair to the kerning for that pair, if this font has that info.
 	dict.Kerning = make(map[text.RunePair]int)
 	for _, r0 := range *runes {
 		for _, r1 := range *runes {
@@ -171,7 +216,6 @@ func main() {
 				continue
 			}
 			dict.Kerning[text.RunePair{r0, r1}] = int(kern)
-			fmt.Printf("Kern (%c, %c): %v\n", r0, r1, kern)
 		}
 	}
 	dict.GlyphMax.Min.X = int(font.Bounds(font.FUnitsPerEm()).XMin)
@@ -179,8 +223,9 @@ func main() {
 	dict.GlyphMax.Max.X = int(font.Bounds(font.FUnitsPerEm()).XMax)
 	dict.GlyphMax.Max.Y = int(font.Bounds(font.FUnitsPerEm()).YMax)
 
+	// Now store the output.dict file so we can use it with text.LoadDictionary()
 	{
-		f, err := os.Create(fmt.Sprintf("%s.gob", *output))
+		f, err := os.Create(fmt.Sprintf("%s.dict", *output))
 		if err != nil {
 			fmt.Printf("Failed to create output file: %v\n", err)
 			os.Exit(1)

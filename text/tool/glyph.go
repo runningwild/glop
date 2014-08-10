@@ -11,6 +11,9 @@ import (
 	"math"
 )
 
+// boundingBoxer is a drawable image that reports a massive canvas.  Ideally this means that
+// anything can be draw onto it.  After done drawing, call boundingBoxer.complete(), then it will
+// report bounds that are just large enough to contain everything that was draw onto it.
 type boundingBoxer struct {
 	boundsStarted bool
 
@@ -23,6 +26,7 @@ type boundingBoxer struct {
 	crossover   map[image.Point]bool
 	inside      map[image.Point]bool
 
+	// The grayscale image data.
 	grayField []uint16
 }
 
@@ -122,6 +126,8 @@ func (bb *boundingBoxer) Set(x, y int, c color.Color) {
 	bb.crossover[image.Point{x + 1, y}] = true
 	bb.crossover[image.Point{x, y - 1}] = true
 	bb.crossover[image.Point{x, y + 1}] = true
+
+	// Update all bounds so that we can eventually report a bounding box for everything.
 	if !bb.boundsStarted {
 		bb.boundsStarted = true
 		bb.bounds.Min = image.Point{x, y}
@@ -141,6 +147,8 @@ func (bb *boundingBoxer) Set(x, y int, c color.Color) {
 	}
 }
 
+// Render draws rune r front the specified font at the specified dpi and scale.  It returns a
+// grayscale image that is just large enough to contain the rune.
 func Render(font *truetype.Font, r rune, dpi, scale float64) (*image.Gray, error) {
 	glyph := truetype.NewGlyphBuf()
 	index := font.Index(r)
