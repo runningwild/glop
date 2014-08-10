@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"github.com/runningwild/glop/text"
 	"image"
-	"image/color"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
