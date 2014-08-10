@@ -1,3 +1,7 @@
+// Package text supports a few simple functions for doing distance field font rendering.
+// Dictionaries are created from truetype font files using the text/tool binary.  One of these .dict
+// files can be loaded using text.LoadDictionary(), then font can be rendered using
+// dict.RenderString().
 package text
 
 import (
@@ -106,6 +110,9 @@ type strData struct {
 	vbuffers [2]uint32
 	count    int32
 }
+
+// Dictionary contains all of the information about a font necessary for rendering it using
+// distance field font rendering.
 type Dictionary struct {
 	Runes   map[rune]RuneInfo
 	Kerning map[RunePair]int
