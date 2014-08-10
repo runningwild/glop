@@ -23,7 +23,7 @@ type boundingBoxer struct {
 	crossover   map[image.Point]bool
 	inside      map[image.Point]bool
 
-	grayField []byte
+	grayField []uint16
 }
 
 func makeBoundingBoxer() *boundingBoxer {
@@ -41,10 +41,10 @@ func (bb *boundingBoxer) At(x, y int) color.Color {
 	if !(image.Point{x, y}).In(bb.bounds) {
 		return color.Gray{0}
 	}
-	return color.Gray{bb.grayField[(x-bb.bounds.Min.X)+(y-bb.bounds.Min.Y)*bb.bounds.Dx()]}
+	return color.Gray16{bb.grayField[(x-bb.bounds.Min.X)+(y-bb.bounds.Min.Y)*bb.bounds.Dx()]}
 }
 func (bb *boundingBoxer) ColorModel() color.Model {
-	return color.GrayModel
+	return color.Gray16Model
 }
 func (bb *boundingBoxer) Bounds() image.Rectangle {
 	if bb.maxDist == 0 {
@@ -64,7 +64,7 @@ func (bb *boundingBoxer) complete() {
 	}
 
 	// bb.maxDist = math.Sqrt(float64(bb.bounds.Dx()*bb.bounds.Dy())) / bb.something / 10
-	bb.maxDist = 16
+	bb.maxDist = 50
 
 	bb.bounds.Min.X -= int(bb.maxDist) + 1
 	bb.bounds.Min.Y -= int(bb.maxDist) + 1
@@ -106,13 +106,13 @@ func (bb *boundingBoxer) complete() {
 			}
 		}
 	}
-	bb.grayField = make([]byte, bb.bounds.Dx()*bb.bounds.Dy())
+	bb.grayField = make([]uint16, bb.bounds.Dx()*bb.bounds.Dy())
 	for i := range distField {
 		x := (i % bb.bounds.Dx()) + bb.bounds.Min.X
 		y := (i / bb.bounds.Dx()) + bb.bounds.Min.Y
-		bb.grayField[i] = 127 - byte(127*(distField[i]/bb.maxDist))
+		bb.grayField[i] = 32767 - uint16(32767*(distField[i]/bb.maxDist))
 		if bb.inside[image.Point{x, y}] {
-			bb.grayField[i] = 255 - bb.grayField[i]
+			bb.grayField[i] = 65535 - bb.grayField[i]
 		}
 	}
 }

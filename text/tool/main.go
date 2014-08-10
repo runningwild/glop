@@ -8,17 +8,20 @@ import (
 	"fmt"
 	"github.com/runningwild/glop/text"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
 	"os"
 	"sort"
+	"sync"
 )
 
 var fontfile = flag.String("file", "", "Font file.")
-var output = flag.String("output", "out.gob", "Output filename.")
+var output = flag.String("output", "output", "Output filename prefix.")
 var runes = flag.String("runes", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(),.<>/?'\";:[]{}\\`~|", "Runes to render.")
 var dpi = flag.Float64("dpi", 1000, "Dpi.")
+var threads = flag.Int("threads", 4, "Number of threads to run simultaneously.")
 
 type runeImage struct {
 	r   rune
@@ -48,19 +51,51 @@ func main() {
 		fmt.Printf("Unable to parse font file: %v", err)
 		os.Exit(1)
 	}
-	var ris runeImageSlice
-	for _, r := range *runes {
-		fmt.Printf("Processing %c\n", r)
-		res, err := Render(font, r, *dpi, 0.05)
-		if err != nil {
-			fmt.Printf("Unable to render glyph: %v", err)
-			os.Exit(1)
+
+	rIn := make(chan rune)
+	riOut := make(chan runeImage)
+	var wg sync.WaitGroup
+
+	// Send all of the runes along rIn then close it.
+	go func() {
+		for _, r := range *runes {
+			fmt.Printf("Processing %c\n", r)
+			rIn <- r
 		}
-		ris = append(ris, runeImage{r: r, img: res})
+		close(rIn)
+	}()
+
+	// Bring up *threads goroutines.  Each one reads from rIn, processes the rune and sends a
+	// runeImage along riOut.
+	for i := 0; i < *threads; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for r := range rIn {
+				res, err := Render(font, r, *dpi, 0.05)
+				if err != nil {
+					fmt.Printf("Unable to render glyph: %v", err)
+					os.Exit(1)
+				}
+				riOut <- runeImage{r: r, img: res}
+			}
+		}()
 	}
 
+	// Block until all of the above goroutines are done then close riOut.
+	go func() {
+		wg.Wait()
+		close(riOut)
+	}()
+
+	// Take the results from riOut, put them into a slice and sort them.
+	var ris runeImageSlice
+	for ri := range riOut {
+		ris = append(ris, ri)
+	}
 	sort.Sort(ris)
-	width := 1024
+
+	width := 2048
 	x, y := 0, 0
 	cdy := ris[0].img.Bounds().Dy() + 2
 	for _, ri := range ris {
@@ -94,7 +129,11 @@ func main() {
 		draw.Draw(atlas, dict.Runes[ri.r].PixBounds, ri.img, image.Point{}, draw.Over)
 		x += dx
 	}
-	f, err := os.Create("output.png")
+	atlas.Set(0, 0, color.Gray{255})
+	atlas.Set(0, 1, color.Gray{255})
+	atlas.Set(1, 1, color.Gray{255})
+	atlas.Set(2, 2, color.Gray{255})
+	f, err := os.Create(fmt.Sprintf("%s.png", *output))
 	if err != nil {
 		fmt.Printf("Unable to make output file: %v", err)
 		os.Exit(1)
@@ -111,7 +150,7 @@ func main() {
 	dict.Dy = int32(atlas.Bounds().Dy())
 	for _, r := range *runes {
 		index := font.Index(r)
-		var ri text.RuneInfo
+		ri := dict.Runes[r]
 		ri.AdvanceHeight = int(font.VMetric(font.FUnitsPerEm(), index).AdvanceHeight)
 		ri.TopSideBearing = int(font.VMetric(font.FUnitsPerEm(), index).TopSideBearing)
 		ri.AdvanceWidth = int(font.HMetric(font.FUnitsPerEm(), index).AdvanceWidth)
@@ -122,16 +161,26 @@ func main() {
 		ri.GlyphBounds.Min.Y = int(glyph.B.YMin)
 		ri.GlyphBounds.Max.X = int(glyph.B.XMax)
 		ri.GlyphBounds.Max.Y = int(glyph.B.YMax)
+		dict.Runes[r] = ri
 	}
 	dict.Kerning = make(map[text.RunePair]int)
 	for _, r0 := range *runes {
 		for _, r1 := range *runes {
-			dict.Kerning[text.RunePair{r0, r1}] = int(font.Kerning(font.FUnitsPerEm(), font.Index(r0), font.Index(r1)))
+			kern := font.Kerning(font.FUnitsPerEm(), font.Index(r0), font.Index(r1))
+			if kern == 0 {
+				continue
+			}
+			dict.Kerning[text.RunePair{r0, r1}] = int(kern)
+			fmt.Printf("Kern (%c, %c): %v\n", r0, r1, kern)
 		}
 	}
+	dict.GlyphMax.Min.X = int(font.Bounds(font.FUnitsPerEm()).XMin)
+	dict.GlyphMax.Min.Y = int(font.Bounds(font.FUnitsPerEm()).YMin)
+	dict.GlyphMax.Max.X = int(font.Bounds(font.FUnitsPerEm()).XMax)
+	dict.GlyphMax.Max.Y = int(font.Bounds(font.FUnitsPerEm()).YMax)
 
 	{
-		f, err := os.Create(*output)
+		f, err := os.Create(fmt.Sprintf("%s.gob", *output))
 		if err != nil {
 			fmt.Printf("Failed to create output file: %v\n", err)
 			os.Exit(1)
