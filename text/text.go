@@ -11,7 +11,6 @@ import (
 	"github.com/runningwild/glop/render"
 	"image"
 	"io"
-	"log"
 	"sync"
 	"unsafe"
 )
@@ -217,7 +216,7 @@ type pos struct {
 
 // bindString generates all of the vertex buffers and vertex arrays for a single constant line of
 // text.  No error checking is done.
-func (d *Dictionary) bindString(str string, l *log.Logger) strData {
+func (d *Dictionary) bindString(str string) strData {
 	var data strData
 	gl.GenVertexArrays(1, &data.varrays[0])
 	gl.BindVertexArray(data.varrays[0])
@@ -245,7 +244,6 @@ func (d *Dictionary) bindString(str string, l *log.Logger) strData {
 		texMax.y = float32(ri.PixBounds.Max.Y) / float32(d.Dy)
 		pen.x += float32(ri.AdvanceWidth) * scale
 		pen.x += float32(d.Kerning[RunePair{prev, r}]) * scale
-		l.Printf("Kerning[%d] (%c, %c): %v", len(d.Kerning), prev, r, float32(d.Kerning[RunePair{prev, r}]))
 		// pen.x -= float32(d.Kerning[RunePair{prev, r}]) * scale
 
 		positions = append(positions, posMin.x) // lower left
@@ -299,14 +297,14 @@ func (d *Dictionary) bindString(str string, l *log.Logger) strData {
 
 // RenderString must be called on the render thread.  x and y are the initial position of the pen,
 // in screen coordinates, and height is the height of a full line of text, in screen coordinates.
-func (d *Dictionary) RenderString(str string, x, y, height float64, l *log.Logger) {
+func (d *Dictionary) RenderString(str string, x, y, height float64) {
 	// No synchronization necessary because everything is run serially on the render thread anyway.
 	if d.strs == nil {
 		d.strs = make(map[string]strData)
 	}
 	data, ok := d.strs[str]
 	if !ok {
-		data = d.bindString(str, l)
+		data = d.bindString(str)
 		d.strs[str] = data
 	}
 
