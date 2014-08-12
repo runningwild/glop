@@ -46,6 +46,7 @@ const font_fshader = `
 #version 330
 in vec2 theTexCoord;
 uniform sampler2D tex;
+uniform vec3 textColor;
 const float band = 0.025;
 const float low = 0.5 - band;
 const float high = 0.5 + band;
@@ -88,7 +89,7 @@ void main() {
 	float v = t.r;
 	float vdx = dFdx(v);
 	float vdy = dFdy(v);
-	fragColor = vec4(1.0, 1.0, 1.0, (weight(v, v+vdx) + weight(v, v+vdy)) / 2.0);
+	fragColor = vec4(textColor.rgb, (weight(v, v+vdx) + weight(v, v+vdy)) / 2.0);
 	return;
 }
 `
@@ -134,6 +135,8 @@ type Dictionary struct {
 	}
 
 	strs map[string]strData
+
+	color [3]float32
 }
 
 var initOnce sync.Once
@@ -208,6 +211,10 @@ func LoadDictionary(r io.Reader) (*Dictionary, error) {
 	}
 
 	return &dict, nil
+}
+
+func (d *Dictionary) SetFontColor(r, g, b float64) {
+	d.color[0], d.color[1], d.color[2] = float32(r), float32(g), float32(b)
 }
 
 type pos struct {
@@ -327,6 +334,9 @@ func (d *Dictionary) RenderString(str string, x, y, height float64) {
 
 	location, _ = render.GetUniformLocation("glop.font", "pen")
 	gl.Uniform2f(location, float32(x)+float32(viewport[0]), float32(y)+float32(viewport[1]))
+
+	location, _ = render.GetUniformLocation("glop.font", "textColor")
+	gl.Uniform3f(location, d.color[0], d.color[1], d.color[2])
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
