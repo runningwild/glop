@@ -305,6 +305,9 @@ func (d *Dictionary) bindString(str string) strData {
 // RenderString must be called on the render thread.  x and y are the initial position of the pen,
 // in screen coordinates, and height is the height of a full line of text, in screen coordinates.
 func (d *Dictionary) RenderString(str string, x, y, height float64) {
+	if str == "" {
+		return
+	}
 	// No synchronization necessary because everything is run serially on the render thread anyway.
 	if d.strs == nil {
 		d.strs = make(map[string]strData)
