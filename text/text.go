@@ -17,7 +17,7 @@ import (
 
 const font_vshader = `
 #version 330
-in vec3 position;
+in vec2 position;
 in vec2 texCoord;
 
 uniform float height;
@@ -37,7 +37,7 @@ void main() {
    pen2 *= 2.0;
    p2 += pen2;
 
-   gl_Position = vec4(p2.xy, position.z, 1.0);
+   gl_Position = vec4(p2.xy, 0.0, 1.0);
    theTexCoord = texCoord;
 }
 `
@@ -255,22 +255,16 @@ func (d *Dictionary) bindString(str string) strData {
 
 		positions = append(positions, posMin.x) // lower left
 		positions = append(positions, posMin.y)
-		positions = append(positions, 0)
 		positions = append(positions, posMin.x) // upper left
 		positions = append(positions, posMax.y)
-		positions = append(positions, 0)
 		positions = append(positions, posMax.x) // upper right
 		positions = append(positions, posMax.y)
-		positions = append(positions, 0)
 		positions = append(positions, posMin.x) // lower left
 		positions = append(positions, posMin.y)
-		positions = append(positions, 0)
 		positions = append(positions, posMax.x) // upper right
 		positions = append(positions, posMax.y)
-		positions = append(positions, 0)
 		positions = append(positions, posMax.x) // lower right
 		positions = append(positions, posMin.y)
-		positions = append(positions, 0)
 		texcoords = append(texcoords, texMin.x) // lower left
 		texcoords = append(texcoords, texMax.y)
 		texcoords = append(texcoords, texMin.x) // upper left
@@ -291,7 +285,7 @@ func (d *Dictionary) bindString(str string) strData {
 	gl.BufferData(gl.ARRAY_BUFFER, len(positions)*int(unsafe.Sizeof(positions[0])), gl.Ptr(&positions[0]), gl.STATIC_DRAW)
 	location, _ := render.GetAttribLocation("glop.font", "position")
 	gl.EnableVertexAttribArray(uint32(location))
-	gl.VertexAttribPointer(uint32(location), 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
+	gl.VertexAttribPointer(uint32(location), 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, data.vbuffers[1])
 	gl.BufferData(gl.ARRAY_BUFFER, len(texcoords)*int(unsafe.Sizeof(texcoords[0])), gl.Ptr(&texcoords[0]), gl.STATIC_DRAW)
