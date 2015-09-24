@@ -7,7 +7,7 @@ package text
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/errcw/glow/gl-core/3.3/gl"
+	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/runningwild/glop/render"
 	"image"
 	"io"

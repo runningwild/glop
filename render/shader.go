@@ -2,7 +2,7 @@ package render
 
 import (
 	"fmt"
-	"github.com/errcw/glow/gl-core/3.3/gl"
+	"github.com/go-gl/gl/v3.3-core/gl"
 	"unsafe"
 )
 
@@ -31,7 +31,7 @@ func SetUniformI(shader, variable string, n int32) error {
 		return fmt.Errorf("Tried to set a uniform in an unknown shader '%s'", shader)
 	}
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
-	loc := gl.GetUniformLocation(prog, (*int8)(unsafe.Pointer(&bvariable[0])))
+	loc := gl.GetUniformLocation(prog, (*uint8)(unsafe.Pointer(&bvariable[0])))
 	gl.Uniform1i(loc, n)
 	return nil
 }
@@ -42,7 +42,7 @@ func SetUniformF(shader, variable string, f float32) error {
 		return fmt.Errorf("Tried to set a uniform in an unknown shader '%s'", shader)
 	}
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
-	loc := gl.GetUniformLocation(prog, (*int8)(unsafe.Pointer(&bvariable[0])))
+	loc := gl.GetUniformLocation(prog, (*uint8)(unsafe.Pointer(&bvariable[0])))
 	gl.Uniform1f(loc, f)
 	return nil
 }
@@ -53,7 +53,7 @@ func SetUniform4F(shader, variable string, vs []float32) error {
 		return fmt.Errorf("Tried to set a uniform in an unknown shader '%s'", shader)
 	}
 	bvariable := []byte(fmt.Sprintf("%s\x00", variable))
-	loc := gl.GetUniformLocation(prog, (*int8)(unsafe.Pointer(&bvariable[0])))
+	loc := gl.GetUniformLocation(prog, (*uint8)(unsafe.Pointer(&bvariable[0])))
 	gl.Uniform4f(loc, vs[0], vs[1], vs[2], vs[3])
 	return nil
 }
@@ -66,14 +66,14 @@ func RegisterShader(name string, vertex, fragment []byte) error {
 	vertex_id := gl.CreateShader(gl.VERTEX_SHADER)
 	pointer := &vertex[0]
 	length := int32(len(vertex))
-	gl.ShaderSource(vertex_id, 1, (**int8)(unsafe.Pointer(&pointer)), &length)
+	gl.ShaderSource(vertex_id, 1, (**uint8)(unsafe.Pointer(&pointer)), &length)
 	gl.CompileShader(vertex_id)
 	var param int32
 	gl.GetShaderiv(vertex_id, gl.COMPILE_STATUS, &param)
 	if param == 0 {
 		buf := make([]byte, 5*1024)
 		var length int32
-		gl.GetShaderInfoLog(vertex_id, int32(len(buf)), &length, (*int8)(unsafe.Pointer(&buf[0])))
+		gl.GetShaderInfoLog(vertex_id, int32(len(buf)), &length, (*uint8)(unsafe.Pointer(&buf[0])))
 		if length > 0 {
 			length--
 		}
@@ -84,13 +84,13 @@ func RegisterShader(name string, vertex, fragment []byte) error {
 	fragment_id := gl.CreateShader(gl.FRAGMENT_SHADER)
 	pointer = &fragment[0]
 	length = int32(len(fragment))
-	gl.ShaderSource(fragment_id, 1, (**int8)(unsafe.Pointer(&pointer)), &length)
+	gl.ShaderSource(fragment_id, 1, (**uint8)(unsafe.Pointer(&pointer)), &length)
 	gl.CompileShader(fragment_id)
 	gl.GetShaderiv(fragment_id, gl.COMPILE_STATUS, &param)
 	if param == 0 {
 		buf := make([]byte, 5*1024)
 		var length int32
-		gl.GetShaderInfoLog(fragment_id, int32(len(buf)), &length, (*int8)(unsafe.Pointer(&buf[0])))
+		gl.GetShaderInfoLog(fragment_id, int32(len(buf)), &length, (*uint8)(unsafe.Pointer(&buf[0])))
 		if length > 0 {
 			length--
 		}
